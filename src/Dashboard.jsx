@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 const DARK = {
@@ -662,22 +662,22 @@ function PeakChart({ data, t, height = 120 }) {
   );
 }
 
-// ─── Section Header ───────────────────────────────────────────────────────────
-function SectionHeader({ title, t }) {
-  return (
-    <div
-      style={{ background: t.surface, border: `1px solid ${t.border}` }}
-      className="rounded-2xl px-5 py-3 mb-4"
-    >
-      <p
-        style={{ fontFamily: "'Playfair Display', serif", color: t.text }}
-        className="text-lg font-black"
-      >
-        {title}
-      </p>
-    </div>
-  );
-}
+// // ─── Section Header ───────────────────────────────────────────────────────────
+// function SectionHeader({ title, t }) {
+//   return (
+//     <div
+//       style={{ background: t.surface, border: `1px solid ${t.border}` }}
+//       className="rounded-2xl px-5 py-3 mb-4"
+//     >
+//       <p
+//         style={{ fontFamily: "'Playfair Display', serif", color: t.text }}
+//         className="text-lg font-black"
+//       >
+//         {title}
+//       </p>
+//     </div>
+//   );
+// }
 
 // ─── Touch drag hook ──────────────────────────────────────────────────────────
 function useTouchDrag(items, setItems, getId) {
