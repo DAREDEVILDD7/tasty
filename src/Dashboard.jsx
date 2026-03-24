@@ -143,7 +143,7 @@ const BEHAVIOR = [
   {
     icon: "💬",
     label: "WhatsApp Conversations Started",
-    value: "70",
+    value: "80",
     sub: "↗ 3% increase from last quarter",
     green: true,
   },
