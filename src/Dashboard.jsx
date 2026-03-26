@@ -60,11 +60,40 @@ const NAV_ITEMS = [
 ];
 
 const STAT_CARDS = [
-  { icon: "🛒", label: "Total Accepted Orders", value: "22", sub: "↗ 15% from yesterday", green: true },
-  { icon: "💰", label: "Total Revenue", value: "AED 3,399", sub: "↗ 8% from yesterday", green: true },
-  { icon: "💎", label: "Revenue saved by tasty", value: "AED 120.00", sub: "0% change from yesterday" },
-  { icon: "👥", label: "Customers", value: "18", sub: "↗ 3% from yesterday", green: true },
-  { icon: "⏱️", label: "Total Delayed Orders", value: "2", sub: "0 order(s) less from yesterday", green: true },
+  {
+    icon: "🛒",
+    label: "Total Accepted Orders",
+    value: "22",
+    sub: "↗ 15% from yesterday",
+    green: true,
+  },
+  {
+    icon: "💰",
+    label: "Total Revenue",
+    value: "AED 3,399",
+    sub: "↗ 8% from yesterday",
+    green: true,
+  },
+  {
+    icon: "💎",
+    label: "Revenue saved by FeastRush",
+    value: "AED 120.00",
+    sub: "0% change from yesterday",
+  },
+  {
+    icon: "👥",
+    label: "Customers",
+    value: "18",
+    sub: "↗ 3% from yesterday",
+    green: true,
+  },
+  {
+    icon: "⏱️",
+    label: "Total Delayed Orders",
+    value: "2",
+    sub: "0 order(s) less from yesterday",
+    green: true,
+  },
 ];
 
 const TOP_ITEMS = [
@@ -112,8 +141,20 @@ const PEAK_DAYS = Array.from({ length: 30 }, (_, i) => {
 });
 
 const BEHAVIOR = [
-  { icon: "👁️", label: "Total Users Landed on Menu", value: "109", sub: "↘ 13% decrease from last quarter", red: true },
-  { icon: "💬", label: "WhatsApp Conversations Started", value: "80", sub: "↗ 3% increase from last quarter", green: true },
+  {
+    icon: "👁️",
+    label: "Total Users Landed on Menu",
+    value: "109",
+    sub: "↘ 13% decrease from last quarter",
+    red: true,
+  },
+  {
+    icon: "💬",
+    label: "WhatsApp Conversations Started",
+    value: "80",
+    sub: "↗ 3% increase from last quarter",
+    green: true,
+  },
 ];
 
 const TOP_ADDED = [
@@ -132,61 +173,262 @@ const TOP_VIEWED = [
 
 const SAMPLE_ORDERS = [
   {
-    id: "ORD-875", status: "new", type: "delivery", customer: "Hrishi Uralath",
-    phone: "971585691229", items: 2, time: "less than a minute ago",
-    subtotal: 201.0, deliveryCharge: 5.0, total: 206.0, paymentMethod: "Card",
+    id: "ORD-875",
+    status: "new",
+    type: "delivery",
+    customer: "Hrishi Uralath",
+    phone: "971585691229",
+    items: 2,
+    time: "less than a minute ago",
+    subtotal: 201.0,
+    deliveryCharge: 5.0,
+    total: 206.0,
+    paymentMethod: "Card",
     orderItems: [
-      { qty: 3, name: "UAE's Best Karak", price: 81.0, variant: "Combo Test", addons: ["1 x Olives", "1 x Cheese Cubes"], addonLabel: null },
-      { qty: 4, name: "Hrishi's Chicken Fried Rice", price: 120.0, variant: null, addons: ["Red Chutney", "White Chutney"], addonLabel: "SAUCE" },
+      {
+        qty: 3,
+        name: "UAE's Best Karak",
+        price: 81.0,
+        variant: "Combo Test",
+        addons: ["1 x Olives", "1 x Cheese Cubes"],
+        addonLabel: null,
+      },
+      {
+        qty: 4,
+        name: "Hrishi's Chicken Fried Rice",
+        price: 120.0,
+        variant: null,
+        addons: ["Red Chutney", "White Chutney"],
+        addonLabel: "SAUCE",
+      },
     ],
-    receiver: { name: "Hrishikesh Uralath", phone: "971585691229", address: "Al taawun, 1202, Laffah restaurant building, Al Mamzar Plaza - Al Taawun St - Al Mamzar - Sharjah - UAE" },
+    receiver: {
+      name: "Hrishikesh Uralath",
+      phone: "971585691229",
+      address:
+        "Al taawun, 1202, Laffah restaurant building, Al Mamzar Plaza - Al Taawun St - Al Mamzar - Sharjah - UAE",
+    },
     notes: "No Notes Added",
   },
   {
-    id: "ORD-874", status: "accepted", type: "pickup", customer: "Sara Ahmed",
-    phone: "971501234567", items: 3, time: "5 minutes ago",
-    subtotal: 95.0, deliveryCharge: 0.0, total: 95.0, paymentMethod: "Cash",
+    id: "ORD-874",
+    status: "accepted",
+    type: "pickup",
+    customer: "Sara Ahmed",
+    phone: "971501234567",
+    items: 3,
+    time: "5 minutes ago",
+    subtotal: 95.0,
+    deliveryCharge: 0.0,
+    total: 95.0,
+    paymentMethod: "Cash",
     orderItems: [
-      { qty: 2, name: "Chicken Shawarma", price: 50.0, variant: null, addons: ["Extra Sauce"], addonLabel: "EXTRAS" },
-      { qty: 1, name: "Mango Juice", price: 15.0, variant: null, addons: [], addonLabel: null },
-      { qty: 1, name: "Hummus Platter", price: 30.0, variant: "Large", addons: ["Extra Pita"], addonLabel: "ADD-ONS" },
+      {
+        qty: 2,
+        name: "Chicken Shawarma",
+        price: 50.0,
+        variant: null,
+        addons: ["Extra Sauce"],
+        addonLabel: "EXTRAS",
+      },
+      {
+        qty: 1,
+        name: "Mango Juice",
+        price: 15.0,
+        variant: null,
+        addons: [],
+        addonLabel: null,
+      },
+      {
+        qty: 1,
+        name: "Hummus Platter",
+        price: 30.0,
+        variant: "Large",
+        addons: ["Extra Pita"],
+        addonLabel: "ADD-ONS",
+      },
     ],
-    receiver: { name: "Sara Ahmed", phone: "971501234567", address: "Pickup - Al Nahda, Dubai" },
+    receiver: {
+      name: "Sara Ahmed",
+      phone: "971501234567",
+      address: "Pickup - Al Nahda, Dubai",
+    },
     notes: "Extra napkins please",
   },
 ];
 
 const INITIAL_MENU = [
-  { id: "cat-1", name: "Recommended For You", enabled: true, items: [
-    { id: "i-1", name: "UAE's Best Karak", price: 27.0, addOns: 2, inStock: true, enabled: true, emoji: "☕" },
-    { id: "i-2", name: "Chicken Fried Rice", price: 45.0, addOns: 1, inStock: true, enabled: true, emoji: "🍚" },
-  ]},
-  { id: "cat-2", name: "Dosas", enabled: true, items: [
-    { id: "i-3", name: "Set Dosa", price: 20.0, addOns: 1, inStock: true, enabled: true, emoji: "🥞" },
-    { id: "i-4", name: "Masala Dosa", price: 25.0, addOns: 0, inStock: false, enabled: true, emoji: "🥞" },
-  ]},
-  { id: "cat-3", name: "South Indian Delicacies", enabled: true, items: [
-    { id: "i-5", name: "Chatti Chor", price: 24.0, addOns: 0, inStock: true, enabled: true, emoji: "🍛" },
-    { id: "i-6", name: "Idli Sambar", price: 18.0, addOns: 1, inStock: true, enabled: true, emoji: "🍲" },
-  ]},
-  { id: "cat-4", name: "Rice & Noodles", enabled: true, items: [
-    { id: "i-7", name: "Ramen", price: 40.0, addOns: 1, inStock: true, enabled: true, emoji: "🍜" },
-    { id: "i-8", name: "Biryani Special", price: 55.0, addOns: 2, inStock: true, enabled: true, emoji: "🍚" },
-  ]},
-  { id: "cat-5", name: "Beverages", enabled: true, items: [
-    { id: "i-9", name: "Mango Lassi", price: 15.0, addOns: 0, inStock: true, enabled: true, emoji: "🥭" },
-    { id: "i-10", name: "Fresh Lime Soda", price: 12.0, addOns: 0, inStock: true, enabled: true, emoji: "🍋" },
-  ]},
+  {
+    id: "cat-1",
+    name: "Recommended For You",
+    enabled: true,
+    items: [
+      {
+        id: "i-1",
+        name: "UAE's Best Karak",
+        price: 27.0,
+        addOns: 2,
+        inStock: true,
+        enabled: true,
+        emoji: "☕",
+      },
+      {
+        id: "i-2",
+        name: "Chicken Fried Rice",
+        price: 45.0,
+        addOns: 1,
+        inStock: true,
+        enabled: true,
+        emoji: "🍚",
+      },
+    ],
+  },
+  {
+    id: "cat-2",
+    name: "Dosas",
+    enabled: true,
+    items: [
+      {
+        id: "i-3",
+        name: "Set Dosa",
+        price: 20.0,
+        addOns: 1,
+        inStock: true,
+        enabled: true,
+        emoji: "🥞",
+      },
+      {
+        id: "i-4",
+        name: "Masala Dosa",
+        price: 25.0,
+        addOns: 0,
+        inStock: false,
+        enabled: true,
+        emoji: "🥞",
+      },
+    ],
+  },
+  {
+    id: "cat-3",
+    name: "South Indian Delicacies",
+    enabled: true,
+    items: [
+      {
+        id: "i-5",
+        name: "Chatti Chor",
+        price: 24.0,
+        addOns: 0,
+        inStock: true,
+        enabled: true,
+        emoji: "🍛",
+      },
+      {
+        id: "i-6",
+        name: "Idli Sambar",
+        price: 18.0,
+        addOns: 1,
+        inStock: true,
+        enabled: true,
+        emoji: "🍲",
+      },
+    ],
+  },
+  {
+    id: "cat-4",
+    name: "Rice & Noodles",
+    enabled: true,
+    items: [
+      {
+        id: "i-7",
+        name: "Ramen",
+        price: 40.0,
+        addOns: 1,
+        inStock: true,
+        enabled: true,
+        emoji: "🍜",
+      },
+      {
+        id: "i-8",
+        name: "Biryani Special",
+        price: 55.0,
+        addOns: 2,
+        inStock: true,
+        enabled: true,
+        emoji: "🍚",
+      },
+    ],
+  },
+  {
+    id: "cat-5",
+    name: "Beverages",
+    enabled: true,
+    items: [
+      {
+        id: "i-9",
+        name: "Mango Lassi",
+        price: 15.0,
+        addOns: 0,
+        inStock: true,
+        enabled: true,
+        emoji: "🥭",
+      },
+      {
+        id: "i-10",
+        name: "Fresh Lime Soda",
+        price: 12.0,
+        addOns: 0,
+        inStock: true,
+        enabled: true,
+        emoji: "🍋",
+      },
+    ],
+  },
 ];
 
 const INITIAL_ADDONS = [
-  { id: "ao-1", name: "Extra Sauce", price: 2.0, group: "Sauces", enabled: true },
-  { id: "ao-2", name: "Cheese Cubes", price: 5.0, group: "Extras", enabled: true },
+  {
+    id: "ao-1",
+    name: "Extra Sauce",
+    price: 2.0,
+    group: "Sauces",
+    enabled: true,
+  },
+  {
+    id: "ao-2",
+    name: "Cheese Cubes",
+    price: 5.0,
+    group: "Extras",
+    enabled: true,
+  },
   { id: "ao-3", name: "Olives", price: 3.0, group: "Extras", enabled: true },
-  { id: "ao-4", name: "Extra Pita", price: 4.0, group: "Breads", enabled: true },
-  { id: "ao-5", name: "Red Chutney", price: 1.5, group: "Sauces", enabled: true },
-  { id: "ao-6", name: "White Chutney", price: 1.5, group: "Sauces", enabled: false },
-  { id: "ao-7", name: "Onion Raita", price: 3.0, group: "Sides", enabled: true },
+  {
+    id: "ao-4",
+    name: "Extra Pita",
+    price: 4.0,
+    group: "Breads",
+    enabled: true,
+  },
+  {
+    id: "ao-5",
+    name: "Red Chutney",
+    price: 1.5,
+    group: "Sauces",
+    enabled: true,
+  },
+  {
+    id: "ao-6",
+    name: "White Chutney",
+    price: 1.5,
+    group: "Sauces",
+    enabled: false,
+  },
+  {
+    id: "ao-7",
+    name: "Onion Raita",
+    price: 3.0,
+    group: "Sides",
+    enabled: true,
+  },
 ];
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -199,7 +441,9 @@ function Toggle({ value, onChange, t }) {
       style={{ background: value ? t.accent : t.toggleOff }}
       className="relative inline-flex items-center w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none flex-shrink-0"
     >
-      <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-300 ${value ? "translate-x-6" : "translate-x-1"}`} />
+      <span
+        className={`inline-block w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-300 ${value ? "translate-x-6" : "translate-x-1"}`}
+      />
     </button>
   );
 }
@@ -208,11 +452,18 @@ function ThemeBtn({ dark, onToggle, t }) {
   return (
     <button
       onClick={onToggle}
-      style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.subtle }}
+      style={{
+        background: t.surface2,
+        border: `1px solid ${t.border2}`,
+        color: t.subtle,
+      }}
       className="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:opacity-80 active:scale-95 transition-all"
     >
       <span className="text-sm">{dark ? "☀️" : "🌙"}</span>
-      <span className="text-xs font-medium hidden sm:inline" style={{ fontFamily: "'Lato', sans-serif" }}>
+      <span
+        className="text-xs font-medium hidden sm:inline"
+        style={{ fontFamily: "'Lato', sans-serif" }}
+      >
         {dark ? "Light mode" : "Dark mode"}
       </span>
     </button>
@@ -224,17 +475,33 @@ function Modal({ title, onClose, children, t }) {
     <div
       className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
-        style={{ background: t.surface, border: `1px solid ${t.border}`, fontFamily: "'Lato', sans-serif" }}
+        style={{
+          background: t.surface,
+          border: `1px solid ${t.border}`,
+          fontFamily: "'Lato', sans-serif",
+        }}
         className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
       >
-        <div style={{ borderBottom: `1px solid ${t.border}` }} className="flex items-center justify-between px-6 py-4 flex-shrink-0">
-          <p style={{ color: t.text, fontFamily: "'Cormorant Garamond', serif" }} className="text-xl font-bold tracking-wide">
+        <div
+          style={{ borderBottom: `1px solid ${t.border}` }}
+          className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+        >
+          <p
+            style={{ color: t.text, fontFamily: "'Cormorant Garamond', serif" }}
+            className="text-xl font-bold tracking-wide"
+          >
             {title}
           </p>
-          <button onClick={onClose} style={{ color: t.subtle }} className="text-lg leading-none hover:opacity-60 transition-opacity w-8 h-8 flex items-center justify-center rounded-lg">
+          <button
+            onClick={onClose}
+            style={{ color: t.subtle }}
+            className="text-lg leading-none hover:opacity-60 transition-opacity w-8 h-8 flex items-center justify-center rounded-lg"
+          >
             ✕
           </button>
         </div>
@@ -247,7 +514,10 @@ function Modal({ title, onClose, children, t }) {
 function Field({ label, value, onChange, type = "text", placeholder, t }) {
   return (
     <div className="mb-5">
-      <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">
+      <label
+        style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+        className="text-xs font-semibold tracking-widest uppercase block mb-2"
+      >
         {label}
       </label>
       <input
@@ -255,7 +525,12 @@ function Field({ label, value, onChange, type = "text", placeholder, t }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+        style={{
+          background: t.surface2,
+          border: `1px solid ${t.border2}`,
+          color: t.text,
+          fontFamily: "'Lato', sans-serif",
+        }}
         className="w-full rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 transition-all"
       />
     </div>
@@ -266,7 +541,9 @@ function Field({ label, value, onChange, type = "text", placeholder, t }) {
 function DonutChart({ data, size = 140, thickness = 28 }) {
   const total = data.reduce((s, d) => s + d.count, 0) || 1;
   let angle = -90;
-  const cx = size / 2, cy = size / 2, r = (size - thickness) / 2;
+  const cx = size / 2,
+    cy = size / 2,
+    r = (size - thickness) / 2;
   const slices = data.map((d) => {
     const pct = d.count / total;
     const start = angle;
@@ -274,17 +551,35 @@ function DonutChart({ data, size = 140, thickness = 28 }) {
     return { ...d, pct, start, end: angle };
   });
   const arc = (cx, cy, r, startDeg, endDeg) => {
-    const s = startDeg * (Math.PI / 180), e = endDeg * (Math.PI / 180);
-    const x1 = cx + r * Math.cos(s), y1 = cy + r * Math.sin(s);
-    const x2 = cx + r * Math.cos(e), y2 = cy + r * Math.sin(e);
+    const s = startDeg * (Math.PI / 180),
+      e = endDeg * (Math.PI / 180);
+    const x1 = cx + r * Math.cos(s),
+      y1 = cy + r * Math.sin(s);
+    const x2 = cx + r * Math.cos(e),
+      y2 = cy + r * Math.sin(e);
     const large = endDeg - startDeg > 180 ? 1 : 0;
     return `M${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2}`;
   };
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0">
-      {slices.map((s, i) => s.pct > 0 && (
-        <path key={i} d={arc(cx, cy, r, s.start, s.end)} fill="none" stroke={s.color} strokeWidth={thickness} strokeLinecap="butt" />
-      ))}
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="flex-shrink-0"
+    >
+      {slices.map(
+        (s, i) =>
+          s.pct > 0 && (
+            <path
+              key={i}
+              d={arc(cx, cy, r, s.start, s.end)}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={thickness}
+              strokeLinecap="butt"
+            />
+          ),
+      )}
     </svg>
   );
 }
@@ -292,31 +587,82 @@ function DonutChart({ data, size = 140, thickness = 28 }) {
 // ─── SVG Line Chart ───────────────────────────────────────────────────────────
 function PeakChart({ data, t, height = 120 }) {
   const max = Math.max(...data.map((d) => d.orders), 1);
-  const w = 600, h = height, pad = { l: 32, r: 8, t: 10, b: 28 };
-  const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const w = 600,
+    h = height,
+    pad = { l: 32, r: 8, t: 10, b: 28 };
+  const iw = w - pad.l - pad.r,
+    ih = h - pad.t - pad.b;
   const step = iw / (data.length - 1);
-  const pts = data.map((d, i) => ({ x: pad.l + i * step, y: pad.t + ih - (d.orders / max) * ih, v: d.orders, l: d.label }));
+  const pts = data.map((d, i) => ({
+    x: pad.l + i * step,
+    y: pad.t + ih - (d.orders / max) * ih,
+    v: d.orders,
+    l: d.label,
+  }));
   const polyline = pts.map((p) => `${p.x},${p.y}`).join(" ");
-  const area = `M${pts[0].x},${pad.t + ih} ` + pts.map((p) => `L${p.x},${p.y}`).join(" ") + ` L${pts[pts.length - 1].x},${pad.t + ih} Z`;
+  const area =
+    `M${pts[0].x},${pad.t + ih} ` +
+    pts.map((p) => `L${p.x},${p.y}`).join(" ") +
+    ` L${pts[pts.length - 1].x},${pad.t + ih} Z`;
   const yTicks = [0, 1, 2, 3].filter((v) => v <= max);
   return (
     <div className="overflow-x-auto w-full">
-      <svg viewBox={`0 0 ${w} ${h}`} style={{ minWidth: 400, width: "100%", height: "auto" }} preserveAspectRatio="none">
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        style={{ minWidth: 400, width: "100%", height: "auto" }}
+        preserveAspectRatio="none"
+      >
         {yTicks.map((v) => {
           const y = pad.t + ih - (v / max) * ih;
           return (
             <g key={v}>
-              <line x1={pad.l} y1={y} x2={w - pad.r} y2={y} stroke={t.border} strokeWidth="0.8" />
-              <text x={pad.l - 4} y={y + 3} textAnchor="end" fontSize="8" fill={t.muted}>{v}</text>
+              <line
+                x1={pad.l}
+                y1={y}
+                x2={w - pad.r}
+                y2={y}
+                stroke={t.border}
+                strokeWidth="0.8"
+              />
+              <text
+                x={pad.l - 4}
+                y={y + 3}
+                textAnchor="end"
+                fontSize="8"
+                fill={t.muted}
+              >
+                {v}
+              </text>
             </g>
           );
         })}
         <path d={area} fill={t.accent} fillOpacity="0.07" />
-        <polyline points={polyline} fill="none" stroke={t.accent} strokeWidth="2" />
-        {pts.map((p, i) => p.v > 0 && <circle key={i} cx={p.x} cy={p.y} r="3.5" fill={t.accent} />)}
-        {pts.filter((_, i) => i % 5 === 0 || i === pts.length - 1).map((p, i) => (
-          <text key={i} x={p.x} y={h - 4} textAnchor="middle" fontSize="7" fill={t.muted}>{p.l}</text>
-        ))}
+        <polyline
+          points={polyline}
+          fill="none"
+          stroke={t.accent}
+          strokeWidth="2"
+        />
+        {pts.map(
+          (p, i) =>
+            p.v > 0 && (
+              <circle key={i} cx={p.x} cy={p.y} r="3.5" fill={t.accent} />
+            ),
+        )}
+        {pts
+          .filter((_, i) => i % 5 === 0 || i === pts.length - 1)
+          .map((p, i) => (
+            <text
+              key={i}
+              x={p.x}
+              y={h - 4}
+              textAnchor="middle"
+              fontSize="7"
+              fill={t.muted}
+            >
+              {p.l}
+            </text>
+          ))}
       </svg>
     </div>
   );
@@ -341,25 +687,29 @@ function useTouchDrag(items, setItems, getId) {
 
   // All mutable drag state in one ref — never stale inside event listeners
   const drag = useRef({
-    active:  false,
-    dragId:  null,
-    startY:  0,
+    active: false,
+    dragId: null,
+    startY: 0,
     isDragging: false, // true once threshold crossed
   });
 
   // Stable ref to latest setItems / getId so window listeners don't go stale
   const setItemsRef = useRef(setItems);
-  const getIdRef    = useRef(getId);
-  useEffect(() => { setItemsRef.current = setItems; }, [setItems]);
-  useEffect(() => { getIdRef.current    = getId;    }, [getId]);
+  const getIdRef = useRef(getId);
+  useEffect(() => {
+    setItemsRef.current = setItems;
+  }, [setItems]);
+  useEffect(() => {
+    getIdRef.current = getId;
+  }, [getId]);
 
   const applyStyle = (id, on) => {
     const el = itemRefs.current[id];
     if (!el) return;
-    el.style.opacity   = on ? "0.45" : "";
+    el.style.opacity = on ? "0.45" : "";
     el.style.transform = on ? "scale(0.975)" : "";
     el.style.transition = on ? "none" : "";
-    el.style.zIndex    = on ? "20" : "";
+    el.style.zIndex = on ? "20" : "";
   };
 
   // Imperative window listeners — attached once per hook instance
@@ -387,13 +737,16 @@ function useTouchDrag(items, setItems, getId) {
       for (const [id, el] of Object.entries(itemRefs.current)) {
         if (!el) continue;
         const r = el.getBoundingClientRect();
-        if (cy >= r.top && cy <= r.bottom) { overId = id; break; }
+        if (cy >= r.top && cy <= r.bottom) {
+          overId = id;
+          break;
+        }
       }
 
       if (overId && overId !== d.dragId) {
         setItemsRef.current((prev) => {
           const from = prev.findIndex((x) => getIdRef.current(x) === d.dragId);
-          const to   = prev.findIndex((x) => getIdRef.current(x) === overId);
+          const to = prev.findIndex((x) => getIdRef.current(x) === overId);
           if (from === -1 || to === -1 || from === to) return prev;
           const next = [...prev];
           const [m] = next.splice(from, 1);
@@ -407,17 +760,22 @@ function useTouchDrag(items, setItems, getId) {
       const d = drag.current;
       if (!d.active) return;
       if (d.isDragging) applyStyle(d.dragId, false);
-      drag.current = { active: false, dragId: null, startY: 0, isDragging: false };
+      drag.current = {
+        active: false,
+        dragId: null,
+        startY: 0,
+        isDragging: false,
+      };
     };
 
     // { passive: false } is the entire reason this works on mobile
-    window.addEventListener("pointermove",   onMove, { passive: false });
-    window.addEventListener("pointerup",     onEnd);
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onEnd);
     window.addEventListener("pointercancel", onEnd);
 
     return () => {
-      window.removeEventListener("pointermove",   onMove);
-      window.removeEventListener("pointerup",     onEnd);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
       window.removeEventListener("pointercancel", onEnd);
     };
   }, []); // empty deps — listeners are stable via refs
@@ -426,9 +784,16 @@ function useTouchDrag(items, setItems, getId) {
   // is irrelevant for pointerdown, we don't call preventDefault there)
   const onPointerDown = useCallback((id, e) => {
     if (e.button && e.button !== 0) return; // ignore right-click
-    drag.current = { active: true, dragId: id, startY: e.clientY, isDragging: false };
+    drag.current = {
+      active: true,
+      dragId: id,
+      startY: e.clientY,
+      isDragging: false,
+    };
     // Capture so pointermove keeps firing even if finger leaves the element
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (_) {}
     // Do NOT preventDefault here — taps must still fire onClick
   }, []);
 
@@ -438,22 +803,40 @@ function useTouchDrag(items, setItems, getId) {
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ card, t }) {
   return (
-    <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl p-5 transition-all duration-200 hover:shadow-md">
+    <div
+      style={{ background: t.surface, border: `1px solid ${t.border}` }}
+      className="rounded-xl p-5 transition-all duration-200 hover:shadow-md"
+    >
       <div className="flex items-start justify-between mb-4">
-        <div style={{ background: t.surface2, border: `1px solid ${t.border}` }} className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+        <div
+          style={{ background: t.surface2, border: `1px solid ${t.border}` }}
+          className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
+        >
           {card.icon}
         </div>
-        <span style={{ color: card.green ? t.green : card.red ? t.red : t.muted }} className="text-xs font-semibold mt-1">
+        <span
+          style={{ color: card.green ? t.green : card.red ? t.red : t.muted }}
+          className="text-xs font-semibold mt-1"
+        >
           {card.sub.split(" ")[0]}
         </span>
       </div>
-      <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl font-bold mb-1 leading-none">
+      <p
+        style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+        className="text-3xl font-bold mb-1 leading-none"
+      >
         {card.value}
       </p>
-      <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs leading-snug mt-2">
+      <p
+        style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+        className="text-xs leading-snug mt-2"
+      >
         {card.label}
       </p>
-      <p style={{ color: card.green ? t.green : card.red ? t.red : t.muted }} className="text-xs mt-1 font-medium">
+      <p
+        style={{ color: card.green ? t.green : card.red ? t.red : t.muted }}
+        className="text-xs mt-1 font-medium"
+      >
         {card.sub}
       </p>
     </div>
@@ -475,28 +858,45 @@ function HomePage({ t }) {
     <div className="p-5 md:p-8 max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl md:text-4xl font-bold tracking-tight">
+          <h1
+            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+            className="text-3xl md:text-4xl font-bold tracking-tight"
+          >
             Dashboard
           </h1>
-          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm mt-0.5">
+          <p
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-sm mt-0.5"
+          >
             Welcome back — here's what's happening today
           </p>
         </div>
         <button
-          style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }}
+          style={{
+            background: t.accent,
+            color: "#fff",
+            fontFamily: "'Lato', sans-serif",
+          }}
           className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-sm"
         >
           Z-Report 📋
         </button>
       </div>
 
-      <div style={{ borderBottom: `1px solid ${t.border}` }} className="flex items-center justify-between">
+      <div
+        style={{ borderBottom: `1px solid ${t.border}` }}
+        className="flex items-center justify-between"
+      >
         <div className="flex gap-6">
           {["overview", "sales"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              style={{ color: activeTab === tab ? t.accent : t.subtle, borderBottomColor: activeTab === tab ? t.accent : "transparent", fontFamily: "'Lato', sans-serif" }}
+              style={{
+                color: activeTab === tab ? t.accent : t.subtle,
+                borderBottomColor: activeTab === tab ? t.accent : "transparent",
+                fontFamily: "'Lato', sans-serif",
+              }}
               className="pb-3 text-sm font-semibold tracking-wide capitalize border-b-2 transition-colors"
             >
               {tab}
@@ -506,43 +906,97 @@ function HomePage({ t }) {
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value)}
-          style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+          style={{
+            background: t.surface2,
+            border: `1px solid ${t.border2}`,
+            color: t.text,
+            fontFamily: "'Lato', sans-serif",
+          }}
           className="text-sm rounded-lg px-3 py-2 outline-none mb-2 cursor-pointer font-medium"
         >
           {["Today", "Yesterday", "This Week", "This Month"].map((p) => (
-            <option key={p} value={p} style={{ background: t.surface2 }}>{p}</option>
+            <option key={p} value={p} style={{ background: t.surface2 }}>
+              {p}
+            </option>
           ))}
         </select>
       </div>
 
       <div>
-        <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-4">
+        <p
+          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-bold tracking-widest uppercase mb-4"
+        >
           Sales Analytics
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {STAT_CARDS.map((card, i) => <StatCard key={i} card={card} t={t} />)}
+          {STAT_CARDS.map((card, i) => (
+            <StatCard key={i} card={card} t={t} />
+          ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl overflow-hidden">
-          <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4">
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-lg font-bold">Top Selling Items</p>
+        <div
+          style={{ background: t.surface, border: `1px solid ${t.border}` }}
+          className="rounded-xl overflow-hidden"
+        >
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="px-5 py-4"
+          >
+            <p
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                color: t.text,
+              }}
+              className="text-lg font-bold"
+            >
+              Top Selling Items
+            </p>
           </div>
           <div className="p-5 space-y-3">
             {TOP_ITEMS.map((item) => (
               <div key={item.rank} className="flex items-center gap-3">
-                <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold w-5 text-right flex-shrink-0">
+                <span
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs font-bold w-5 text-right flex-shrink-0"
+                >
                   {item.rank}
                 </span>
                 <span className="text-base flex-shrink-0">{item.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1.5">
-                    <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold truncate pr-2">{item.name}</p>
-                    <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold flex-shrink-0">{item.count}</span>
+                    <p
+                      style={{
+                        color: t.text,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-semibold truncate pr-2"
+                    >
+                      {item.name}
+                    </p>
+                    <span
+                      style={{
+                        color: t.accent,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-bold flex-shrink-0"
+                    >
+                      {item.count}
+                    </span>
                   </div>
-                  <div style={{ background: t.surface2 }} className="h-1.5 rounded-full overflow-hidden">
-                    <div style={{ width: `${(item.count / maxItem) * 100}%`, background: t.accent }} className="h-full rounded-full transition-all duration-500" />
+                  <div
+                    style={{ background: t.surface2 }}
+                    className="h-1.5 rounded-full overflow-hidden"
+                  >
+                    <div
+                      style={{
+                        width: `${(item.count / maxItem) * 100}%`,
+                        background: t.accent,
+                      }}
+                      className="h-full rounded-full transition-all duration-500"
+                    />
                   </div>
                 </div>
               </div>
@@ -550,48 +1004,126 @@ function HomePage({ t }) {
           </div>
         </div>
 
-        <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl overflow-hidden">
-          <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4 flex items-center justify-between">
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-lg font-bold">Top Customers</p>
+        <div
+          style={{ background: t.surface, border: `1px solid ${t.border}` }}
+          className="rounded-xl overflow-hidden"
+        >
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="px-5 py-4 flex items-center justify-between"
+          >
+            <p
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                color: t.text,
+              }}
+              className="text-lg font-bold"
+            >
+              Top Customers
+            </p>
             <select
               value={custFilter}
               onChange={(e) => setCustFilter(e.target.value)}
-              style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+              style={{
+                background: t.surface2,
+                border: `1px solid ${t.border2}`,
+                color: t.text,
+                fontFamily: "'Lato', sans-serif",
+              }}
               className="text-xs rounded-lg px-2 py-1.5 outline-none cursor-pointer font-medium"
             >
               {["Sales based", "Order based"].map((f) => (
-                <option key={f} value={f} style={{ background: t.surface2 }}>{f}</option>
+                <option key={f} value={f} style={{ background: t.surface2 }}>
+                  {f}
+                </option>
               ))}
             </select>
           </div>
           <div className="p-4 space-y-2">
             {TOP_CUSTOMERS.map((c, i) => (
-              <div key={i} style={{ background: t.surface2, border: `1px solid ${t.border}` }} className="flex items-center gap-3 rounded-lg px-4 py-3">
-                <div style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }} className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+              <div
+                key={i}
+                style={{
+                  background: t.surface2,
+                  border: `1px solid ${t.border}`,
+                }}
+                className="flex items-center gap-3 rounded-lg px-4 py-3"
+              >
+                <div
+                  style={{
+                    background: t.accentBg,
+                    border: `1px solid ${t.accentBorder}`,
+                    color: t.accent,
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                >
                   {c.name.charAt(0)}
                 </div>
-                <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold flex-1">{c.name}</p>
-                <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold flex-shrink-0">{c.value}</p>
+                <p
+                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm font-semibold flex-1"
+                >
+                  {c.name}
+                </p>
+                <p
+                  style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm font-bold flex-shrink-0"
+                >
+                  {c.value}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl overflow-hidden">
-        <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4">
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-lg font-bold">Ordering Zones</p>
+      <div
+        style={{ background: t.surface, border: `1px solid ${t.border}` }}
+        className="rounded-xl overflow-hidden"
+      >
+        <div
+          style={{ borderBottom: `1px solid ${t.border}` }}
+          className="px-5 py-4"
+        >
+          <p
+            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+            className="text-lg font-bold"
+          >
+            Ordering Zones
+          </p>
         </div>
         <div className="p-5 flex flex-col sm:flex-row items-center gap-8">
           <DonutChart data={ZONES} size={150} thickness={32} />
           <div className="flex-1 w-full space-y-4">
             {ZONES.map((z, i) => (
               <div key={i} className="flex items-center gap-3">
-                <span style={{ background: z.color }} className="w-2.5 h-2.5 rounded-full flex-shrink-0" />
-                <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold flex-1">{z.label}</p>
-                <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm">{z.count} orders</p>
-                <div style={{ background: t.surface2 }} className="w-28 h-2 rounded-full overflow-hidden">
-                  <div style={{ width: `${(z.count / totalZone) * 100}%`, background: z.color }} className="h-full rounded-full" />
+                <span
+                  style={{ background: z.color }}
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                />
+                <p
+                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm font-semibold flex-1"
+                >
+                  {z.label}
+                </p>
+                <p
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm"
+                >
+                  {z.count} orders
+                </p>
+                <div
+                  style={{ background: t.surface2 }}
+                  className="w-28 h-2 rounded-full overflow-hidden"
+                >
+                  <div
+                    style={{
+                      width: `${(z.count / totalZone) * 100}%`,
+                      background: z.color,
+                    }}
+                    className="h-full rounded-full"
+                  />
                 </div>
               </div>
             ))}
@@ -601,25 +1133,80 @@ function HomePage({ t }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[
-          { title: "Payment Modes", data: PAYMENT_DATA, total: totalPay, sub: "Total Transactions" },
-          { title: "Orders By Type", data: ORDER_TYPE_DATA, total: totalType, sub: "Total Orders" },
+          {
+            title: "Payment Modes",
+            data: PAYMENT_DATA,
+            total: totalPay,
+            sub: "Total Transactions",
+          },
+          {
+            title: "Orders By Type",
+            data: ORDER_TYPE_DATA,
+            total: totalType,
+            sub: "Total Orders",
+          },
         ].map(({ title, data, total, sub }) => (
-          <div key={title} style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl overflow-hidden">
-            <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4">
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-lg font-bold">{title}</p>
+          <div
+            key={title}
+            style={{ background: t.surface, border: `1px solid ${t.border}` }}
+            className="rounded-xl overflow-hidden"
+          >
+            <div
+              style={{ borderBottom: `1px solid ${t.border}` }}
+              className="px-5 py-4"
+            >
+              <p
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  color: t.text,
+                }}
+                className="text-lg font-bold"
+              >
+                {title}
+              </p>
             </div>
             <div className="p-5 flex items-center gap-6">
-              <div className="flex-shrink-0"><DonutChart data={data} size={130} thickness={28} /></div>
+              <div className="flex-shrink-0">
+                <DonutChart data={data} size={130} thickness={28} />
+              </div>
               <div className="flex-1 space-y-2.5">
                 <div className="mb-3">
-                  <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl font-bold">{total}</p>
-                  <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-medium mt-0.5">{sub}</p>
+                  <p
+                    style={{
+                      fontFamily: "'Cormorant Garamond', serif",
+                      color: t.text,
+                    }}
+                    className="text-3xl font-bold"
+                  >
+                    {total}
+                  </p>
+                  <p
+                    style={{
+                      color: t.subtle,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-medium mt-0.5"
+                  >
+                    {sub}
+                  </p>
                 </div>
                 {data.map((d, i) => (
                   <div key={i} className="flex items-center gap-2.5">
-                    <span style={{ background: d.color }} className="w-2.5 h-2.5 rounded-full flex-shrink-0" />
-                    <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm">
-                      {d.label} — <span style={{ color: t.accent }} className="font-bold">{d.count}</span>
+                    <span
+                      style={{ background: d.color }}
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    />
+                    <p
+                      style={{
+                        color: t.text,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm"
+                    >
+                      {d.label} —{" "}
+                      <span style={{ color: t.accent }} className="font-bold">
+                        {d.count}
+                      </span>
                     </p>
                   </div>
                 ))}
@@ -629,55 +1216,172 @@ function HomePage({ t }) {
         ))}
       </div>
 
-      <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl overflow-hidden">
-        <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4 flex items-center justify-between flex-wrap gap-2">
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-lg font-bold">Peak Days</p>
+      <div
+        style={{ background: t.surface, border: `1px solid ${t.border}` }}
+        className="rounded-xl overflow-hidden"
+      >
+        <div
+          style={{ borderBottom: `1px solid ${t.border}` }}
+          className="px-5 py-4 flex items-center justify-between flex-wrap gap-2"
+        >
+          <p
+            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+            className="text-lg font-bold"
+          >
+            Peak Days
+          </p>
           <div className="flex items-center gap-2">
-            <span style={{ background: t.accent }} className="w-4 h-0.5 inline-block rounded-full" />
-            <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-medium">Orders per day</p>
+            <span
+              style={{ background: t.accent }}
+              className="w-4 h-0.5 inline-block rounded-full"
+            />
+            <p
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-medium"
+            >
+              Orders per day
+            </p>
           </div>
         </div>
         <div className="p-5">
           <div className="mb-4 flex items-baseline gap-3">
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl font-bold">
+            <p
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                color: t.text,
+              }}
+              className="text-3xl font-bold"
+            >
               {PEAK_DAYS.reduce((s, d) => s + d.orders, 0)}
             </p>
-            <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm">total orders, last 30 days</p>
+            <p
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-sm"
+            >
+              total orders, last 30 days
+            </p>
           </div>
           <PeakChart data={PEAK_DAYS} t={t} />
         </div>
       </div>
 
       <div>
-        <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-4">
+        <p
+          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-bold tracking-widest uppercase mb-4"
+        >
           Customer Behaviour Analytics
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           {BEHAVIOR.map((b, i) => (
-            <div key={i} style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl p-5">
+            <div
+              key={i}
+              style={{ background: t.surface, border: `1px solid ${t.border}` }}
+              className="rounded-xl p-5"
+            >
               <div className="flex items-center gap-3 mb-4">
-                <div style={{ background: t.surface2, border: `1px solid ${t.border2}` }} className="w-10 h-10 rounded-lg flex items-center justify-center text-lg">{b.icon}</div>
-                <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm leading-tight">{b.label}</p>
+                <div
+                  style={{
+                    background: t.surface2,
+                    border: `1px solid ${t.border2}`,
+                  }}
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+                >
+                  {b.icon}
+                </div>
+                <p
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm leading-tight"
+                >
+                  {b.label}
+                </p>
               </div>
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl font-bold mb-1">{b.value}</p>
-              <p style={{ color: b.green ? t.green : b.red ? t.red : t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm font-medium">{b.sub}</p>
+              <p
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  color: t.text,
+                }}
+                className="text-3xl font-bold mb-1"
+              >
+                {b.value}
+              </p>
+              <p
+                style={{
+                  color: b.green ? t.green : b.red ? t.red : t.muted,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-sm font-medium"
+              >
+                {b.sub}
+              </p>
             </div>
           ))}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[{ title: "Top Added to Cart", data: TOP_ADDED }, { title: "Top Viewed Items", data: TOP_VIEWED }].map(({ title, data }) => (
-            <div key={title} style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl overflow-hidden">
-              <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4">
-                <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-lg font-bold">{title}</p>
+          {[
+            { title: "Top Added to Cart", data: TOP_ADDED },
+            { title: "Top Viewed Items", data: TOP_VIEWED },
+          ].map(({ title, data }) => (
+            <div
+              key={title}
+              style={{ background: t.surface, border: `1px solid ${t.border}` }}
+              className="rounded-xl overflow-hidden"
+            >
+              <div
+                style={{ borderBottom: `1px solid ${t.border}` }}
+                className="px-5 py-4"
+              >
+                <p
+                  style={{
+                    fontFamily: "'Cormorant Garamond', serif",
+                    color: t.text,
+                  }}
+                  className="text-lg font-bold"
+                >
+                  {title}
+                </p>
               </div>
               <div className="p-4 space-y-2">
                 {data.map((item) => (
-                  <div key={item.rank} style={{ background: t.surface2, border: `1px solid ${t.border}` }} className="flex items-center gap-3 rounded-lg px-4 py-2.5">
-                    <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold w-5 text-right flex-shrink-0">{item.rank}</span>
-                    <span className="text-base flex-shrink-0">{item.emoji}</span>
-                    <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold flex-1 truncate">{item.name}</p>
-                    <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold flex-shrink-0">{item.count}</span>
+                  <div
+                    key={item.rank}
+                    style={{
+                      background: t.surface2,
+                      border: `1px solid ${t.border}`,
+                    }}
+                    className="flex items-center gap-3 rounded-lg px-4 py-2.5"
+                  >
+                    <span
+                      style={{
+                        color: t.muted,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-xs font-bold w-5 text-right flex-shrink-0"
+                    >
+                      {item.rank}
+                    </span>
+                    <span className="text-base flex-shrink-0">
+                      {item.emoji}
+                    </span>
+                    <p
+                      style={{
+                        color: t.text,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-semibold flex-1 truncate"
+                    >
+                      {item.name}
+                    </p>
+                    <span
+                      style={{
+                        color: t.accent,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-bold flex-shrink-0"
+                    >
+                      {item.count}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -699,7 +1403,10 @@ function OrdersPage({ t }) {
   const acceptedOrders = SAMPLE_ORDERS.filter((o) => o.status === "accepted");
   const displayed = orderTab === "new" ? newOrders : acceptedOrders;
 
-  const selectOrder = (order) => { setSelected(order); setMobileView("detail"); };
+  const selectOrder = (order) => {
+    setSelected(order);
+    setMobileView("detail");
+  };
 
   const OrderCard = ({ order }) => (
     <button
@@ -712,195 +1419,624 @@ function OrdersPage({ t }) {
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-base">{order.type === "delivery" ? "🚴" : "🏪"}</span>
-          <span style={{ color: order.type === "delivery" ? t.accent : t.green, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-wider uppercase">
+          <span className="text-base">
+            {order.type === "delivery" ? "🚴" : "🏪"}
+          </span>
+          <span
+            style={{
+              color: order.type === "delivery" ? t.accent : t.green,
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="text-xs font-bold tracking-wider uppercase"
+          >
             {order.type}
           </span>
         </div>
-        <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{order.time}</span>
+        <span
+          style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs"
+        >
+          {order.time}
+        </span>
       </div>
-      <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{order.customer}</p>
+      <p
+        style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+        className="text-sm font-semibold"
+      >
+        {order.customer}
+      </p>
       <div className="flex justify-between mt-1.5">
-        <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs">{order.id}</p>
-        <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold">AED {order.total.toFixed(2)}</p>
+        <p
+          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs"
+        >
+          {order.id}
+        </p>
+        <p
+          style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-bold"
+        >
+          AED {order.total.toFixed(2)}
+        </p>
       </div>
-      <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs mt-1">{order.items} items · {order.paymentMethod}</p>
+      <p
+        style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+        className="text-xs mt-1"
+      >
+        {order.items} items · {order.paymentMethod}
+      </p>
     </button>
   );
 
-  const OrderDetail = () => !selectedOrder ? null : (
-    <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="flex-1 flex flex-col rounded-xl overflow-hidden min-w-0">
-      <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 pt-5 pb-4 flex items-center gap-3">
-        <button
-          onClick={() => setMobileView("list")}
-          style={{ color: t.accent, background: t.accentBg, border: `1px solid ${t.accentBorder}` }}
-          className="lg:hidden flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
-        >←</button>
-        <div className="flex-1 min-w-0">
-          <h2 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-xl md:text-2xl font-bold">{selectedOrder.id}</h2>
-          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs">{selectedOrder.items} items · {selectedOrder.customer}</p>
-        </div>
-        <span style={{ background: t.accentBg, color: t.accent, border: `1px solid ${t.accentBorder}`, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold px-3 py-1.5 rounded-lg tracking-wider uppercase flex-shrink-0">
-          {selectedOrder.paymentMethod}
-        </span>
-      </div>
-      <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-3 space-y-1.5">
-        {[["Sub-total", `AED ${selectedOrder.subtotal.toFixed(2)}`], ...(selectedOrder.type === "delivery" ? [["Delivery", `AED ${selectedOrder.deliveryCharge.toFixed(2)}`]] : [])].map(([k, v]) => (
-          <div key={k} className="flex justify-between text-sm">
-            <span style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}>{k}</span>
-            <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}>{v}</span>
-          </div>
-        ))}
-        <div style={{ borderTop: `1px solid ${t.border}` }} className="flex justify-between text-sm pt-2">
-          <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="font-bold">Total</span>
-          <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="font-bold">AED {selectedOrder.total.toFixed(2)}</span>
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        <div style={{ borderBottom: `1px solid ${t.border}` }} className="grid grid-cols-12 px-5 py-2">
-          {[["Qty", "col-span-2"], ["Items", "col-span-7"], ["AED", "col-span-3 text-right"]].map(([l, c]) => (
-            <span key={l} style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className={`${c} text-xs font-bold tracking-widest uppercase`}>{l}</span>
-          ))}
-        </div>
-        {selectedOrder.orderItems.map((item, i) => (
-          <div key={i} style={{ borderBottom: `1px solid ${t.border}` }} className="grid grid-cols-12 px-5 py-4">
-            <div className="col-span-2">
-              <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold">{item.qty}</span>
-            </div>
-            <div className="col-span-7">
-              <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{item.name}</p>
-              {item.variant && <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs mt-0.5">{item.variant}</p>}
-              {item.addonLabel && <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold mt-1 tracking-wider">{item.addonLabel}</p>}
-              {item.addons.map((a, j) => <p key={j} style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs">· {a}</p>)}
-            </div>
-            <div className="col-span-3 text-right">
-              <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{item.price.toFixed(2)}</span>
-            </div>
-          </div>
-        ))}
-        <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4 space-y-1.5">
-          <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-2">Receiver</p>
-          {[["Name", selectedOrder.receiver.name], ["Contact", selectedOrder.receiver.phone], ["Address", selectedOrder.receiver.address]].map(([k, v]) => (
-            <p key={k} style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm leading-relaxed">
-              <span style={{ color: t.text }} className="font-semibold">{k}: </span>{v}
+  const OrderDetail = () =>
+    !selectedOrder ? null : (
+      <div
+        style={{ background: t.surface, border: `1px solid ${t.border}` }}
+        className="flex-1 flex flex-col rounded-xl overflow-hidden min-w-0"
+      >
+        <div
+          style={{ borderBottom: `1px solid ${t.border}` }}
+          className="px-5 pt-5 pb-4 flex items-center gap-3"
+        >
+          <button
+            onClick={() => setMobileView("list")}
+            style={{
+              color: t.accent,
+              background: t.accentBg,
+              border: `1px solid ${t.accentBorder}`,
+            }}
+            className="lg:hidden flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+          >
+            ←
+          </button>
+          <div className="flex-1 min-w-0">
+            <h2
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                color: t.text,
+              }}
+              className="text-xl md:text-2xl font-bold"
+            >
+              {selectedOrder.id}
+            </h2>
+            <p
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs"
+            >
+              {selectedOrder.items} items · {selectedOrder.customer}
             </p>
-          ))}
+          </div>
+          <span
+            style={{
+              background: t.accentBg,
+              color: t.accent,
+              border: `1px solid ${t.accentBorder}`,
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg tracking-wider uppercase flex-shrink-0"
+          >
+            {selectedOrder.paymentMethod}
+          </span>
         </div>
-        <div className="mx-5 my-4 rounded-xl overflow-hidden relative" style={{ height: 120, background: t.surface2, border: `1px solid ${t.border}` }}>
-          <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 300 120" preserveAspectRatio="xMidYMid slice">
-            {[0, 30, 60, 90, 120].map((y) => <line key={y} x1="0" y1={y} x2="300" y2={y} stroke={t.accent} strokeWidth="0.5" />)}
-            {[0, 50, 100, 150, 200, 250, 300].map((x) => <line key={x} x1={x} y1="0" x2={x} y2="120" stroke={t.accent} strokeWidth="0.5" />)}
-            <path d="M0,60 Q75,40 150,70 T300,50" stroke={t.accent} strokeWidth="2" fill="none" opacity="0.6" />
-            <circle cx="150" cy="70" r="7" fill={t.accent} opacity="0.9" />
-            <circle cx="150" cy="70" r="3" fill={t.bg} />
-          </svg>
-          <div className="absolute bottom-2 left-2 right-2">
-            <div style={{ background: `${t.surface}dd`, border: `1px solid ${t.border}` }} className="rounded-lg px-3 py-1.5">
-              <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs">📍 {selectedOrder.receiver.address.split(",")[0]}</p>
+        <div
+          style={{ borderBottom: `1px solid ${t.border}` }}
+          className="px-5 py-3 space-y-1.5"
+        >
+          {[
+            ["Sub-total", `AED ${selectedOrder.subtotal.toFixed(2)}`],
+            ...(selectedOrder.type === "delivery"
+              ? [["Delivery", `AED ${selectedOrder.deliveryCharge.toFixed(2)}`]]
+              : []),
+          ].map(([k, v]) => (
+            <div key={k} className="flex justify-between text-sm">
+              <span
+                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              >
+                {k}
+              </span>
+              <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}>
+                {v}
+              </span>
             </div>
+          ))}
+          <div
+            style={{ borderTop: `1px solid ${t.border}` }}
+            className="flex justify-between text-sm pt-2"
+          >
+            <span
+              style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+              className="font-bold"
+            >
+              Total
+            </span>
+            <span
+              style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+              className="font-bold"
+            >
+              AED {selectedOrder.total.toFixed(2)}
+            </span>
           </div>
         </div>
-        <div className="px-5 py-3 mb-2">
-          <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-1.5">Notes</p>
-          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm italic">{selectedOrder.notes}</p>
+        <div className="flex-1 overflow-y-auto">
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="grid grid-cols-12 px-5 py-2"
+          >
+            {[
+              ["Qty", "col-span-2"],
+              ["Items", "col-span-7"],
+              ["AED", "col-span-3 text-right"],
+            ].map(([l, c]) => (
+              <span
+                key={l}
+                style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                className={`${c} text-xs font-bold tracking-widest uppercase`}
+              >
+                {l}
+              </span>
+            ))}
+          </div>
+          {selectedOrder.orderItems.map((item, i) => (
+            <div
+              key={i}
+              style={{ borderBottom: `1px solid ${t.border}` }}
+              className="grid grid-cols-12 px-5 py-4"
+            >
+              <div className="col-span-2">
+                <span
+                  style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm font-bold"
+                >
+                  {item.qty}
+                </span>
+              </div>
+              <div className="col-span-7">
+                <p
+                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm font-semibold"
+                >
+                  {item.name}
+                </p>
+                {item.variant && (
+                  <p
+                    style={{
+                      color: t.accent,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs mt-0.5"
+                  >
+                    {item.variant}
+                  </p>
+                )}
+                {item.addonLabel && (
+                  <p
+                    style={{
+                      color: t.accent,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-bold mt-1 tracking-wider"
+                  >
+                    {item.addonLabel}
+                  </p>
+                )}
+                {item.addons.map((a, j) => (
+                  <p
+                    key={j}
+                    style={{
+                      color: t.subtle,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs"
+                  >
+                    · {a}
+                  </p>
+                ))}
+              </div>
+              <div className="col-span-3 text-right">
+                <span
+                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm font-semibold"
+                >
+                  {item.price.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          ))}
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="px-5 py-4 space-y-1.5"
+          >
+            <p
+              style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-bold tracking-widest uppercase mb-2"
+            >
+              Receiver
+            </p>
+            {[
+              ["Name", selectedOrder.receiver.name],
+              ["Contact", selectedOrder.receiver.phone],
+              ["Address", selectedOrder.receiver.address],
+            ].map(([k, v]) => (
+              <p
+                key={k}
+                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm leading-relaxed"
+              >
+                <span style={{ color: t.text }} className="font-semibold">
+                  {k}:{" "}
+                </span>
+                {v}
+              </p>
+            ))}
+          </div>
+          <div
+            className="mx-5 my-4 rounded-xl overflow-hidden relative"
+            style={{
+              height: 120,
+              background: t.surface2,
+              border: `1px solid ${t.border}`,
+            }}
+          >
+            <svg
+              className="absolute inset-0 w-full h-full opacity-20"
+              viewBox="0 0 300 120"
+              preserveAspectRatio="xMidYMid slice"
+            >
+              {[0, 30, 60, 90, 120].map((y) => (
+                <line
+                  key={y}
+                  x1="0"
+                  y1={y}
+                  x2="300"
+                  y2={y}
+                  stroke={t.accent}
+                  strokeWidth="0.5"
+                />
+              ))}
+              {[0, 50, 100, 150, 200, 250, 300].map((x) => (
+                <line
+                  key={x}
+                  x1={x}
+                  y1="0"
+                  x2={x}
+                  y2="120"
+                  stroke={t.accent}
+                  strokeWidth="0.5"
+                />
+              ))}
+              <path
+                d="M0,60 Q75,40 150,70 T300,50"
+                stroke={t.accent}
+                strokeWidth="2"
+                fill="none"
+                opacity="0.6"
+              />
+              <circle cx="150" cy="70" r="7" fill={t.accent} opacity="0.9" />
+              <circle cx="150" cy="70" r="3" fill={t.bg} />
+            </svg>
+            <div className="absolute bottom-2 left-2 right-2">
+              <div
+                style={{
+                  background: `${t.surface}dd`,
+                  border: `1px solid ${t.border}`,
+                }}
+                className="rounded-lg px-3 py-1.5"
+              >
+                <p
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs"
+                >
+                  📍 {selectedOrder.receiver.address.split(",")[0]}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="px-5 py-3 mb-2">
+            <p
+              style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-bold tracking-widest uppercase mb-1.5"
+            >
+              Notes
+            </p>
+            <p
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-sm italic"
+            >
+              {selectedOrder.notes}
+            </p>
+          </div>
+        </div>
+        <div
+          style={{ borderTop: `1px solid ${t.border}` }}
+          className="px-5 py-4 flex gap-3"
+        >
+          <button
+            style={{
+              border: `1px solid ${t.red}`,
+              color: t.red,
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
+          >
+            Reject
+          </button>
+          <button
+            style={{
+              background: t.accent,
+              color: "#fff",
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+          >
+            Accept Order
+          </button>
         </div>
       </div>
-      <div style={{ borderTop: `1px solid ${t.border}` }} className="px-5 py-4 flex gap-3">
-        <button style={{ border: `1px solid ${t.red}`, color: t.red, fontFamily: "'Lato', sans-serif" }} className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all">
-          Reject
-        </button>
-        <button style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }} className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
-          Accept Order
-        </button>
-      </div>
-    </div>
-  );
+    );
 
   return (
     <div className="flex flex-col h-full">
       <div className="px-5 md:px-8 pt-6 pb-4 flex-shrink-0">
-        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl md:text-4xl font-bold tracking-tight">Active Orders</h1>
+        <h1
+          style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+          className="text-3xl md:text-4xl font-bold tracking-tight"
+        >
+          Active Orders
+        </h1>
       </div>
 
       <div className="hidden lg:flex flex-1 overflow-hidden px-5 md:px-6 pb-6 gap-4">
-        <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="w-64 flex-shrink-0 flex flex-col rounded-xl overflow-hidden">
-          <div style={{ borderBottom: `1px solid ${t.border}` }} className="flex">
-            {[["new", newOrders.length, t.accent], ["accepted", acceptedOrders.length, t.green]].map(([tab, count, col]) => (
-              <button key={tab} onClick={() => setOrderTab(tab)}
-                style={{ color: orderTab === tab ? col : t.subtle, borderBottomColor: orderTab === tab ? col : "transparent", fontFamily: "'Lato', sans-serif" }}
+        <div
+          style={{ background: t.surface, border: `1px solid ${t.border}` }}
+          className="w-64 flex-shrink-0 flex flex-col rounded-xl overflow-hidden"
+        >
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="flex"
+          >
+            {[
+              ["new", newOrders.length, t.accent],
+              ["accepted", acceptedOrders.length, t.green],
+            ].map(([tab, count, col]) => (
+              <button
+                key={tab}
+                onClick={() => setOrderTab(tab)}
+                style={{
+                  color: orderTab === tab ? col : t.subtle,
+                  borderBottomColor: orderTab === tab ? col : "transparent",
+                  fontFamily: "'Lato', sans-serif",
+                }}
                 className="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold tracking-wider uppercase border-b-2 transition-colors"
               >
                 {tab[0].toUpperCase() + tab.slice(1)}
-                <span style={{ background: orderTab === tab ? col : t.surface2, color: orderTab === tab ? "#fff" : t.text }} className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                <span
+                  style={{
+                    background: orderTab === tab ? col : t.surface2,
+                    color: orderTab === tab ? "#fff" : t.text,
+                  }}
+                  className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                >
                   {count}
                 </span>
               </button>
             ))}
           </div>
           <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-            {displayed.length === 0 && <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm text-center mt-8">No orders</p>}
-            {displayed.map((order) => <OrderCard key={order.id} order={order} />)}
+            {displayed.length === 0 && (
+              <p
+                style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm text-center mt-8"
+              >
+                No orders
+              </p>
+            )}
+            {displayed.map((order) => (
+              <OrderCard key={order.id} order={order} />
+            ))}
           </div>
         </div>
-        {selectedOrder ? <OrderDetail /> : (
-          <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="flex-1 flex flex-col items-center justify-center rounded-xl gap-3">
+        {selectedOrder ? (
+          <OrderDetail />
+        ) : (
+          <div
+            style={{ background: t.surface, border: `1px solid ${t.border}` }}
+            className="flex-1 flex flex-col items-center justify-center rounded-xl gap-3"
+          >
             <span className="text-5xl opacity-30">🍽️</span>
-            <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">Select an order to view details</p>
+            <p
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+              className="text-sm"
+            >
+              Select an order to view details
+            </p>
           </div>
         )}
         {selectedOrder && (
           <div className="hidden xl:flex w-64 flex-shrink-0 flex-col gap-4">
-            <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl p-4">
+            <div
+              style={{ background: t.surface, border: `1px solid ${t.border}` }}
+              className="rounded-xl p-4"
+            >
               <div className="flex items-center gap-3 mb-4">
-                <div style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }} className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm">
+                <div
+                  style={{
+                    background: t.accentBg,
+                    border: `1px solid ${t.accentBorder}`,
+                    color: t.accent,
+                  }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm"
+                >
                   {selectedOrder.customer.charAt(0)}
                 </div>
                 <div>
-                  <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{selectedOrder.customer}</p>
-                  <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs">{selectedOrder.phone}</p>
+                  <p
+                    style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                    className="text-sm font-semibold"
+                  >
+                    {selectedOrder.customer}
+                  </p>
+                  <p
+                    style={{
+                      color: t.subtle,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs"
+                  >
+                    {selectedOrder.phone}
+                  </p>
                 </div>
               </div>
-              <div style={{ borderTop: `1px solid ${t.border}` }} className="pt-3 space-y-1.5">
-                <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-2">Receiver</p>
-                {[["Name", selectedOrder.receiver.name], ["Contact", selectedOrder.receiver.phone], ["Address", selectedOrder.receiver.address]].map(([k, v]) => (
-                  <p key={k} style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs leading-relaxed">
-                    <span style={{ color: t.text }} className="font-semibold">{k}: </span>{v}
+              <div
+                style={{ borderTop: `1px solid ${t.border}` }}
+                className="pt-3 space-y-1.5"
+              >
+                <p
+                  style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs font-bold tracking-widest uppercase mb-2"
+                >
+                  Receiver
+                </p>
+                {[
+                  ["Name", selectedOrder.receiver.name],
+                  ["Contact", selectedOrder.receiver.phone],
+                  ["Address", selectedOrder.receiver.address],
+                ].map(([k, v]) => (
+                  <p
+                    key={k}
+                    style={{
+                      color: t.subtle,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs leading-relaxed"
+                  >
+                    <span style={{ color: t.text }} className="font-semibold">
+                      {k}:{" "}
+                    </span>
+                    {v}
                   </p>
                 ))}
               </div>
             </div>
-            <div style={{ background: t.surface, border: `1px solid ${t.border}`, height: 160 }} className="rounded-xl overflow-hidden relative">
-              <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 300 160" preserveAspectRatio="xMidYMid slice">
-                {[0, 40, 80, 120, 160].map((y) => <line key={y} x1="0" y1={y} x2="300" y2={y} stroke={t.accent} strokeWidth="0.5" />)}
-                {[0, 60, 120, 180, 240, 300].map((x) => <line key={x} x1={x} y1="0" x2={x} y2="160" stroke={t.accent} strokeWidth="0.5" />)}
-                <path d="M0,80 Q75,60 150,90 T300,70" stroke={t.accent} strokeWidth="2" fill="none" opacity="0.6" />
+            <div
+              style={{
+                background: t.surface,
+                border: `1px solid ${t.border}`,
+                height: 160,
+              }}
+              className="rounded-xl overflow-hidden relative"
+            >
+              <svg
+                className="absolute inset-0 w-full h-full opacity-20"
+                viewBox="0 0 300 160"
+                preserveAspectRatio="xMidYMid slice"
+              >
+                {[0, 40, 80, 120, 160].map((y) => (
+                  <line
+                    key={y}
+                    x1="0"
+                    y1={y}
+                    x2="300"
+                    y2={y}
+                    stroke={t.accent}
+                    strokeWidth="0.5"
+                  />
+                ))}
+                {[0, 60, 120, 180, 240, 300].map((x) => (
+                  <line
+                    key={x}
+                    x1={x}
+                    y1="0"
+                    x2={x}
+                    y2="160"
+                    stroke={t.accent}
+                    strokeWidth="0.5"
+                  />
+                ))}
+                <path
+                  d="M0,80 Q75,60 150,90 T300,70"
+                  stroke={t.accent}
+                  strokeWidth="2"
+                  fill="none"
+                  opacity="0.6"
+                />
                 <circle cx="150" cy="90" r="7" fill={t.accent} opacity="0.9" />
                 <circle cx="150" cy="90" r="3" fill={t.bg} />
               </svg>
               <div className="absolute bottom-3 left-3 right-3">
-                <div style={{ background: `${t.surface}dd`, border: `1px solid ${t.border}` }} className="rounded-lg px-3 py-2">
-                  <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs truncate">📍 {selectedOrder.receiver.address.split(",")[0]}</p>
+                <div
+                  style={{
+                    background: `${t.surface}dd`,
+                    border: `1px solid ${t.border}`,
+                  }}
+                  className="rounded-lg px-3 py-2"
+                >
+                  <p
+                    style={{
+                      color: t.subtle,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs truncate"
+                  >
+                    📍 {selectedOrder.receiver.address.split(",")[0]}
+                  </p>
                 </div>
               </div>
             </div>
-            <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl p-4">
-              <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-2">Notes</p>
-              <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm italic">{selectedOrder.notes}</p>
+            <div
+              style={{ background: t.surface, border: `1px solid ${t.border}` }}
+              className="rounded-xl p-4"
+            >
+              <p
+                style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs font-bold tracking-widest uppercase mb-2"
+              >
+                Notes
+              </p>
+              <p
+                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm italic"
+              >
+                {selectedOrder.notes}
+              </p>
             </div>
           </div>
         )}
       </div>
 
       <div className="lg:hidden flex-1 overflow-hidden relative">
-        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "list" ? "translate-x-0" : "-translate-x-full"}`} style={{ background: t.bg }}>
-          <div style={{ borderBottom: `1px solid ${t.border}`, background: t.surface }} className="flex flex-shrink-0">
-            {[["new", newOrders.length, t.accent], ["accepted", acceptedOrders.length, t.green]].map(([tab, count, col]) => (
-              <button key={tab} onClick={() => setOrderTab(tab)}
-                style={{ color: orderTab === tab ? col : t.subtle, borderBottomColor: orderTab === tab ? col : "transparent", fontFamily: "'Lato', sans-serif" }}
+        <div
+          className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "list" ? "translate-x-0" : "-translate-x-full"}`}
+          style={{ background: t.bg }}
+        >
+          <div
+            style={{
+              borderBottom: `1px solid ${t.border}`,
+              background: t.surface,
+            }}
+            className="flex flex-shrink-0"
+          >
+            {[
+              ["new", newOrders.length, t.accent],
+              ["accepted", acceptedOrders.length, t.green],
+            ].map(([tab, count, col]) => (
+              <button
+                key={tab}
+                onClick={() => setOrderTab(tab)}
+                style={{
+                  color: orderTab === tab ? col : t.subtle,
+                  borderBottomColor: orderTab === tab ? col : "transparent",
+                  fontFamily: "'Lato', sans-serif",
+                }}
                 className="flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold tracking-wider uppercase border-b-2 transition-colors"
               >
                 {tab[0].toUpperCase() + tab.slice(1)}
-                <span style={{ background: orderTab === tab ? col : t.surface2, color: orderTab === tab ? "#fff" : t.text }} className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                <span
+                  style={{
+                    background: orderTab === tab ? col : t.surface2,
+                    color: orderTab === tab ? "#fff" : t.text,
+                  }}
+                  className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                >
                   {count}
                 </span>
               </button>
@@ -910,14 +2046,26 @@ function OrdersPage({ t }) {
             {displayed.length === 0 && (
               <div className="flex flex-col items-center justify-center h-40 gap-3">
                 <span className="text-4xl opacity-30">🍽️</span>
-                <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">No {orderTab} orders</p>
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm"
+                >
+                  No {orderTab} orders
+                </p>
               </div>
             )}
-            {displayed.map((order) => <OrderCard key={order.id} order={order} />)}
+            {displayed.map((order) => (
+              <OrderCard key={order.id} order={order} />
+            ))}
           </div>
         </div>
-        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "detail" ? "translate-x-0" : "translate-x-full"}`} style={{ background: t.bg }}>
-          <div className="flex-1 overflow-hidden p-3">{selectedOrder && <OrderDetail />}</div>
+        <div
+          className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "detail" ? "translate-x-0" : "translate-x-full"}`}
+          style={{ background: t.bg }}
+        >
+          <div className="flex-1 overflow-hidden p-3">
+            {selectedOrder && <OrderDetail />}
+          </div>
         </div>
       </div>
     </div>
@@ -937,30 +2085,46 @@ function MenuPage({ t }) {
   const [editingItem, setEditingItem] = useState(null);
   const [editingAddon, setEditingAddon] = useState(null);
   const [newCatName, setNewCatName] = useState("");
-  const [itemForm, setItemForm] = useState({ name: "", price: "", emoji: "🍽️" });
-  const [addonForm, setAddonForm] = useState({ name: "", price: "", group: "" });
+  const [itemForm, setItemForm] = useState({
+    name: "",
+    price: "",
+    emoji: "🍽️",
+  });
+  const [addonForm, setAddonForm] = useState({
+    name: "",
+    price: "",
+    group: "",
+  });
 
   // ── Desktop drag refs (HTML5 drag API — unchanged, works fine on desktop) ──
-  const dragCat  = useRef(null);
-  const overCat  = useRef(null);
+  const dragCat = useRef(null);
+  const overCat = useRef(null);
   const dragItem = useRef(null);
   const overItem = useRef(null);
 
   // ── Mobile / touch drag hooks (FIXED) ────────────────────────────────────
-  const catTouchDrag  = useTouchDrag(categories, setCategories, (c) => c.id);
+  const catTouchDrag = useTouchDrag(categories, setCategories, (c) => c.id);
 
-  const selectedCat = categories.find((c) => c.id === selectedCatId) || categories[0];
+  const selectedCat =
+    categories.find((c) => c.id === selectedCatId) || categories[0];
   const catItems = selectedCat?.items || [];
 
-  const setItemsForCat = useCallback((updater) => {
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.id === selectedCatId
-          ? { ...c, items: typeof updater === "function" ? updater(c.items) : updater }
-          : c
-      )
-    );
-  }, [selectedCatId]);
+  const setItemsForCat = useCallback(
+    (updater) => {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === selectedCatId
+            ? {
+                ...c,
+                items:
+                  typeof updater === "function" ? updater(c.items) : updater,
+              }
+            : c,
+        ),
+      );
+    },
+    [selectedCatId],
+  );
 
   const itemTouchDrag = useTouchDrag(catItems, setItemsForCat, (i) => i.id);
 
@@ -971,11 +2135,17 @@ function MenuPage({ t }) {
     const [m] = next.splice(dragCat.current, 1);
     next.splice(overCat.current, 0, m);
     setCategories(next);
-    dragCat.current = null; overCat.current = null;
+    dragCat.current = null;
+    overCat.current = null;
   };
 
   const onItemDrop = (catId) => {
-    if (!dragItem.current || !overItem.current || dragItem.current === overItem.current) return;
+    if (
+      !dragItem.current ||
+      !overItem.current ||
+      dragItem.current === overItem.current
+    )
+      return;
     setCategories((prev) =>
       prev.map((c) => {
         if (c.id !== catId) return c;
@@ -985,14 +2155,18 @@ function MenuPage({ t }) {
         const [m] = items.splice(fi, 1);
         items.splice(ti, 0, m);
         return { ...c, items };
-      })
+      }),
     );
-    dragItem.current = null; overItem.current = null;
+    dragItem.current = null;
+    overItem.current = null;
   };
 
   // ── Category / item helpers ───────────────────────────────────────────────
-  const toggleCat   = (id) => setCategories((p) => p.map((c) => c.id === id ? { ...c, enabled: !c.enabled } : c));
-  const deleteCat   = (id) => {
+  const toggleCat = (id) =>
+    setCategories((p) =>
+      p.map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c)),
+    );
+  const deleteCat = (id) => {
     setCategories((p) => p.filter((c) => c.id !== id));
     if (selectedCatId === id) {
       const r = categories.filter((c) => c.id !== id);
@@ -1000,46 +2174,172 @@ function MenuPage({ t }) {
     }
     setMobilePanel("categories");
   };
-  const toggleItem      = (cid, iid) => setCategories((p) => p.map((c) => c.id !== cid ? c : { ...c, items: c.items.map((i) => i.id === iid ? { ...i, enabled: !i.enabled } : i) }));
-  const toggleItemStock = (cid, iid) => setCategories((p) => p.map((c) => c.id !== cid ? c : { ...c, items: c.items.map((i) => i.id === iid ? { ...i, inStock: !i.inStock } : i) }));
-  const deleteItem      = (cid, iid) => setCategories((p) => p.map((c) => c.id !== cid ? c : { ...c, items: c.items.filter((i) => i.id !== iid) }));
+  const toggleItem = (cid, iid) =>
+    setCategories((p) =>
+      p.map((c) =>
+        c.id !== cid
+          ? c
+          : {
+              ...c,
+              items: c.items.map((i) =>
+                i.id === iid ? { ...i, enabled: !i.enabled } : i,
+              ),
+            },
+      ),
+    );
+  const toggleItemStock = (cid, iid) =>
+    setCategories((p) =>
+      p.map((c) =>
+        c.id !== cid
+          ? c
+          : {
+              ...c,
+              items: c.items.map((i) =>
+                i.id === iid ? { ...i, inStock: !i.inStock } : i,
+              ),
+            },
+      ),
+    );
+  const deleteItem = (cid, iid) =>
+    setCategories((p) =>
+      p.map((c) =>
+        c.id !== cid ? c : { ...c, items: c.items.filter((i) => i.id !== iid) },
+      ),
+    );
 
-  const openAddItem  = () => { setEditingItem(null); setItemForm({ name: "", price: "", emoji: "🍽️" }); setShowItemModal(true); };
-  const openEditItem = (item) => { setEditingItem(item); setItemForm({ name: item.name, price: String(item.price), emoji: item.emoji }); setShowItemModal(true); };
+  const openAddItem = () => {
+    setEditingItem(null);
+    setItemForm({ name: "", price: "", emoji: "🍽️" });
+    setShowItemModal(true);
+  };
+  const openEditItem = (item) => {
+    setEditingItem(item);
+    setItemForm({
+      name: item.name,
+      price: String(item.price),
+      emoji: item.emoji,
+    });
+    setShowItemModal(true);
+  };
   const saveItem = () => {
     const p = parseFloat(itemForm.price);
     if (!itemForm.name.trim() || isNaN(p)) return;
     setCategories((prev) =>
       prev.map((c) => {
         if (c.id !== selectedCatId) return c;
-        if (editingItem) return { ...c, items: c.items.map((i) => i.id === editingItem.id ? { ...i, name: itemForm.name.trim(), price: p, emoji: itemForm.emoji } : i) };
-        return { ...c, items: [...c.items, { id: `i-${uid()}`, name: itemForm.name.trim(), price: p, addOns: 0, inStock: true, enabled: true, emoji: itemForm.emoji }] };
-      })
+        if (editingItem)
+          return {
+            ...c,
+            items: c.items.map((i) =>
+              i.id === editingItem.id
+                ? {
+                    ...i,
+                    name: itemForm.name.trim(),
+                    price: p,
+                    emoji: itemForm.emoji,
+                  }
+                : i,
+            ),
+          };
+        return {
+          ...c,
+          items: [
+            ...c.items,
+            {
+              id: `i-${uid()}`,
+              name: itemForm.name.trim(),
+              price: p,
+              addOns: 0,
+              inStock: true,
+              enabled: true,
+              emoji: itemForm.emoji,
+            },
+          ],
+        };
+      }),
     );
     setShowItemModal(false);
   };
 
-  const toggleAddon  = (id) => setAddons((p) => p.map((a) => a.id === id ? { ...a, enabled: !a.enabled } : a));
-  const deleteAddon  = (id) => setAddons((p) => p.filter((a) => a.id !== id));
-  const openAddAddon = () => { setEditingAddon(null); setAddonForm({ name: "", price: "", group: "" }); setShowAddonModal(true); };
-  const openEditAddon = (a) => { setEditingAddon(a); setAddonForm({ name: a.name, price: String(a.price), group: a.group }); setShowAddonModal(true); };
+  const toggleAddon = (id) =>
+    setAddons((p) =>
+      p.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)),
+    );
+  const deleteAddon = (id) => setAddons((p) => p.filter((a) => a.id !== id));
+  const openAddAddon = () => {
+    setEditingAddon(null);
+    setAddonForm({ name: "", price: "", group: "" });
+    setShowAddonModal(true);
+  };
+  const openEditAddon = (a) => {
+    setEditingAddon(a);
+    setAddonForm({ name: a.name, price: String(a.price), group: a.group });
+    setShowAddonModal(true);
+  };
   const saveAddon = () => {
     const p = parseFloat(addonForm.price);
     if (!addonForm.name.trim() || isNaN(p)) return;
-    if (editingAddon) setAddons((prev) => prev.map((a) => a.id === editingAddon.id ? { ...a, name: addonForm.name.trim(), price: p, group: addonForm.group || "General" } : a));
-    else setAddons((prev) => [...prev, { id: `ao-${uid()}`, name: addonForm.name.trim(), price: p, group: addonForm.group || "General", enabled: true }]);
+    if (editingAddon)
+      setAddons((prev) =>
+        prev.map((a) =>
+          a.id === editingAddon.id
+            ? {
+                ...a,
+                name: addonForm.name.trim(),
+                price: p,
+                group: addonForm.group || "General",
+              }
+            : a,
+        ),
+      );
+    else
+      setAddons((prev) => [
+        ...prev,
+        {
+          id: `ao-${uid()}`,
+          name: addonForm.name.trim(),
+          price: p,
+          group: addonForm.group || "General",
+          enabled: true,
+        },
+      ]);
     setShowAddonModal(false);
   };
 
   const addCategory = () => {
     if (!newCatName.trim()) return;
-    const cat = { id: `cat-${uid()}`, name: newCatName.trim(), enabled: true, items: [] };
+    const cat = {
+      id: `cat-${uid()}`,
+      name: newCatName.trim(),
+      enabled: true,
+      items: [],
+    };
     setCategories((p) => [...p, cat]);
-    setSelectedCatId(cat.id); setNewCatName(""); setShowAddCat(false); setMobilePanel("items");
+    setSelectedCatId(cat.id);
+    setNewCatName("");
+    setShowAddCat(false);
+    setMobilePanel("items");
   };
 
   const addonGroups = [...new Set(addons.map((a) => a.group))];
-  const EMOJIS = ["🍽️","🍛","🍜","🥞","☕","🍚","🥭","🍋","🍲","🥗","🍗","🥩","🧆","🫔","🥘","🍱"];
+  const EMOJIS = [
+    "🍽️",
+    "🍛",
+    "🍜",
+    "🥞",
+    "☕",
+    "🍚",
+    "🥭",
+    "🍋",
+    "🍲",
+    "🥗",
+    "🍗",
+    "🥩",
+    "🧆",
+    "🫔",
+    "🥘",
+    "🍱",
+  ];
 
   // ── CategoryList — FIXED mobile drag wiring ───────────────────────────────
   const CategoryList = () => (
@@ -1048,17 +2348,26 @@ function MenuPage({ t }) {
         <div
           key={cat.id}
           // Store ref for the pointer drag hook
-          ref={(el) => { catTouchDrag.itemRefs.current[cat.id] = el; }}
+          ref={(el) => {
+            catTouchDrag.itemRefs.current[cat.id] = el;
+          }}
           // ── Desktop HTML5 drag (unchanged) ──
           draggable
-          onDragStart={() => { dragCat.current = i; }}
-          onDragEnter={() => { overCat.current = i; }}
+          onDragStart={() => {
+            dragCat.current = i;
+          }}
+          onDragEnter={() => {
+            overCat.current = i;
+          }}
           onDragEnd={onCatDrop}
           onDragOver={(e) => e.preventDefault()}
           // ── Mobile pointer drag ──
           // Move/up/cancel handled by non-passive window listeners in the hook.
           onPointerDown={(e) => catTouchDrag.onPointerDown(cat.id, e)}
-          onClick={() => { setSelectedCatId(cat.id); setMobilePanel("items"); }}
+          onClick={() => {
+            setSelectedCatId(cat.id);
+            setMobilePanel("items");
+          }}
           style={{
             background: selectedCatId === cat.id ? t.accentBg : "transparent",
             borderLeft: `3px solid ${selectedCatId === cat.id ? t.accent : "transparent"}`,
@@ -1069,11 +2378,32 @@ function MenuPage({ t }) {
           }}
           className="flex items-center gap-2 px-3 py-3 rounded-lg transition-colors duration-150"
         >
-          <span style={{ color: t.muted }} className="text-sm flex-shrink-0 select-none">⠿</span>
-          <span style={{ fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold flex-1 truncate">{cat.name}</span>
-          <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{cat.items.length}</span>
-          {!cat.enabled && <span style={{ color: t.muted }} className="text-xs">●</span>}
-          <span style={{ color: t.muted }} className="text-xs md:hidden">›</span>
+          <span
+            style={{ color: t.muted }}
+            className="text-sm flex-shrink-0 select-none"
+          >
+            ⠿
+          </span>
+          <span
+            style={{ fontFamily: "'Lato', sans-serif" }}
+            className="text-sm font-semibold flex-1 truncate"
+          >
+            {cat.name}
+          </span>
+          <span
+            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs"
+          >
+            {cat.items.length}
+          </span>
+          {!cat.enabled && (
+            <span style={{ color: t.muted }} className="text-xs">
+              ●
+            </span>
+          )}
+          <span style={{ color: t.muted }} className="text-xs md:hidden">
+            ›
+          </span>
         </div>
       ))}
     </div>
@@ -1083,30 +2413,61 @@ function MenuPage({ t }) {
   const ItemsPanel = () => (
     <div className="flex-1 overflow-y-auto p-4 md:p-6">
       {selectedCat && (
-        <div style={{ borderBottom: `1px solid ${t.border}` }} className="flex items-center justify-between pb-4 mb-4">
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-xl font-bold">{selectedCat.name}</p>
+        <div
+          style={{ borderBottom: `1px solid ${t.border}` }}
+          className="flex items-center justify-between pb-4 mb-4"
+        >
+          <p
+            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+            className="text-xl font-bold"
+          >
+            {selectedCat.name}
+          </p>
           <div className="flex items-center gap-2">
-            <button onClick={() => toggleCat(selectedCat.id)} style={{ color: t.subtle }} className="text-sm hover:opacity-60 transition-opacity p-1">
+            <button
+              onClick={() => toggleCat(selectedCat.id)}
+              style={{ color: t.subtle }}
+              className="text-sm hover:opacity-60 transition-opacity p-1"
+            >
               {selectedCat.enabled ? "👁️" : "🙈"}
             </button>
-            <button onClick={() => deleteCat(selectedCat.id)} style={{ color: t.subtle }} className="text-sm hover:text-red-500 transition-colors p-1">🗑️</button>
-            <Toggle value={selectedCat.enabled} onChange={() => toggleCat(selectedCat.id)} t={t} />
+            <button
+              onClick={() => deleteCat(selectedCat.id)}
+              style={{ color: t.subtle }}
+              className="text-sm hover:text-red-500 transition-colors p-1"
+            >
+              🗑️
+            </button>
+            <Toggle
+              value={selectedCat.enabled}
+              onChange={() => toggleCat(selectedCat.id)}
+              t={t}
+            />
           </div>
         </div>
       )}
       {catItems.length === 0 && (
-        <div style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm italic py-6 text-center">
+        <div
+          style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm italic py-6 text-center"
+        >
           No items yet. Tap "+ Add Item" to get started.
         </div>
       )}
       {catItems.map((item) => (
         <div
           key={item.id}
-          ref={(el) => { itemTouchDrag.itemRefs.current[item.id] = el; }}
+          ref={(el) => {
+            itemTouchDrag.itemRefs.current[item.id] = el;
+          }}
           // ── Desktop HTML5 drag (unchanged) ──
           draggable
-          onDragStart={() => { dragItem.current = item.id; }}
-          onDragEnter={() => { overItem.current = item.id; }}
+          onDragStart={() => {
+            dragItem.current = item.id;
+          }}
+          onDragEnter={() => {
+            overItem.current = item.id;
+          }}
           onDragEnd={() => onItemDrop(selectedCatId)}
           onDragOver={(e) => e.preventDefault()}
           // ── Mobile pointer drag ──
@@ -1120,27 +2481,65 @@ function MenuPage({ t }) {
           }}
           className="flex items-center gap-3 rounded-xl px-3 py-3 mb-2.5 transition-colors hover:shadow-sm"
         >
-          <span style={{ color: t.muted }} className="text-xs select-none flex-shrink-0">⠿</span>
-          <div style={{ background: t.surface2, border: `1px solid ${t.border}` }} className="w-11 h-11 rounded-lg flex items-center justify-center text-xl flex-shrink-0 select-none">
+          <span
+            style={{ color: t.muted }}
+            className="text-xs select-none flex-shrink-0"
+          >
+            ⠿
+          </span>
+          <div
+            style={{ background: t.surface2, border: `1px solid ${t.border}` }}
+            className="w-11 h-11 rounded-lg flex items-center justify-center text-xl flex-shrink-0 select-none"
+          >
             {item.emoji}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{item.name}</p>
+              <p
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm font-semibold"
+              >
+                {item.name}
+              </p>
               <span
                 onClick={() => toggleItemStock(selectedCatId, item.id)}
-                style={{ background: item.inStock ? t.greenBg : "#FEF2F2", color: item.inStock ? t.green : t.red, border: `1px solid ${item.inStock ? t.greenBorder : "#FECACA"}` }}
+                style={{
+                  background: item.inStock ? t.greenBg : "#FEF2F2",
+                  color: item.inStock ? t.green : t.red,
+                  border: `1px solid ${item.inStock ? t.greenBorder : "#FECACA"}`,
+                }}
                 className="text-xs px-2 py-0.5 rounded-full cursor-pointer select-none flex-shrink-0 font-semibold"
               >
                 {item.inStock ? "In Stock" : "Out of Stock"}
               </span>
             </div>
-            <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold mt-0.5">AED {item.price.toFixed(2)}</p>
+            <p
+              style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+              className="text-sm font-bold mt-0.5"
+            >
+              AED {item.price.toFixed(2)}
+            </p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button onClick={() => openEditItem(item)} style={{ color: t.subtle }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm">✏️</button>
-            <button onClick={() => deleteItem(selectedCatId, item.id)} style={{ color: t.subtle }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm">🗑️</button>
-            <Toggle value={item.enabled} onChange={() => toggleItem(selectedCatId, item.id)} t={t} />
+            <button
+              onClick={() => openEditItem(item)}
+              style={{ color: t.subtle }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm"
+            >
+              ✏️
+            </button>
+            <button
+              onClick={() => deleteItem(selectedCatId, item.id)}
+              style={{ color: t.subtle }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm"
+            >
+              🗑️
+            </button>
+            <Toggle
+              value={item.enabled}
+              onChange={() => toggleItem(selectedCatId, item.id)}
+              t={t}
+            />
           </div>
         </div>
       ))}
@@ -1149,35 +2548,91 @@ function MenuPage({ t }) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 md:px-8 pt-5 pb-0 flex-shrink-0">
+      <div
+        style={{ borderBottom: `1px solid ${t.border}` }}
+        className="px-5 md:px-8 pt-5 pb-0 flex-shrink-0"
+      >
         <div className="md:hidden flex items-center gap-3 mb-3">
           {(mobilePanel === "items" || mobilePanel === "addons") && (
-            <button onClick={() => setMobilePanel("categories")} style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent, fontFamily: "'Lato', sans-serif" }} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-semibold">
+            <button
+              onClick={() => setMobilePanel("categories")}
+              style={{
+                background: t.accentBg,
+                border: `1px solid ${t.accentBorder}`,
+                color: t.accent,
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-semibold"
+            >
               ← Back
             </button>
           )}
-          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-2xl font-bold">
-            {mobilePanel === "categories" ? "Menu" : mobilePanel === "items" ? selectedCat?.name : "Add-Ons"}
+          <h1
+            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+            className="text-2xl font-bold"
+          >
+            {mobilePanel === "categories"
+              ? "Menu"
+              : mobilePanel === "items"
+                ? selectedCat?.name
+                : "Add-Ons"}
           </h1>
         </div>
         <div className="hidden md:flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl md:text-4xl font-bold tracking-tight">Menu</h1>
+          <h1
+            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+            className="text-3xl md:text-4xl font-bold tracking-tight"
+          >
+            Menu
+          </h1>
           <div className="flex items-center gap-2 flex-wrap">
-            {[["Download CSV 📥", null], ["Upload CSV 📤", null]].map(([label]) => (
-              <button key={label} style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-medium px-4 py-2.5 rounded-lg tracking-wide hover:opacity-80 transition-all active:scale-95">
+            {[
+              ["Download CSV 📥", null],
+              ["Upload CSV 📤", null],
+            ].map(([label]) => (
+              <button
+                key={label}
+                style={{
+                  background: t.surface2,
+                  border: `1px solid ${t.border2}`,
+                  color: t.subtle,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-xs font-medium px-4 py-2.5 rounded-lg tracking-wide hover:opacity-80 transition-all active:scale-95"
+              >
                 {label}
               </button>
             ))}
-            <button onClick={section === "menu" ? openAddItem : openAddAddon} style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wide hover:opacity-90 transition-all active:scale-95">
+            <button
+              onClick={section === "menu" ? openAddItem : openAddAddon}
+              style={{
+                background: t.accent,
+                color: "#fff",
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wide hover:opacity-90 transition-all active:scale-95"
+            >
               + {section === "menu" ? "Add Item" : "Add Add-On"}
             </button>
           </div>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex gap-5">
-            {[["menu", "Menu Items"], ["addons", "Add-Ons"]].map(([id, label]) => (
-              <button key={id} onClick={() => { setSection(id); setMobilePanel(id === "addons" ? "addons" : "categories"); }}
-                style={{ color: section === id ? t.accent : t.subtle, borderBottomColor: section === id ? t.accent : "transparent", fontFamily: "'Lato', sans-serif" }}
+            {[
+              ["menu", "Menu Items"],
+              ["addons", "Add-Ons"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setSection(id);
+                  setMobilePanel(id === "addons" ? "addons" : "categories");
+                }}
+                style={{
+                  color: section === id ? t.accent : t.subtle,
+                  borderBottomColor: section === id ? t.accent : "transparent",
+                  fontFamily: "'Lato', sans-serif",
+                }}
                 className="pb-3 text-sm font-semibold tracking-wide border-b-2 transition-colors"
               >
                 {label}
@@ -1186,13 +2641,44 @@ function MenuPage({ t }) {
           </div>
           <div className="md:hidden flex items-center gap-2 pb-3">
             {section === "menu" && mobilePanel === "categories" && (
-              <button onClick={() => setShowAddCat(true)} style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold px-3 py-1.5 rounded-lg">+ Category</button>
+              <button
+                onClick={() => setShowAddCat(true)}
+                style={{
+                  background: t.accentBg,
+                  border: `1px solid ${t.accentBorder}`,
+                  color: t.accent,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+              >
+                + Category
+              </button>
             )}
             {section === "menu" && mobilePanel === "items" && (
-              <button onClick={openAddItem} style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold px-3 py-1.5 rounded-lg">+ Add Item</button>
+              <button
+                onClick={openAddItem}
+                style={{
+                  background: t.accent,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+              >
+                + Add Item
+              </button>
             )}
             {section === "addons" && (
-              <button onClick={openAddAddon} style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold px-3 py-1.5 rounded-lg">+ Add-On</button>
+              <button
+                onClick={openAddAddon}
+                style={{
+                  background: t.accent,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+              >
+                + Add-On
+              </button>
             )}
           </div>
         </div>
@@ -1202,14 +2688,44 @@ function MenuPage({ t }) {
         <>
           {/* Desktop split-pane */}
           <div className="hidden md:flex flex-1 overflow-hidden">
-            <div style={{ background: t.surface, borderRight: `1px solid ${t.border}`, width: 220, minWidth: 180 }} className="flex-shrink-0 flex flex-col overflow-hidden">
-              <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-4 pt-4 pb-3 flex items-center justify-between">
-                <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase">Categories</p>
-                <button onClick={() => setShowAddCat(true)} style={{ color: t.accent, background: t.accentBg, border: `1px solid ${t.accentBorder}` }} className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold hover:opacity-80 transition-opacity">+</button>
+            <div
+              style={{
+                background: t.surface,
+                borderRight: `1px solid ${t.border}`,
+                width: 220,
+                minWidth: 180,
+              }}
+              className="flex-shrink-0 flex flex-col overflow-hidden"
+            >
+              <div
+                style={{ borderBottom: `1px solid ${t.border}` }}
+                className="px-4 pt-4 pb-3 flex items-center justify-between"
+              >
+                <p
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs font-bold tracking-widest uppercase"
+                >
+                  Categories
+                </p>
+                <button
+                  onClick={() => setShowAddCat(true)}
+                  style={{
+                    color: t.accent,
+                    background: t.accentBg,
+                    border: `1px solid ${t.accentBorder}`,
+                  }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold hover:opacity-80 transition-opacity"
+                >
+                  +
+                </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-2"><CategoryList /></div>
+              <div className="flex-1 overflow-y-auto p-2">
+                <CategoryList />
+              </div>
             </div>
-            <div className="flex-1 flex flex-col overflow-hidden"><ItemsPanel /></div>
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <ItemsPanel />
+            </div>
           </div>
 
           {/* Mobile slide panels */}
@@ -1220,7 +2736,16 @@ function MenuPage({ t }) {
             >
               <div className="p-4">
                 <CategoryList />
-                <button onClick={() => setShowAddCat(true)} style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent, fontFamily: "'Lato', sans-serif" }} className="w-full mt-3 py-3 rounded-xl text-xs font-semibold tracking-wider uppercase text-center">
+                <button
+                  onClick={() => setShowAddCat(true)}
+                  style={{
+                    background: t.accentBg,
+                    border: `1px solid ${t.accentBorder}`,
+                    color: t.accent,
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="w-full mt-3 py-3 rounded-xl text-xs font-semibold tracking-wider uppercase text-center"
+                >
                   + New Category
                 </button>
               </div>
@@ -1235,24 +2760,81 @@ function MenuPage({ t }) {
         </>
       ) : (
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          {addonGroups.length === 0 && <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm italic">No add-ons yet.</p>}
+          {addonGroups.length === 0 && (
+            <p
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+              className="text-sm italic"
+            >
+              No add-ons yet.
+            </p>
+          )}
           {addonGroups.map((group) => (
             <div key={group} className="mb-8">
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text, borderBottom: `1px solid ${t.border}` }} className="text-xl font-bold pb-3 mb-3">{group}</p>
+              <p
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  color: t.text,
+                  borderBottom: `1px solid ${t.border}`,
+                }}
+                className="text-xl font-bold pb-3 mb-3"
+              >
+                {group}
+              </p>
               <div className="space-y-2">
-                {addons.filter((a) => a.group === group).map((addon) => (
-                  <div key={addon.id} style={{ background: t.surface, border: `1px solid ${t.border}` }} className="flex items-center gap-3 rounded-xl px-4 py-3">
-                    <div className="flex-1 min-w-0">
-                      <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{addon.name}</p>
-                      <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold mt-0.5">AED {addon.price.toFixed(2)}</p>
+                {addons
+                  .filter((a) => a.group === group)
+                  .map((addon) => (
+                    <div
+                      key={addon.id}
+                      style={{
+                        background: t.surface,
+                        border: `1px solid ${t.border}`,
+                      }}
+                      className="flex items-center gap-3 rounded-xl px-4 py-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p
+                          style={{
+                            color: t.text,
+                            fontFamily: "'Lato', sans-serif",
+                          }}
+                          className="text-sm font-semibold"
+                        >
+                          {addon.name}
+                        </p>
+                        <p
+                          style={{
+                            color: t.accent,
+                            fontFamily: "'Lato', sans-serif",
+                          }}
+                          className="text-xs font-bold mt-0.5"
+                        >
+                          AED {addon.price.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditAddon(addon)}
+                          style={{ color: t.subtle }}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => deleteAddon(addon.id)}
+                          style={{ color: t.subtle }}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm"
+                        >
+                          🗑️
+                        </button>
+                        <Toggle
+                          value={addon.enabled}
+                          onChange={() => toggleAddon(addon.id)}
+                          t={t}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openEditAddon(addon)} style={{ color: t.subtle }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm">✏️</button>
-                      <button onClick={() => deleteAddon(addon.id)} style={{ color: t.subtle }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm">🗑️</button>
-                      <Toggle value={addon.enabled} onChange={() => toggleAddon(addon.id)} t={t} />
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           ))}
@@ -1261,38 +2843,120 @@ function MenuPage({ t }) {
 
       {showAddCat && (
         <Modal title="New Category" onClose={() => setShowAddCat(false)} t={t}>
-          <Field label="Category Name" value={newCatName} onChange={setNewCatName} placeholder="e.g. Wraps" t={t} />
-          <button onClick={addCategory} style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }} className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95">
+          <Field
+            label="Category Name"
+            value={newCatName}
+            onChange={setNewCatName}
+            placeholder="e.g. Wraps"
+            t={t}
+          />
+          <button
+            onClick={addCategory}
+            style={{
+              background: t.accent,
+              color: "#fff",
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
+          >
             Create Category
           </button>
         </Modal>
       )}
       {showItemModal && (
-        <Modal title={editingItem ? "Edit Item" : "Add Item"} onClose={() => setShowItemModal(false)} t={t}>
+        <Modal
+          title={editingItem ? "Edit Item" : "Add Item"}
+          onClose={() => setShowItemModal(false)}
+          t={t}
+        >
           <div className="mb-5">
-            <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase block mb-2">Icon</label>
+            <label
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-bold tracking-widest uppercase block mb-2"
+            >
+              Icon
+            </label>
             <div className="flex flex-wrap gap-2">
               {EMOJIS.map((e) => (
-                <button key={e} onClick={() => setItemForm((f) => ({ ...f, emoji: e }))}
-                  style={{ background: itemForm.emoji === e ? t.accentBg : t.surface2, border: `1px solid ${itemForm.emoji === e ? t.accent : t.border2}` }}
+                <button
+                  key={e}
+                  onClick={() => setItemForm((f) => ({ ...f, emoji: e }))}
+                  style={{
+                    background: itemForm.emoji === e ? t.accentBg : t.surface2,
+                    border: `1px solid ${itemForm.emoji === e ? t.accent : t.border2}`,
+                  }}
                   className="w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all"
-                >{e}</button>
+                >
+                  {e}
+                </button>
               ))}
             </div>
           </div>
-          <Field label="Item Name" value={itemForm.name} onChange={(v) => setItemForm((f) => ({ ...f, name: v }))} placeholder="e.g. Chicken Wrap" t={t} />
-          <Field label="Price (AED)" value={itemForm.price} onChange={(v) => setItemForm((f) => ({ ...f, price: v }))} type="number" placeholder="0.00" t={t} />
-          <button onClick={saveItem} style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }} className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95">
+          <Field
+            label="Item Name"
+            value={itemForm.name}
+            onChange={(v) => setItemForm((f) => ({ ...f, name: v }))}
+            placeholder="e.g. Chicken Wrap"
+            t={t}
+          />
+          <Field
+            label="Price (AED)"
+            value={itemForm.price}
+            onChange={(v) => setItemForm((f) => ({ ...f, price: v }))}
+            type="number"
+            placeholder="0.00"
+            t={t}
+          />
+          <button
+            onClick={saveItem}
+            style={{
+              background: t.accent,
+              color: "#fff",
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
+          >
             {editingItem ? "Save Changes" : "Add Item"}
           </button>
         </Modal>
       )}
       {showAddonModal && (
-        <Modal title={editingAddon ? "Edit Add-On" : "New Add-On"} onClose={() => setShowAddonModal(false)} t={t}>
-          <Field label="Add-On Name" value={addonForm.name} onChange={(v) => setAddonForm((f) => ({ ...f, name: v }))} placeholder="e.g. Extra Sauce" t={t} />
-          <Field label="Price (AED)" value={addonForm.price} onChange={(v) => setAddonForm((f) => ({ ...f, price: v }))} type="number" placeholder="0.00" t={t} />
-          <Field label="Group" value={addonForm.group} onChange={(v) => setAddonForm((f) => ({ ...f, group: v }))} placeholder="e.g. Sauces" t={t} />
-          <button onClick={saveAddon} style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }} className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95">
+        <Modal
+          title={editingAddon ? "Edit Add-On" : "New Add-On"}
+          onClose={() => setShowAddonModal(false)}
+          t={t}
+        >
+          <Field
+            label="Add-On Name"
+            value={addonForm.name}
+            onChange={(v) => setAddonForm((f) => ({ ...f, name: v }))}
+            placeholder="e.g. Extra Sauce"
+            t={t}
+          />
+          <Field
+            label="Price (AED)"
+            value={addonForm.price}
+            onChange={(v) => setAddonForm((f) => ({ ...f, price: v }))}
+            type="number"
+            placeholder="0.00"
+            t={t}
+          />
+          <Field
+            label="Group"
+            value={addonForm.group}
+            onChange={(v) => setAddonForm((f) => ({ ...f, group: v }))}
+            placeholder="e.g. Sauces"
+            t={t}
+          />
+          <button
+            onClick={saveAddon}
+            style={{
+              background: t.accent,
+              color: "#fff",
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
+          >
             {editingAddon ? "Save Changes" : "Add Add-On"}
           </button>
         </Modal>
@@ -1311,22 +2975,38 @@ export default function Dashboard({ user, onLogout }) {
 
   const t = darkMode ? DARK : LIGHT;
 
-  const newCount      = SAMPLE_ORDERS.filter((o) => o.status === "new").length;
-  const acceptedCount = SAMPLE_ORDERS.filter((o) => o.status === "accepted").length;
+  const newCount = SAMPLE_ORDERS.filter((o) => o.status === "new").length;
+  const acceptedCount = SAMPLE_ORDERS.filter(
+    (o) => o.status === "accepted",
+  ).length;
 
   const renderPage = () => {
     switch (activeNav) {
-      case "home":   return <HomePage t={t} />;
-      case "orders": return <OrdersPage t={t} />;
-      case "menu":   return <MenuPage t={t} />;
+      case "home":
+        return <HomePage t={t} />;
+      case "orders":
+        return <OrdersPage t={t} />;
+      case "menu":
+        return <MenuPage t={t} />;
       default:
         return (
           <div className="p-8 flex items-center justify-center min-h-[50vh]">
             <div className="text-center">
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-2xl font-bold mb-2">
+              <p
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  color: t.text,
+                }}
+                className="text-2xl font-bold mb-2"
+              >
                 {NAV_ITEMS.find((n) => n.id === activeNav)?.label}
               </p>
-              <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">Coming soon</p>
+              <p
+                style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm"
+              >
+                Coming soon
+              </p>
             </div>
           </div>
         );
@@ -1334,7 +3014,10 @@ export default function Dashboard({ user, onLogout }) {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={{ background: t.bg, fontFamily: "'Lato', sans-serif" }}>
+    <div
+      className="h-screen flex flex-col overflow-hidden"
+      style={{ background: t.bg, fontFamily: "'Lato', sans-serif" }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lato:wght@300;400;600;700&display=swap');
         body { margin: 0; }
@@ -1350,39 +3033,107 @@ export default function Dashboard({ user, onLogout }) {
         className="flex-shrink-0 h-16 flex items-center justify-between px-4 md:px-6 z-50"
       >
         <div className="flex items-center gap-3">
-          <button style={{ color: t.subtle }} className="md:hidden text-xl w-8 h-8 flex items-center justify-center" onClick={() => setSidebarOpen((s) => !s)}>
+          <button
+            style={{ color: t.subtle }}
+            className="md:hidden text-xl w-8 h-8 flex items-center justify-center"
+            onClick={() => setSidebarOpen((s) => !s)}
+          >
             ☰
           </button>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", color: t.accent }} className="text-2xl font-bold tracking-tight">
-            tasty
+          <span
+            style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              color: t.accent,
+            }}
+            className="text-2xl font-bold tracking-tight"
+          >
+            FeastRush
           </span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <div style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}` }} className="flex items-center gap-2 rounded-lg px-3 py-1.5">
-            <span style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-medium">New</span>
-            <span style={{ background: t.accent, color: "#fff" }} className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{newCount}</span>
+          <div
+            style={{
+              background: t.accentBg,
+              border: `1px solid ${t.accentBorder}`,
+            }}
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5"
+          >
+            <span
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-medium"
+            >
+              New
+            </span>
+            <span
+              style={{ background: t.accent, color: "#fff" }}
+              className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+            >
+              {newCount}
+            </span>
           </div>
-          <div style={{ background: t.greenBg, border: `1px solid ${t.greenBorder}` }} className="flex items-center gap-2 rounded-lg px-3 py-1.5">
-            <span style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-medium">Accepted</span>
-            <span style={{ background: t.green, color: darkMode ? "#0a1f10" : "#fff" }} className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{acceptedCount}</span>
+          <div
+            style={{
+              background: t.greenBg,
+              border: `1px solid ${t.greenBorder}`,
+            }}
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5"
+          >
+            <span
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-medium"
+            >
+              Accepted
+            </span>
+            <span
+              style={{
+                background: t.green,
+                color: darkMode ? "#0a1f10" : "#fff",
+              }}
+              className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+            >
+              {acceptedCount}
+            </span>
           </div>
-          <div style={{ background: t.surface2, border: `1px solid ${t.border2}` }} className="hidden sm:flex items-center gap-2 rounded-lg px-3 py-1.5">
-            <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-xs font-medium">Delivery</span>
+          <div
+            style={{ background: t.surface2, border: `1px solid ${t.border2}` }}
+            className="hidden sm:flex items-center gap-2 rounded-lg px-3 py-1.5"
+          >
+            <span
+              style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-medium"
+            >
+              Delivery
+            </span>
             <Toggle value={delivery} onChange={setDelivery} t={t} />
           </div>
-          <div style={{ background: t.surface2, border: `1px solid ${t.border2}` }} className="hidden sm:flex items-center gap-2 rounded-lg px-3 py-1.5">
-            <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-xs font-medium">Pickup</span>
+          <div
+            style={{ background: t.surface2, border: `1px solid ${t.border2}` }}
+            className="hidden sm:flex items-center gap-2 rounded-lg px-3 py-1.5"
+          >
+            <span
+              style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-medium"
+            >
+              Pickup
+            </span>
             <Toggle value={pickup} onChange={setPickup} t={t} />
           </div>
-          <ThemeBtn dark={darkMode} onToggle={() => setDarkMode((d) => !d)} t={t} />
+          <ThemeBtn
+            dark={darkMode}
+            onToggle={() => setDarkMode((d) => !d)}
+            t={t}
+          />
         </div>
       </header>
 
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
         <aside
-          style={{ background: t.surface, borderRight: `1px solid ${t.border}` }}
+          style={{
+            background: t.surface,
+            borderRight: `1px solid ${t.border}`,
+          }}
           className={`
             flex-shrink-0 flex flex-col
             fixed md:static top-16 left-0 z-40
@@ -1396,7 +3147,10 @@ export default function Dashboard({ user, onLogout }) {
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
-                onClick={() => { setActiveNav(item.id); setSidebarOpen(false); }}
+                onClick={() => {
+                  setActiveNav(item.id);
+                  setSidebarOpen(false);
+                }}
                 style={{
                   background: activeNav === item.id ? t.accent : "transparent",
                   color: activeNav === item.id ? "#fff" : t.subtle,
@@ -1404,10 +3158,21 @@ export default function Dashboard({ user, onLogout }) {
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 w-full hover:opacity-80"
               >
                 <span className="text-base">{item.icon}</span>
-                <span style={{ fontFamily: "'Lato', sans-serif" }} className="text-sm font-medium flex-1">{item.label}</span>
+                <span
+                  style={{ fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm font-medium flex-1"
+                >
+                  {item.label}
+                </span>
                 {item.badge !== undefined && (
                   <span
-                    style={{ background: activeNav === item.id ? "rgba(255,255,255,0.25)" : t.surface2, color: activeNav === item.id ? "#fff" : t.text }}
+                    style={{
+                      background:
+                        activeNav === item.id
+                          ? "rgba(255,255,255,0.25)"
+                          : t.surface2,
+                      color: activeNav === item.id ? "#fff" : t.text,
+                    }}
                     className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
                   >
                     {item.badge}
@@ -1417,24 +3182,51 @@ export default function Dashboard({ user, onLogout }) {
             ))}
           </nav>
 
-          <div style={{ borderTop: `1px solid ${t.border}` }} className="p-4 flex-shrink-0">
+          <div
+            style={{ borderTop: `1px solid ${t.border}` }}
+            className="p-4 flex-shrink-0"
+          >
             <div className="flex items-center gap-2 mb-3">
-              <div style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }} className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+              <div
+                style={{
+                  background: t.accentBg,
+                  border: `1px solid ${t.accentBorder}`,
+                  color: t.accent,
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+              >
                 {(user.name || user.username || "?").charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold truncate">{user.name || user.username || user.id}</p>
-                <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs capitalize">{user.role}</p>
+                <p
+                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm font-semibold truncate"
+                >
+                  {user.name || user.username || user.id}
+                </p>
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs capitalize"
+                >
+                  {user.role}
+                </p>
               </div>
             </div>
-            <button onClick={onLogout} style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs hover:opacity-70 transition-opacity font-medium">
+            <button
+              onClick={onLogout}
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs hover:opacity-70 transition-opacity font-medium"
+            >
               ← Sign out
             </button>
           </div>
         </aside>
 
         {sidebarOpen && (
-          <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
+          <div
+            className="fixed inset-0 z-30 bg-black/40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
         )}
 
         <main
