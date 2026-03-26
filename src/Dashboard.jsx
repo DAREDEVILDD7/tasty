@@ -2768,7 +2768,7 @@ function MenuPage({ t }) {
 }
 
 // ─── Root Dashboard ───────────────────────────────────────────────────────────
-export default function Dashboard({ onLogout }) {
+export default function Dashboard({ user, onLogout }) {
   const [activeNav, setActiveNav] = useState("home");
   const [delivery, setDelivery] = useState(true);
   const [pickup, setPickup] = useState(true);
@@ -2939,10 +2939,10 @@ export default function Dashboard({ onLogout }) {
           </nav>
           <div style={{ borderTop: `1px solid ${t.border}` }} className="p-4">
             <p style={{ color: t.subtle }} className="text-xs tracking-wider">
-              Logged In
+              {user.role === "owner" ? "Owner" : "Staff"}
             </p>
             <p style={{ color: t.text }} className="text-xs mt-0.5">
-              abc123
+              {user.name || user.username || user.id}
             </p>
             <button
               onClick={onLogout}

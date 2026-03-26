@@ -5,7 +5,7 @@ import Dashboard from "./Dashboard";
 import Customer from "./Customer";
 
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
 
   return (
     <Routes>
@@ -13,9 +13,9 @@ export default function App() {
       <Route
         path="/"
         element={
-          loggedIn
-            ? <Dashboard onLogout={() => setLoggedIn(false)} />
-            : <Login onLogin={() => setLoggedIn(true)} />
+          user
+            ? <Dashboard user={user} onLogout={() => setUser(null)} />
+            : <Login onLogin={(userData) => setUser(userData)} />
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
