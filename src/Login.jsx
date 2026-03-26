@@ -33,13 +33,13 @@ export default function Login({ onLogin }) {
       // Check Staff table
       const { data: staffData, error: staffError } = await supabase
         .from('Staff')
-        .select('id, username, password, rest_id')
+        .select('id, username, password, name, rest_id')
         .eq('username', username.trim())
         .single();
 
       if (!staffError && staffData && staffData.password === password) {
         // Staff matched
-        onLogin({ role: 'staff', id: staffData.id, rest_id: staffData.rest_id });
+        onLogin({ role: 'staff', id: staffData.id, name: staffData.name, rest_id: staffData.rest_id });
         setLoading(false);
         return;
       }
@@ -84,7 +84,7 @@ export default function Login({ onLogin }) {
             className="text-5xl font-black tracking-tighter text-[#f4a127]"
             style={{ fontFamily: "'Playfair Display', serif", letterSpacing: "-2px" }}
           >
-            tasty
+            FeastRush
           </span>
           <p
             className="text-[#6b6457] text-sm mt-1 tracking-widest uppercase"
@@ -165,7 +165,7 @@ export default function Login({ onLogin }) {
           className="text-center text-[#3d3a32] text-xs mt-8"
           style={{ fontFamily: "'DM Mono', monospace" }}
         >
-          © {new Date().getFullYear()} tasty. All rights reserved.
+          © {new Date().getFullYear()} FeastRush. All rights reserved.
         </p>
       </div>
 
