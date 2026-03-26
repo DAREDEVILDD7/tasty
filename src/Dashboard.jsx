@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 const LIGHT = {
@@ -322,107 +322,117 @@ function PeakChart({ data, t, height = 120 }) {
   );
 }
 
-// ─── Pointer-based drag hook (works on touch AND mouse) ───────────────────────
+// ─── Drag hook — no ghost, scroll-safe on mobile ─────────────────────────────
 //
-// FIX SUMMARY vs the original useTouchDrag:
-//   • No ghost DOM node cloned into document.body — nothing leaks when you
-//     switch sections or scroll. The dragged row just dims in-place (opacity).
-//   • Uses Pointer Events (pointerdown/pointermove/pointerup/pointercancel)
-//     instead of Touch Events → setPointerCapture keeps the stream alive even
-//     when the finger drifts outside the element.
-//   • All mutable state lives in ONE ref object → closures are never stale.
-//   • Explicit cleanup on BOTH pointerup AND pointercancel.
-//   • Mouse drags still work on desktop (pointerType === "mouse" is allowed).
-//   • A small distance threshold (4 px) prevents accidental drags on taps.
+// The key insight: React registers ALL event listeners as passive on mobile,
+// so e.preventDefault() inside onPointerMove / onTouchMove is silently ignored
+// — the browser scrolls anyway. The only fix is to attach the move listener
+// imperatively via addEventListener({ passive: false }) on the container.
+//
+// Strategy:
+//   • onPointerDown (React synthetic, fine) — record drag start, capture pointer
+//   • pointermove   (imperative, non-passive, on window) — preventDefault to
+//     kill scroll once we know it's a drag (> 6px vertical movement)
+//   • pointerup / pointercancel (imperative, on window) — always clean up
+//   • Visual feedback: dragged row dims in-place; NO DOM cloning, NO leaks
 //
 function useTouchDrag(items, setItems, getId) {
-  const state = useRef({
-    active: false,
-    dragId: null,
-    pointerId: null,
-    startY: 0,
-    moved: false,
-  });
   const itemRefs = useRef({});
 
-  // Dim the dragged row
-  const setDragging = (id, on) => {
+  // All mutable drag state in one ref — never stale inside event listeners
+  const drag = useRef({
+    active:  false,
+    dragId:  null,
+    startY:  0,
+    isDragging: false, // true once threshold crossed
+  });
+
+  // Stable ref to latest setItems / getId so window listeners don't go stale
+  const setItemsRef = useRef(setItems);
+  const getIdRef    = useRef(getId);
+  useEffect(() => { setItemsRef.current = setItems; }, [setItems]);
+  useEffect(() => { getIdRef.current    = getId;    }, [getId]);
+
+  const applyStyle = (id, on) => {
     const el = itemRefs.current[id];
     if (!el) return;
-    el.style.opacity        = on ? "0.4"     : "";
-    el.style.transform      = on ? "scale(0.97)" : "";
-    el.style.transition     = on ? "none"    : "";
-    el.style.boxShadow      = on ? "0 4px 16px rgba(0,0,0,0.12)" : "";
-    el.style.zIndex         = on ? "10"      : "";
+    el.style.opacity   = on ? "0.45" : "";
+    el.style.transform = on ? "scale(0.975)" : "";
+    el.style.transition = on ? "none" : "";
+    el.style.zIndex    = on ? "20" : "";
   };
 
-  const onPointerDown = useCallback((id, e) => {
-    // Skip right-click
-    if (e.button && e.button !== 0) return;
-    state.current = { active: true, dragId: id, pointerId: e.pointerId, startY: e.clientY, moved: false };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
-    // Don't preventDefault here — we need clicks to still work for selecting categories
-  }, []);
+  // Imperative window listeners — attached once per hook instance
+  useEffect(() => {
+    const THRESHOLD = 6; // px before we commit to dragging (not tapping)
 
-  const onPointerMove = useCallback((id, e) => {
-    const s = state.current;
-    if (!s.active || s.dragId !== id) return;
+    const onMove = (e) => {
+      const d = drag.current;
+      if (!d.active) return;
 
-    const dy = Math.abs(e.clientY - s.startY);
+      const dy = Math.abs(e.clientY - d.startY);
 
-    // Only start visually dragging after moving 4 px (distinguishes taps from drags)
-    if (!s.moved && dy < 4) return;
-
-    if (!s.moved) {
-      s.moved = true;
-      setDragging(id, true);
-      // Now prevent scroll since we're definitely dragging
-    }
-
-    e.preventDefault();
-
-    const cy = e.clientY;
-    let overId = null;
-
-    // Find which row the finger/cursor is currently over
-    for (const [refId, el] of Object.entries(itemRefs.current)) {
-      if (!el) continue;
-      const rect = el.getBoundingClientRect();
-      if (cy >= rect.top && cy <= rect.bottom) {
-        overId = refId;
-        break;
+      if (!d.isDragging) {
+        if (dy < THRESHOLD) return; // still deciding — let browser handle it
+        // Crossed threshold → commit to drag, block scroll from here on
+        d.isDragging = true;
+        applyStyle(d.dragId, true);
       }
-    }
 
-    if (overId && overId !== s.dragId) {
-      setItems((prev) => {
-        const fromIdx = prev.findIndex((x) => getId(x) === s.dragId);
-        const toIdx   = prev.findIndex((x) => getId(x) === overId);
-        if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev;
-        const next = [...prev];
-        const [moved] = next.splice(fromIdx, 1);
-        next.splice(toIdx, 0, moved);
-        return next;
-      });
-    }
-  }, [setItems, getId]);
+      // This is the critical line — only works because listener is non-passive
+      e.preventDefault();
 
-  const endDrag = useCallback((id) => {
-    const s = state.current;
-    if (!s.active || s.dragId !== id) return;
-    if (s.moved) setDragging(id, false);
-    state.current = { active: false, dragId: null, pointerId: null, startY: 0, moved: false };
+      const cy = e.clientY;
+      let overId = null;
+      for (const [id, el] of Object.entries(itemRefs.current)) {
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (cy >= r.top && cy <= r.bottom) { overId = id; break; }
+      }
+
+      if (overId && overId !== d.dragId) {
+        setItemsRef.current((prev) => {
+          const from = prev.findIndex((x) => getIdRef.current(x) === d.dragId);
+          const to   = prev.findIndex((x) => getIdRef.current(x) === overId);
+          if (from === -1 || to === -1 || from === to) return prev;
+          const next = [...prev];
+          const [m] = next.splice(from, 1);
+          next.splice(to, 0, m);
+          return next;
+        });
+      }
+    };
+
+    const onEnd = () => {
+      const d = drag.current;
+      if (!d.active) return;
+      if (d.isDragging) applyStyle(d.dragId, false);
+      drag.current = { active: false, dragId: null, startY: 0, isDragging: false };
+    };
+
+    // { passive: false } is the entire reason this works on mobile
+    window.addEventListener("pointermove",   onMove, { passive: false });
+    window.addEventListener("pointerup",     onEnd);
+    window.addEventListener("pointercancel", onEnd);
+
+    return () => {
+      window.removeEventListener("pointermove",   onMove);
+      window.removeEventListener("pointerup",     onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+    };
+  }, []); // empty deps — listeners are stable via refs
+
+  // onPointerDown wired via React synthetic event on each row (fine — passive
+  // is irrelevant for pointerdown, we don't call preventDefault there)
+  const onPointerDown = useCallback((id, e) => {
+    if (e.button && e.button !== 0) return; // ignore right-click
+    drag.current = { active: true, dragId: id, startY: e.clientY, isDragging: false };
+    // Capture so pointermove keeps firing even if finger leaves the element
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    // Do NOT preventDefault here — taps must still fire onClick
   }, []);
 
-  const onPointerUp     = useCallback((id, e) => endDrag(id), [endDrag]);
-  const onPointerCancel = useCallback((id, e) => endDrag(id), [endDrag]);
-
-  // --------------------------------------------------------------------------
-  // Backwards-compatible shims so we don't break the desktop drag-and-drop
-  // (onDragStart / onDragEnter / onDragEnd / onDragOver) that is wired
-  // separately in MenuPage via plain HTML5 drag refs. Those are untouched.
-  // --------------------------------------------------------------------------
-  return { itemRefs, onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
+  return { itemRefs, onPointerDown };
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -1045,21 +1055,15 @@ function MenuPage({ t }) {
           onDragEnter={() => { overCat.current = i; }}
           onDragEnd={onCatDrop}
           onDragOver={(e) => e.preventDefault()}
-          // ── Mobile pointer drag (FIXED) ──
+          // ── Mobile pointer drag ──
+          // Move/up/cancel handled by non-passive window listeners in the hook.
           onPointerDown={(e) => catTouchDrag.onPointerDown(cat.id, e)}
-          onPointerMove={(e) => catTouchDrag.onPointerMove(cat.id, e)}
-          onPointerUp={(e)   => catTouchDrag.onPointerUp(cat.id, e)}
-          onPointerCancel={(e) => catTouchDrag.onPointerCancel(cat.id, e)}
-          // Navigate on tap (pointer hook uses a 4px threshold so taps still fire onClick)
           onClick={() => { setSelectedCatId(cat.id); setMobilePanel("items"); }}
           style={{
             background: selectedCatId === cat.id ? t.accentBg : "transparent",
             borderLeft: `3px solid ${selectedCatId === cat.id ? t.accent : "transparent"}`,
             color: selectedCatId === cat.id ? t.accent : t.subtle,
-            // touch-action: none prevents the browser from scrolling during a drag,
-            // but ONLY once the pointer hook starts (via setPointerCapture).
-            // We use "pan-y" here so normal scrolling still works on non-drag touches.
-            touchAction: "pan-y",
+            touchAction: "none",
             userSelect: "none",
             cursor: "grab",
           }}
@@ -1105,15 +1109,12 @@ function MenuPage({ t }) {
           onDragEnter={() => { overItem.current = item.id; }}
           onDragEnd={() => onItemDrop(selectedCatId)}
           onDragOver={(e) => e.preventDefault()}
-          // ── Mobile pointer drag (FIXED) ──
+          // ── Mobile pointer drag ──
           onPointerDown={(e) => itemTouchDrag.onPointerDown(item.id, e)}
-          onPointerMove={(e) => itemTouchDrag.onPointerMove(item.id, e)}
-          onPointerUp={(e)   => itemTouchDrag.onPointerUp(item.id, e)}
-          onPointerCancel={(e) => itemTouchDrag.onPointerCancel(item.id, e)}
           style={{
             background: t.surface,
             border: `1px solid ${t.border}`,
-            touchAction: "pan-y",
+            touchAction: "none",
             userSelect: "none",
             cursor: "grab",
           }}
