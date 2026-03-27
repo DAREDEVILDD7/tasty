@@ -668,32 +668,17 @@ function PeakChart({ data, t, height = 120 }) {
   );
 }
 
-// ─── Drag hook — no ghost, scroll-safe on mobile ─────────────────────────────
-//
-// The key insight: React registers ALL event listeners as passive on mobile,
-// so e.preventDefault() inside onPointerMove / onTouchMove is silently ignored
-// — the browser scrolls anyway. The only fix is to attach the move listener
-// imperatively via addEventListener({ passive: false }) on the container.
-//
-// Strategy:
-//   • onPointerDown (React synthetic, fine) — record drag start, capture pointer
-//   • pointermove   (imperative, non-passive, on window) — preventDefault to
-//     kill scroll once we know it's a drag (> 6px vertical movement)
-//   • pointerup / pointercancel (imperative, on window) — always clean up
-//   • Visual feedback: dragged row dims in-place; NO DOM cloning, NO leaks
-//
+// ─── Drag hook ────────────────────────────────────────────────────────────────
 function useTouchDrag(items, setItems, getId) {
   const itemRefs = useRef({});
 
-  // All mutable drag state in one ref — never stale inside event listeners
   const drag = useRef({
     active: false,
     dragId: null,
     startY: 0,
-    isDragging: false, // true once threshold crossed
+    isDragging: false,
   });
 
-  // Stable ref to latest setItems / getId so window listeners don't go stale
   const setItemsRef = useRef(setItems);
   const getIdRef = useRef(getId);
   useEffect(() => {
@@ -712,9 +697,8 @@ function useTouchDrag(items, setItems, getId) {
     el.style.zIndex = on ? "20" : "";
   };
 
-  // Imperative window listeners — attached once per hook instance
   useEffect(() => {
-    const THRESHOLD = 6; // px before we commit to dragging (not tapping)
+    const THRESHOLD = 6;
 
     const onMove = (e) => {
       const d = drag.current;
@@ -723,13 +707,11 @@ function useTouchDrag(items, setItems, getId) {
       const dy = Math.abs(e.clientY - d.startY);
 
       if (!d.isDragging) {
-        if (dy < THRESHOLD) return; // still deciding — let browser handle it
-        // Crossed threshold → commit to drag, block scroll from here on
+        if (dy < THRESHOLD) return;
         d.isDragging = true;
         applyStyle(d.dragId, true);
       }
 
-      // This is the critical line — only works because listener is non-passive
       e.preventDefault();
 
       const cy = e.clientY;
@@ -768,7 +750,6 @@ function useTouchDrag(items, setItems, getId) {
       };
     };
 
-    // { passive: false } is the entire reason this works on mobile
     window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("pointerup", onEnd);
     window.addEventListener("pointercancel", onEnd);
@@ -778,23 +759,19 @@ function useTouchDrag(items, setItems, getId) {
       window.removeEventListener("pointerup", onEnd);
       window.removeEventListener("pointercancel", onEnd);
     };
-  }, []); // empty deps — listeners are stable via refs
+  }, []);
 
-  // onPointerDown wired via React synthetic event on each row (fine — passive
-  // is irrelevant for pointerdown, we don't call preventDefault there)
   const onPointerDown = useCallback((id, e) => {
-    if (e.button && e.button !== 0) return; // ignore right-click
+    if (e.button && e.button !== 0) return;
     drag.current = {
       active: true,
       dragId: id,
       startY: e.clientY,
       isDragging: false,
     };
-    // Capture so pointermove keeps firing even if finger leaves the element
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (_) {}
-    // Do NOT preventDefault here — taps must still fire onClick
   }, []);
 
   return { itemRefs, onPointerDown };
@@ -1476,7 +1453,7 @@ function OrdersPage({ t }) {
       >
         <div
           style={{ borderBottom: `1px solid ${t.border}` }}
-          className="px-5 pt-5 pb-4 flex items-center gap-3"
+          className="px-5 pt-5 pb-4 flex items-center gap-3 flex-shrink-0"
         >
           <button
             onClick={() => setMobileView("list")}
@@ -1518,49 +1495,52 @@ function OrdersPage({ t }) {
             {selectedOrder.paymentMethod}
           </span>
         </div>
-        <div
-          style={{ borderBottom: `1px solid ${t.border}` }}
-          className="px-5 py-3 space-y-1.5"
-        >
-          {[
-            ["Sub-total", `AED ${selectedOrder.subtotal.toFixed(2)}`],
-            ...(selectedOrder.type === "delivery"
-              ? [["Delivery", `AED ${selectedOrder.deliveryCharge.toFixed(2)}`]]
-              : []),
-          ].map(([k, v]) => (
-            <div key={k} className="flex justify-between text-sm">
-              <span
-                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-              >
-                {k}
-              </span>
-              <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}>
-                {v}
-              </span>
-            </div>
-          ))}
-          <div
-            style={{ borderTop: `1px solid ${t.border}` }}
-            className="flex justify-between text-sm pt-2"
-          >
-            <span
-              style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-              className="font-bold"
-            >
-              Total
-            </span>
-            <span
-              style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-              className="font-bold"
-            >
-              AED {selectedOrder.total.toFixed(2)}
-            </span>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
+
+        {/* FIX: changed overflow-y-auto to be on this wrapper so the whole detail scrolls */}
+        <div className="flex-1 overflow-y-auto flex flex-col">
           <div
             style={{ borderBottom: `1px solid ${t.border}` }}
-            className="grid grid-cols-12 px-5 py-2"
+            className="px-5 py-3 space-y-1.5 flex-shrink-0"
+          >
+            {[
+              ["Sub-total", `AED ${selectedOrder.subtotal.toFixed(2)}`],
+              ...(selectedOrder.type === "delivery"
+                ? [["Delivery", `AED ${selectedOrder.deliveryCharge.toFixed(2)}`]]
+                : []),
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between text-sm">
+                <span
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                >
+                  {k}
+                </span>
+                <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}>
+                  {v}
+                </span>
+              </div>
+            ))}
+            <div
+              style={{ borderTop: `1px solid ${t.border}` }}
+              className="flex justify-between text-sm pt-2"
+            >
+              <span
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="font-bold"
+              >
+                Total
+              </span>
+              <span
+                style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+                className="font-bold"
+              >
+                AED {selectedOrder.total.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="grid grid-cols-12 px-5 py-2 flex-shrink-0"
           >
             {[
               ["Qty", "col-span-2"],
@@ -1576,11 +1556,12 @@ function OrdersPage({ t }) {
               </span>
             ))}
           </div>
+
           {selectedOrder.orderItems.map((item, i) => (
             <div
               key={i}
               style={{ borderBottom: `1px solid ${t.border}` }}
-              className="grid grid-cols-12 px-5 py-4"
+              className="grid grid-cols-12 px-5 py-4 flex-shrink-0"
             >
               <div className="col-span-2">
                 <span
@@ -1642,9 +1623,10 @@ function OrdersPage({ t }) {
               </div>
             </div>
           ))}
+
           <div
             style={{ borderBottom: `1px solid ${t.border}` }}
-            className="px-5 py-4 space-y-1.5"
+            className="px-5 py-4 space-y-1.5 flex-shrink-0"
           >
             <p
               style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
@@ -1669,8 +1651,9 @@ function OrdersPage({ t }) {
               </p>
             ))}
           </div>
+
           <div
-            className="mx-5 my-4 rounded-xl overflow-hidden relative"
+            className="mx-5 my-4 rounded-xl overflow-hidden relative flex-shrink-0"
             style={{
               height: 120,
               background: t.surface2,
@@ -1731,7 +1714,8 @@ function OrdersPage({ t }) {
               </div>
             </div>
           </div>
-          <div className="px-5 py-3 mb-2">
+
+          <div className="px-5 py-3 mb-2 flex-shrink-0">
             <p
               style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
               className="text-xs font-bold tracking-widest uppercase mb-1.5"
@@ -1745,31 +1729,33 @@ function OrdersPage({ t }) {
               {selectedOrder.notes}
             </p>
           </div>
-        </div>
-        <div
-          style={{ borderTop: `1px solid ${t.border}` }}
-          className="px-5 py-4 flex gap-3"
-        >
-          <button
-            style={{
-              border: `1px solid ${t.red}`,
-              color: t.red,
-              fontFamily: "'Lato', sans-serif",
-            }}
-            className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
+
+          {/* Accept/Reject buttons — now inside the scrollable area at the bottom */}
+          <div
+            style={{ borderTop: `1px solid ${t.border}` }}
+            className="px-5 py-4 flex gap-3 flex-shrink-0 mt-auto"
           >
-            Reject
-          </button>
-          <button
-            style={{
-              background: t.accent,
-              color: "#fff",
-              fontFamily: "'Lato', sans-serif",
-            }}
-            className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
-          >
-            Accept Order
-          </button>
+            <button
+              style={{
+                border: `1px solid ${t.red}`,
+                color: t.red,
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
+            >
+              Reject
+            </button>
+            <button
+              style={{
+                background: t.accent,
+                color: "#fff",
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+            >
+              Accept Order
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -2003,7 +1989,9 @@ function OrdersPage({ t }) {
         )}
       </div>
 
+      {/* ── Mobile order views ── */}
       <div className="lg:hidden flex-1 overflow-hidden relative">
+        {/* List panel */}
         <div
           className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "list" ? "translate-x-0" : "-translate-x-full"}`}
           style={{ background: t.bg }}
@@ -2059,13 +2047,14 @@ function OrdersPage({ t }) {
             ))}
           </div>
         </div>
+
+        {/* Detail panel — FIX: removed inner padding wrapper so OrderDetail fills the panel
+            and its own internal overflow-y-auto handles all scrolling */}
         <div
           className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "detail" ? "translate-x-0" : "translate-x-full"}`}
           style={{ background: t.bg }}
         >
-          <div className="flex-1 overflow-hidden p-3">
-            {selectedOrder && <OrderDetail />}
-          </div>
+          {selectedOrder && <OrderDetail />}
         </div>
       </div>
     </div>
@@ -2096,13 +2085,11 @@ function MenuPage({ t }) {
     group: "",
   });
 
-  // ── Desktop drag refs (HTML5 drag API — unchanged, works fine on desktop) ──
   const dragCat = useRef(null);
   const overCat = useRef(null);
   const dragItem = useRef(null);
   const overItem = useRef(null);
 
-  // ── Mobile / touch drag hooks (FIXED) ────────────────────────────────────
   const catTouchDrag = useTouchDrag(categories, setCategories, (c) => c.id);
 
   const selectedCat =
@@ -2128,7 +2115,6 @@ function MenuPage({ t }) {
 
   const itemTouchDrag = useTouchDrag(catItems, setItemsForCat, (i) => i.id);
 
-  // ── Desktop drag handlers ─────────────────────────────────────────────────
   const onCatDrop = () => {
     if (dragCat.current === null || overCat.current === null) return;
     const next = [...categories];
@@ -2161,7 +2147,6 @@ function MenuPage({ t }) {
     overItem.current = null;
   };
 
-  // ── Category / item helpers ───────────────────────────────────────────────
   const toggleCat = (id) =>
     setCategories((p) =>
       p.map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c)),
@@ -2341,17 +2326,14 @@ function MenuPage({ t }) {
     "🍱",
   ];
 
-  // ── CategoryList — FIXED mobile drag wiring ───────────────────────────────
   const CategoryList = () => (
     <div className="flex flex-col gap-0.5">
       {categories.map((cat, i) => (
         <div
           key={cat.id}
-          // Store ref for the pointer drag hook
           ref={(el) => {
             catTouchDrag.itemRefs.current[cat.id] = el;
           }}
-          // ── Desktop HTML5 drag (unchanged) ──
           draggable
           onDragStart={() => {
             dragCat.current = i;
@@ -2361,8 +2343,6 @@ function MenuPage({ t }) {
           }}
           onDragEnd={onCatDrop}
           onDragOver={(e) => e.preventDefault()}
-          // ── Mobile pointer drag ──
-          // Move/up/cancel handled by non-passive window listeners in the hook.
           onPointerDown={(e) => catTouchDrag.onPointerDown(cat.id, e)}
           onClick={() => {
             setSelectedCatId(cat.id);
@@ -2409,7 +2389,6 @@ function MenuPage({ t }) {
     </div>
   );
 
-  // ── ItemsPanel — FIXED mobile drag wiring ────────────────────────────────
   const ItemsPanel = () => (
     <div className="flex-1 overflow-y-auto p-4 md:p-6">
       {selectedCat && (
@@ -2460,7 +2439,6 @@ function MenuPage({ t }) {
           ref={(el) => {
             itemTouchDrag.itemRefs.current[item.id] = el;
           }}
-          // ── Desktop HTML5 drag (unchanged) ──
           draggable
           onDragStart={() => {
             dragItem.current = item.id;
@@ -2470,7 +2448,6 @@ function MenuPage({ t }) {
           }}
           onDragEnd={() => onItemDrop(selectedCatId)}
           onDragOver={(e) => e.preventDefault()}
-          // ── Mobile pointer drag ──
           onPointerDown={(e) => itemTouchDrag.onPointerDown(item.id, e)}
           style={{
             background: t.surface,
@@ -2686,7 +2663,6 @@ function MenuPage({ t }) {
 
       {section === "menu" ? (
         <>
-          {/* Desktop split-pane */}
           <div className="hidden md:flex flex-1 overflow-hidden">
             <div
               style={{
@@ -2728,7 +2704,6 @@ function MenuPage({ t }) {
             </div>
           </div>
 
-          {/* Mobile slide panels */}
           <div className="md:hidden flex-1 overflow-hidden relative">
             <div
               className={`absolute inset-0 overflow-y-auto transition-transform duration-300 ${mobilePanel === "categories" ? "translate-x-0" : "-translate-x-full"}`}
@@ -3129,6 +3104,13 @@ export default function Dashboard({ user, onLogout }) {
 
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
+        {/*
+          FIX 1 — Sidebar sign-out visibility on mobile:
+          Changed h-[calc(100vh-64px)] to use dvh (dynamic viewport height) which
+          accounts for mobile browser chrome (address bar). Also restructured the
+          sidebar so nav scrolls independently while the user/sign-out footer is
+          always pinned at the bottom regardless of nav item count.
+        */}
         <aside
           style={{
             background: t.surface,
@@ -3137,13 +3119,20 @@ export default function Dashboard({ user, onLogout }) {
           className={`
             flex-shrink-0 flex flex-col
             fixed md:static top-16 left-0 z-40
-            h-[calc(100vh-64px)]
             w-52
             transition-transform duration-300
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
           `}
+          style={{
+            background: t.surface,
+            borderRight: `1px solid ${t.border}`,
+            // Use dvh so mobile browser chrome is excluded from the height calculation.
+            // Falls back to svh, then vh for older browsers.
+            height: "calc(100dvh - 64px)",
+          }}
         >
-          <nav className="flex flex-col gap-0.5 p-3 flex-1 overflow-y-auto">
+          {/* Nav items — scrollable independently */}
+          <nav className="flex flex-col gap-0.5 p-3 flex-1 overflow-y-auto min-h-0">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
@@ -3182,6 +3171,10 @@ export default function Dashboard({ user, onLogout }) {
             ))}
           </nav>
 
+          {/*
+            FIX: User info + sign-out pinned at bottom with flex-shrink-0.
+            Previously this could get squeezed off-screen when nav was too tall.
+          */}
           <div
             style={{ borderTop: `1px solid ${t.border}` }}
             className="p-4 flex-shrink-0"
