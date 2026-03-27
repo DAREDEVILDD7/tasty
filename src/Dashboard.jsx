@@ -3112,10 +3112,6 @@ export default function Dashboard({ user, onLogout }) {
           always pinned at the bottom regardless of nav item count.
         */}
         <aside
-          style={{
-            background: t.surface,
-            borderRight: `1px solid ${t.border}`,
-          }}
           className={`
             flex-shrink-0 flex flex-col
             fixed md:static top-16 left-0 z-40
