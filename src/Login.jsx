@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from './supabaseClient'
+import { supabase } from "./supabaseClient";
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -18,28 +18,38 @@ export default function Login({ onLogin }) {
     try {
       // Check Owner table first
       const { data: ownerData, error: ownerError } = await supabase
-        .from('Owner')
-        .select('id, username, password, name')
-        .eq('username', username.trim())
+        .from("Owner")
+        .select("id, username, password, name, main_rest")
+        .eq("username", username.trim())
         .single();
 
       if (!ownerError && ownerData && ownerData.password === password) {
         // Owner matched
-        onLogin({ role: 'owner', id: ownerData.id, name: ownerData.name });
+        onLogin({
+          role: "owner",
+          id: ownerData.id,
+          name: ownerData.name,
+          main_rest: ownerData.main_rest,
+        });
         setLoading(false);
         return;
       }
 
       // Check Staff table
       const { data: staffData, error: staffError } = await supabase
-        .from('Staff')
-        .select('id, username, password, name, rest_id')
-        .eq('username', username.trim())
+        .from("Staff")
+        .select("id, username, password, name, rest_id")
+        .eq("username", username.trim())
         .single();
 
       if (!staffError && staffData && staffData.password === password) {
         // Staff matched
-        onLogin({ role: 'staff', id: staffData.id, name: staffData.name, rest_id: staffData.rest_id });
+        onLogin({
+          role: "staff",
+          id: staffData.id,
+          name: staffData.name,
+          rest_id: staffData.rest_id,
+        });
         setLoading(false);
         return;
       }
@@ -48,9 +58,8 @@ export default function Login({ onLogin }) {
       setError(true);
       setShake(true);
       setTimeout(() => setShake(false), 600);
-
     } catch (err) {
-      console.error('Login error:', err);
+      console.error("Login error:", err);
       setError(true);
       setShake(true);
       setTimeout(() => setShake(false), 600);
@@ -82,7 +91,10 @@ export default function Login({ onLogin }) {
         <div className="mb-10 text-center">
           <span
             className="text-5xl font-black tracking-tighter text-[#f4a127]"
-            style={{ fontFamily: "'Playfair Display', serif", letterSpacing: "-2px" }}
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              letterSpacing: "-2px",
+            }}
           >
             FeastRush
           </span>
@@ -105,7 +117,10 @@ export default function Login({ onLogin }) {
           <input
             type="text"
             value={username}
-            onChange={(e) => { setUsername(e.target.value); setError(false); }}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setError(false);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="your handle"
             className="w-full bg-[#1e1c18] border border-[#2e2b24] text-[#f0ead8] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#f4a127] focus:ring-1 focus:ring-[#f4a127] transition-all placeholder-[#3d3a32]"
@@ -124,7 +139,10 @@ export default function Login({ onLogin }) {
           <input
             type={showPass ? "text" : "password"}
             value={password}
-            onChange={(e) => { setPassword(e.target.value); setError(false); }}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError(false);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="••••••••"
             className="w-full bg-[#1e1c18] border border-[#2e2b24] text-[#f0ead8] rounded-xl px-4 py-3 pr-12 text-sm outline-none focus:border-[#f4a127] focus:ring-1 focus:ring-[#f4a127] transition-all placeholder-[#3d3a32]"
@@ -142,10 +160,16 @@ export default function Login({ onLogin }) {
         {/* Error message */}
         {error && (
           <div className="mb-5 bg-[#2a1a10] border border-[#6b2d0d] rounded-xl px-4 py-3 text-center">
-            <p className="text-[#f4a127] text-sm" style={{ fontFamily: "'DM Mono', monospace" }}>
+            <p
+              className="text-[#f4a127] text-sm"
+              style={{ fontFamily: "'DM Mono', monospace" }}
+            >
               🙈 Oops! Looks like you got something wrong there.
             </p>
-            <p className="text-[#6b6457] text-xs mt-1" style={{ fontFamily: "'DM Mono', monospace" }}>
+            <p
+              className="text-[#6b6457] text-xs mt-1"
+              style={{ fontFamily: "'DM Mono', monospace" }}
+            >
               Double-check and try again, chef.
             </p>
           </div>

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { supabase } from "./supabaseClient";
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 const LIGHT = {
@@ -254,134 +255,6 @@ const SAMPLE_ORDERS = [
       address: "Pickup - Al Nahda, Dubai",
     },
     notes: "Extra napkins please",
-  },
-];
-
-const INITIAL_MENU = [
-  {
-    id: "cat-1",
-    name: "Recommended For You",
-    enabled: true,
-    items: [
-      {
-        id: "i-1",
-        name: "UAE's Best Karak",
-        price: 27.0,
-        addOns: 2,
-        inStock: true,
-        enabled: true,
-        emoji: "☕",
-      },
-      {
-        id: "i-2",
-        name: "Chicken Fried Rice",
-        price: 45.0,
-        addOns: 1,
-        inStock: true,
-        enabled: true,
-        emoji: "🍚",
-      },
-    ],
-  },
-  {
-    id: "cat-2",
-    name: "Dosas",
-    enabled: true,
-    items: [
-      {
-        id: "i-3",
-        name: "Set Dosa",
-        price: 20.0,
-        addOns: 1,
-        inStock: true,
-        enabled: true,
-        emoji: "🥞",
-      },
-      {
-        id: "i-4",
-        name: "Masala Dosa",
-        price: 25.0,
-        addOns: 0,
-        inStock: false,
-        enabled: true,
-        emoji: "🥞",
-      },
-    ],
-  },
-  {
-    id: "cat-3",
-    name: "South Indian Delicacies",
-    enabled: true,
-    items: [
-      {
-        id: "i-5",
-        name: "Chatti Chor",
-        price: 24.0,
-        addOns: 0,
-        inStock: true,
-        enabled: true,
-        emoji: "🍛",
-      },
-      {
-        id: "i-6",
-        name: "Idli Sambar",
-        price: 18.0,
-        addOns: 1,
-        inStock: true,
-        enabled: true,
-        emoji: "🍲",
-      },
-    ],
-  },
-  {
-    id: "cat-4",
-    name: "Rice & Noodles",
-    enabled: true,
-    items: [
-      {
-        id: "i-7",
-        name: "Ramen",
-        price: 40.0,
-        addOns: 1,
-        inStock: true,
-        enabled: true,
-        emoji: "🍜",
-      },
-      {
-        id: "i-8",
-        name: "Biryani Special",
-        price: 55.0,
-        addOns: 2,
-        inStock: true,
-        enabled: true,
-        emoji: "🍚",
-      },
-    ],
-  },
-  {
-    id: "cat-5",
-    name: "Beverages",
-    enabled: true,
-    items: [
-      {
-        id: "i-9",
-        name: "Mango Lassi",
-        price: 15.0,
-        addOns: 0,
-        inStock: true,
-        enabled: true,
-        emoji: "🥭",
-      },
-      {
-        id: "i-10",
-        name: "Fresh Lime Soda",
-        price: 12.0,
-        addOns: 0,
-        inStock: true,
-        enabled: true,
-        emoji: "🍋",
-      },
-    ],
   },
 ];
 
@@ -1505,7 +1378,12 @@ function OrdersPage({ t }) {
             {[
               ["Sub-total", `AED ${selectedOrder.subtotal.toFixed(2)}`],
               ...(selectedOrder.type === "delivery"
-                ? [["Delivery", `AED ${selectedOrder.deliveryCharge.toFixed(2)}`]]
+                ? [
+                    [
+                      "Delivery",
+                      `AED ${selectedOrder.deliveryCharge.toFixed(2)}`,
+                    ],
+                  ]
                 : []),
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between text-sm">
@@ -1514,7 +1392,9 @@ function OrdersPage({ t }) {
                 >
                   {k}
                 </span>
-                <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}>
+                <span
+                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                >
                   {v}
                 </span>
               </div>
@@ -2062,11 +1942,18 @@ function OrdersPage({ t }) {
 }
 
 // ─── Menu Page ────────────────────────────────────────────────────────────────
-function MenuPage({ t }) {
-  const [categories, setCategories] = useState(INITIAL_MENU);
+function MenuPage({ t, user }) {
+  // categories shape: { id, name, visible, sort_order, items: [...] }
+  // items shape: { id, name, price, is_available, visible, description, image_path, sort_order, categ_id, rest_id, emoji }
+  const [categories, setCategories] = useState([]);
   const [addons, setAddons] = useState(INITIAL_ADDONS);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [orderDirty, setOrderDirty] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+
   const [section, setSection] = useState("menu");
-  const [selectedCatId, setSelectedCatId] = useState("cat-1");
+  const [selectedCatId, setSelectedCatId] = useState(null);
   const [mobilePanel, setMobilePanel] = useState("categories");
   const [showAddCat, setShowAddCat] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
@@ -2078,19 +1965,99 @@ function MenuPage({ t }) {
     name: "",
     price: "",
     emoji: "🍽️",
+    description: "",
   });
   const [addonForm, setAddonForm] = useState({
     name: "",
     price: "",
     group: "",
   });
+  const [savingItem, setSavingItem] = useState(false);
 
+  // Derive rest_id from user role
+  const restId = user?.role === "owner" ? user?.main_rest : user?.rest_id;
+
+  // ── Fetch categories + items on mount ──────────────────────────────────────
+  useEffect(() => {
+    if (!restId) {
+      setLoading(false);
+      setLoadError("No restaurant associated with this account.");
+      return;
+    }
+    const fetchMenu = async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        // Fetch categories sorted by sort_order asc
+        const { data: cats, error: catErr } = await supabase
+          .from("Categories")
+          .select("id, name, visible, sort_order")
+          .eq("rest_id", restId)
+          .order("sort_order", { ascending: true });
+
+        if (catErr) throw catErr;
+
+        if (!cats || cats.length === 0) {
+          setCategories([]);
+          setSelectedCatId(null);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch all menu items for this restaurant
+        const { data: items, error: itemErr } = await supabase
+          .from("Menu")
+          .select(
+            "id, name, price, is_available, visible, description, image_path, sort_order, categ_id, recommended",
+          )
+          .eq("rest_id", restId)
+          .order("sort_order", { ascending: true });
+
+        if (itemErr) throw itemErr;
+
+        // Map emoji from name/description (not in schema, default to 🍽️)
+        const itemsBycat = {};
+        (items || []).forEach((item) => {
+          const cid = item.categ_id;
+          if (!itemsBycat[cid]) itemsBycat[cid] = [];
+          itemsBycat[cid].push({ ...item });
+        });
+
+        const built = cats.map((c) => ({
+          ...c,
+          enabled: c.visible, // alias for UI consistency
+          items: itemsBycat[c.id] || [],
+        }));
+
+        setCategories(built);
+        setSelectedCatId(built[0]?.id || null);
+      } catch (err) {
+        console.error(err);
+        setLoadError("Failed to load menu. " + (err.message || ""));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMenu();
+  }, [restId]);
+
+  // ── Drag refs ───────────────────────────────────────────────────────────────
   const dragCat = useRef(null);
   const overCat = useRef(null);
   const dragItem = useRef(null);
   const overItem = useRef(null);
 
-  const catTouchDrag = useTouchDrag(categories, setCategories, (c) => c.id);
+  const catTouchDrag = useTouchDrag(
+    categories,
+    (updater) => {
+      setCategories((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        setOrderDirty(true);
+        return next;
+      });
+    },
+    (c) => c.id,
+  );
 
   const selectedCat =
     categories.find((c) => c.id === selectedCatId) || categories[0];
@@ -2121,6 +2088,7 @@ function MenuPage({ t }) {
     const [m] = next.splice(dragCat.current, 1);
     next.splice(overCat.current, 0, m);
     setCategories(next);
+    setOrderDirty(true);
     dragCat.current = null;
     overCat.current = null;
   };
@@ -2147,19 +2115,78 @@ function MenuPage({ t }) {
     overItem.current = null;
   };
 
-  const toggleCat = (id) =>
+  // ── Save category sort_order to DB ─────────────────────────────────────────
+  const saveCategoryOrder = async () => {
+    setSavingOrder(true);
+    try {
+      const updates = categories.map((c, i) =>
+        supabase
+          .from("Categories")
+          .update({ sort_order: i + 1 })
+          .eq("id", c.id),
+      );
+      await Promise.all(updates);
+      // reflect new sort_order in local state
+      setCategories((prev) =>
+        prev.map((c, i) => ({ ...c, sort_order: i + 1 })),
+      );
+      setOrderDirty(false);
+    } catch (err) {
+      console.error("Failed to save order:", err);
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  // ── Category visible toggle → immediate DB ─────────────────────────────────
+  const toggleCat = async (id) => {
+    const cat = categories.find((c) => c.id === id);
+    if (!cat) return;
+    const newVal = !cat.visible;
+    // Optimistic update
     setCategories((p) =>
-      p.map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c)),
+      p.map((c) =>
+        c.id === id ? { ...c, visible: newVal, enabled: newVal } : c,
+      ),
     );
-  const deleteCat = (id) => {
+    const { error } = await supabase
+      .from("Categories")
+      .update({ visible: newVal })
+      .eq("id", id);
+    if (error) {
+      // Revert on failure
+      setCategories((p) =>
+        p.map((c) =>
+          c.id === id ? { ...c, visible: !newVal, enabled: !newVal } : c,
+        ),
+      );
+      console.error("Failed to toggle category visibility:", error);
+    }
+  };
+
+  // ── Delete category → DB ───────────────────────────────────────────────────
+  const deleteCat = async (id) => {
+    // Optimistic remove from UI
     setCategories((p) => p.filter((c) => c.id !== id));
     if (selectedCatId === id) {
-      const r = categories.filter((c) => c.id !== id);
-      setSelectedCatId(r[0]?.id || null);
+      const remaining = categories.filter((c) => c.id !== id);
+      setSelectedCatId(remaining[0]?.id || null);
     }
     setMobilePanel("categories");
+    const { error } = await supabase.from("Categories").delete().eq("id", id);
+    if (error) {
+      console.error("Failed to delete category:", error);
+      // Re-fetch to restore correct state
+      window.location.reload();
+    }
   };
-  const toggleItem = (cid, iid) =>
+
+  // ── Item visible toggle → immediate DB ────────────────────────────────────
+  const toggleItem = async (cid, iid) => {
+    const cat = categories.find((c) => c.id === cid);
+    const item = cat?.items.find((i) => i.id === iid);
+    if (!item) return;
+    const newVal = !item.visible;
     setCategories((p) =>
       p.map((c) =>
         c.id !== cid
@@ -2167,12 +2194,38 @@ function MenuPage({ t }) {
           : {
               ...c,
               items: c.items.map((i) =>
-                i.id === iid ? { ...i, enabled: !i.enabled } : i,
+                i.id === iid ? { ...i, visible: newVal } : i,
               ),
             },
       ),
     );
-  const toggleItemStock = (cid, iid) =>
+    const { error } = await supabase
+      .from("Menu")
+      .update({ visible: newVal })
+      .eq("id", iid);
+    if (error) {
+      setCategories((p) =>
+        p.map((c) =>
+          c.id !== cid
+            ? c
+            : {
+                ...c,
+                items: c.items.map((i) =>
+                  i.id === iid ? { ...i, visible: !newVal } : i,
+                ),
+              },
+        ),
+      );
+      console.error("Failed to toggle item visibility:", error);
+    }
+  };
+
+  // ── Item is_available toggle → immediate DB ────────────────────────────────
+  const toggleItemStock = async (cid, iid) => {
+    const cat = categories.find((c) => c.id === cid);
+    const item = cat?.items.find((i) => i.id === iid);
+    if (!item) return;
+    const newVal = !item.is_available;
     setCategories((p) =>
       p.map((c) =>
         c.id !== cid
@@ -2180,21 +2233,47 @@ function MenuPage({ t }) {
           : {
               ...c,
               items: c.items.map((i) =>
-                i.id === iid ? { ...i, inStock: !i.inStock } : i,
+                i.id === iid ? { ...i, is_available: newVal } : i,
               ),
             },
       ),
     );
-  const deleteItem = (cid, iid) =>
+    const { error } = await supabase
+      .from("Menu")
+      .update({ is_available: newVal })
+      .eq("id", iid);
+    if (error) {
+      setCategories((p) =>
+        p.map((c) =>
+          c.id !== cid
+            ? c
+            : {
+                ...c,
+                items: c.items.map((i) =>
+                  i.id === iid ? { ...i, is_available: !newVal } : i,
+                ),
+              },
+        ),
+      );
+      console.error("Failed to toggle item stock:", error);
+    }
+  };
+
+  // ── Delete item → DB ───────────────────────────────────────────────────────
+  const deleteItem = async (cid, iid) => {
     setCategories((p) =>
       p.map((c) =>
         c.id !== cid ? c : { ...c, items: c.items.filter((i) => i.id !== iid) },
       ),
     );
+    const { error } = await supabase.from("Menu").delete().eq("id", iid);
+    if (error) console.error("Failed to delete item:", error);
+  };
 
+  // ── Open item modal ────────────────────────────────────────────────────────
   const openAddItem = () => {
     setEditingItem(null);
-    setItemForm({ name: "", price: "", emoji: "🍽️" });
+    setItemForm({ name: "", price: "", emoji: "🍽️", description: "" });
     setShowItemModal(true);
   };
   const openEditItem = (item) => {
@@ -2202,50 +2281,89 @@ function MenuPage({ t }) {
     setItemForm({
       name: item.name,
       price: String(item.price),
-      emoji: item.emoji,
+      emoji: item.emoji || "🍽️",
+      description: item.description || "",
     });
     setShowItemModal(true);
   };
-  const saveItem = () => {
+
+  // ── Save item → INSERT or UPDATE DB ───────────────────────────────────────
+  const saveItem = async () => {
     const p = parseFloat(itemForm.price);
     if (!itemForm.name.trim() || isNaN(p)) return;
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.id !== selectedCatId) return c;
-        if (editingItem)
-          return {
-            ...c,
-            items: c.items.map((i) =>
-              i.id === editingItem.id
-                ? {
-                    ...i,
-                    name: itemForm.name.trim(),
-                    price: p,
-                    emoji: itemForm.emoji,
-                  }
-                : i,
-            ),
-          };
-        return {
-          ...c,
-          items: [
-            ...c.items,
-            {
-              id: `i-${uid()}`,
-              name: itemForm.name.trim(),
-              price: p,
-              addOns: 0,
-              inStock: true,
-              enabled: true,
-              emoji: itemForm.emoji,
-            },
-          ],
-        };
-      }),
-    );
-    setShowItemModal(false);
+    setSavingItem(true);
+    try {
+      if (editingItem) {
+        // UPDATE
+        const { error } = await supabase
+          .from("Menu")
+          .update({
+            name: itemForm.name.trim(),
+            price: p,
+            description: itemForm.description.trim() || null,
+          })
+          .eq("id", editingItem.id);
+        if (error) throw error;
+        setCategories((prev) =>
+          prev.map((c) =>
+            c.id !== selectedCatId
+              ? c
+              : {
+                  ...c,
+                  items: c.items.map((i) =>
+                    i.id === editingItem.id
+                      ? {
+                          ...i,
+                          name: itemForm.name.trim(),
+                          price: p,
+                          description: itemForm.description.trim() || null,
+                          emoji: itemForm.emoji,
+                        }
+                      : i,
+                  ),
+                },
+          ),
+        );
+      } else {
+        // INSERT
+        const sortOrder = (selectedCat?.items?.length || 0) + 1;
+        const { data, error } = await supabase
+          .from("Menu")
+          .insert({
+            rest_id: restId,
+            categ_id: selectedCatId,
+            name: itemForm.name.trim(),
+            price: p,
+            description: itemForm.description.trim() || null,
+            image_path: "",
+            is_available: true,
+            visible: true,
+            recommended: false,
+            sort_order: sortOrder,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        setCategories((prev) =>
+          prev.map((c) =>
+            c.id !== selectedCatId
+              ? c
+              : {
+                  ...c,
+                  items: [...c.items, { ...data, emoji: itemForm.emoji }],
+                },
+          ),
+        );
+      }
+      setShowItemModal(false);
+    } catch (err) {
+      console.error("Failed to save item:", err);
+    } finally {
+      setSavingItem(false);
+    }
   };
 
+  // ── Add-ons (still local — not in current scope) ───────────────────────────
   const toggleAddon = (id) =>
     setAddons((p) =>
       p.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)),
@@ -2291,19 +2409,31 @@ function MenuPage({ t }) {
     setShowAddonModal(false);
   };
 
-  const addCategory = () => {
+  // ── Add category → INSERT DB ───────────────────────────────────────────────
+  const addCategory = async () => {
     if (!newCatName.trim()) return;
-    const cat = {
-      id: `cat-${uid()}`,
-      name: newCatName.trim(),
-      enabled: true,
-      items: [],
-    };
-    setCategories((p) => [...p, cat]);
-    setSelectedCatId(cat.id);
-    setNewCatName("");
-    setShowAddCat(false);
-    setMobilePanel("items");
+    const sortOrder = categories.length + 1;
+    try {
+      const { data, error } = await supabase
+        .from("Categories")
+        .insert({
+          rest_id: restId,
+          name: newCatName.trim(),
+          sort_order: sortOrder,
+          visible: true,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      const cat = { ...data, enabled: true, items: [] };
+      setCategories((p) => [...p, cat]);
+      setSelectedCatId(cat.id);
+      setNewCatName("");
+      setShowAddCat(false);
+      setMobilePanel("items");
+    } catch (err) {
+      console.error("Failed to add category:", err);
+    }
   };
 
   const addonGroups = [...new Set(addons.map((a) => a.group))];
@@ -2334,16 +2464,11 @@ function MenuPage({ t }) {
           ref={(el) => {
             catTouchDrag.itemRefs.current[cat.id] = el;
           }}
-          draggable
-          onDragStart={() => {
-            dragCat.current = i;
-          }}
           onDragEnter={() => {
             overCat.current = i;
           }}
           onDragEnd={onCatDrop}
           onDragOver={(e) => e.preventDefault()}
-          onPointerDown={(e) => catTouchDrag.onPointerDown(cat.id, e)}
           onClick={() => {
             setSelectedCatId(cat.id);
             setMobilePanel("items");
@@ -2352,15 +2477,24 @@ function MenuPage({ t }) {
             background: selectedCatId === cat.id ? t.accentBg : "transparent",
             borderLeft: `3px solid ${selectedCatId === cat.id ? t.accent : "transparent"}`,
             color: selectedCatId === cat.id ? t.accent : t.subtle,
-            touchAction: "none",
             userSelect: "none",
-            cursor: "grab",
+            cursor: "pointer",
           }}
           className="flex items-center gap-2 px-3 py-3 rounded-lg transition-colors duration-150"
         >
+          {/* Drag handle only — isolates drag from row clicks */}
           <span
-            style={{ color: t.muted }}
-            className="text-sm flex-shrink-0 select-none"
+            draggable
+            onDragStart={(e) => {
+              e.stopPropagation();
+              dragCat.current = i;
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              catTouchDrag.onPointerDown(cat.id, e);
+            }}
+            style={{ color: t.muted, touchAction: "none", cursor: "grab" }}
+            className="text-sm flex-shrink-0 select-none px-1 py-1 -ml-1 rounded hover:opacity-60"
           >
             ⠿
           </span>
@@ -2376,7 +2510,7 @@ function MenuPage({ t }) {
           >
             {cat.items.length}
           </span>
-          {!cat.enabled && (
+          {!cat.visible && (
             <span style={{ color: t.muted }} className="text-xs">
               ●
             </span>
@@ -2386,6 +2520,22 @@ function MenuPage({ t }) {
           </span>
         </div>
       ))}
+      {/* Save Order button — appears after drag reorder */}
+      {orderDirty && (
+        <button
+          onClick={saveCategoryOrder}
+          disabled={savingOrder}
+          style={{
+            background: t.accent,
+            color: "#fff",
+            fontFamily: "'Lato', sans-serif",
+            opacity: savingOrder ? 0.7 : 1,
+          }}
+          className="mt-3 w-full py-2 rounded-lg text-xs font-semibold tracking-wider hover:opacity-90 active:scale-95 transition-all"
+        >
+          {savingOrder ? "Saving…" : "💾 Save Order"}
+        </button>
+      )}
     </div>
   );
 
@@ -2404,13 +2554,6 @@ function MenuPage({ t }) {
           </p>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => toggleCat(selectedCat.id)}
-              style={{ color: t.subtle }}
-              className="text-sm hover:opacity-60 transition-opacity p-1"
-            >
-              {selectedCat.enabled ? "👁️" : "🙈"}
-            </button>
-            <button
               onClick={() => deleteCat(selectedCat.id)}
               style={{ color: t.subtle }}
               className="text-sm hover:text-red-500 transition-colors p-1"
@@ -2418,7 +2561,7 @@ function MenuPage({ t }) {
               🗑️
             </button>
             <Toggle
-              value={selectedCat.enabled}
+              value={selectedCat.visible}
               onChange={() => toggleCat(selectedCat.id)}
               t={t}
             />
@@ -2439,36 +2582,50 @@ function MenuPage({ t }) {
           ref={(el) => {
             itemTouchDrag.itemRefs.current[item.id] = el;
           }}
-          draggable
-          onDragStart={() => {
-            dragItem.current = item.id;
-          }}
           onDragEnter={() => {
             overItem.current = item.id;
           }}
           onDragEnd={() => onItemDrop(selectedCatId)}
           onDragOver={(e) => e.preventDefault()}
-          onPointerDown={(e) => itemTouchDrag.onPointerDown(item.id, e)}
           style={{
             background: t.surface,
             border: `1px solid ${t.border}`,
-            touchAction: "none",
             userSelect: "none",
-            cursor: "grab",
           }}
           className="flex items-center gap-3 rounded-xl px-3 py-3 mb-2.5 transition-colors hover:shadow-sm"
         >
+          {/* Drag handle only */}
           <span
-            style={{ color: t.muted }}
-            className="text-xs select-none flex-shrink-0"
+            draggable
+            onDragStart={(e) => {
+              e.stopPropagation();
+              dragItem.current = item.id;
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              itemTouchDrag.onPointerDown(item.id, e);
+            }}
+            style={{ color: t.muted, touchAction: "none", cursor: "grab" }}
+            className="text-xs select-none flex-shrink-0 px-1 py-2 -ml-1 rounded hover:opacity-60"
           >
             ⠿
           </span>
           <div
             style={{ background: t.surface2, border: `1px solid ${t.border}` }}
-            className="w-11 h-11 rounded-lg flex items-center justify-center text-xl flex-shrink-0 select-none"
+            className="w-11 h-11 rounded-lg flex-shrink-0 select-none overflow-hidden"
           >
-            {item.emoji}
+            <img
+              src={
+                item.image_path && item.image_path.trim() !== ""
+                  ? item.image_path
+                  : "/logo.png"
+              }
+              alt={item.name}
+              className="w-full h-full object-cover rounded-lg"
+              onError={(e) => {
+                e.currentTarget.src = "/logo.png";
+              }}
+            />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -2481,20 +2638,20 @@ function MenuPage({ t }) {
               <span
                 onClick={() => toggleItemStock(selectedCatId, item.id)}
                 style={{
-                  background: item.inStock ? t.greenBg : "#FEF2F2",
-                  color: item.inStock ? t.green : t.red,
-                  border: `1px solid ${item.inStock ? t.greenBorder : "#FECACA"}`,
+                  background: item.is_available ? t.greenBg : "#FEF2F2",
+                  color: item.is_available ? t.green : t.red,
+                  border: `1px solid ${item.is_available ? t.greenBorder : "#FECACA"}`,
                 }}
                 className="text-xs px-2 py-0.5 rounded-full cursor-pointer select-none flex-shrink-0 font-semibold"
               >
-                {item.inStock ? "In Stock" : "Out of Stock"}
+                {item.is_available ? "In Stock" : "Out of Stock"}
               </span>
             </div>
             <p
               style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
               className="text-sm font-bold mt-0.5"
             >
-              AED {item.price.toFixed(2)}
+              AED {Number(item.price).toFixed(2)}
             </p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -2512,8 +2669,9 @@ function MenuPage({ t }) {
             >
               🗑️
             </button>
+            {/* visible toggle → Categories.visible in DB */}
             <Toggle
-              value={item.enabled}
+              value={item.visible}
               onChange={() => toggleItem(selectedCatId, item.id)}
               t={t}
             />
@@ -2525,416 +2683,462 @@ function MenuPage({ t }) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div
-        style={{ borderBottom: `1px solid ${t.border}` }}
-        className="px-5 md:px-8 pt-5 pb-0 flex-shrink-0"
-      >
-        <div className="md:hidden flex items-center gap-3 mb-3">
-          {(mobilePanel === "items" || mobilePanel === "addons") && (
-            <button
-              onClick={() => setMobilePanel("categories")}
-              style={{
-                background: t.accentBg,
-                border: `1px solid ${t.accentBorder}`,
-                color: t.accent,
-                fontFamily: "'Lato', sans-serif",
-              }}
-              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-semibold"
-            >
-              ← Back
-            </button>
-          )}
-          <h1
-            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
-            className="text-2xl font-bold"
+      {/* Loading / error overlay */}
+      {loading && (
+        <div className="flex-1 flex items-center justify-center">
+          <p
+            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+            className="text-sm"
           >
-            {mobilePanel === "categories"
-              ? "Menu"
-              : mobilePanel === "items"
-                ? selectedCat?.name
-                : "Add-Ons"}
-          </h1>
+            Loading menu…
+          </p>
         </div>
-        <div className="hidden md:flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h1
-            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
-            className="text-3xl md:text-4xl font-bold tracking-tight"
+      )}
+      {!loading && loadError && (
+        <div className="flex-1 flex items-center justify-center">
+          <p
+            style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
+            className="text-sm text-center px-6"
           >
-            Menu
-          </h1>
-          <div className="flex items-center gap-2 flex-wrap">
-            {[
-              ["Download CSV 📥", null],
-              ["Upload CSV 📤", null],
-            ].map(([label]) => (
-              <button
-                key={label}
-                style={{
-                  background: t.surface2,
-                  border: `1px solid ${t.border2}`,
-                  color: t.subtle,
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="text-xs font-medium px-4 py-2.5 rounded-lg tracking-wide hover:opacity-80 transition-all active:scale-95"
-              >
-                {label}
-              </button>
-            ))}
-            <button
-              onClick={section === "menu" ? openAddItem : openAddAddon}
-              style={{
-                background: t.accent,
-                color: "#fff",
-                fontFamily: "'Lato', sans-serif",
-              }}
-              className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wide hover:opacity-90 transition-all active:scale-95"
-            >
-              + {section === "menu" ? "Add Item" : "Add Add-On"}
-            </button>
-          </div>
+            {loadError}
+          </p>
         </div>
-        <div className="flex items-center justify-between">
-          <div className="flex gap-5">
-            {[
-              ["menu", "Menu Items"],
-              ["addons", "Add-Ons"],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => {
-                  setSection(id);
-                  setMobilePanel(id === "addons" ? "addons" : "categories");
-                }}
-                style={{
-                  color: section === id ? t.accent : t.subtle,
-                  borderBottomColor: section === id ? t.accent : "transparent",
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="pb-3 text-sm font-semibold tracking-wide border-b-2 transition-colors"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="md:hidden flex items-center gap-2 pb-3">
-            {section === "menu" && mobilePanel === "categories" && (
-              <button
-                onClick={() => setShowAddCat(true)}
-                style={{
-                  background: t.accentBg,
-                  border: `1px solid ${t.accentBorder}`,
-                  color: t.accent,
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              >
-                + Category
-              </button>
-            )}
-            {section === "menu" && mobilePanel === "items" && (
-              <button
-                onClick={openAddItem}
-                style={{
-                  background: t.accent,
-                  color: "#fff",
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              >
-                + Add Item
-              </button>
-            )}
-            {section === "addons" && (
-              <button
-                onClick={openAddAddon}
-                style={{
-                  background: t.accent,
-                  color: "#fff",
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              >
-                + Add-On
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {section === "menu" ? (
+      )}
+      {!loading && !loadError && (
         <>
-          <div className="hidden md:flex flex-1 overflow-hidden">
-            <div
-              style={{
-                background: t.surface,
-                borderRight: `1px solid ${t.border}`,
-                width: 220,
-                minWidth: 180,
-              }}
-              className="flex-shrink-0 flex flex-col overflow-hidden"
-            >
-              <div
-                style={{ borderBottom: `1px solid ${t.border}` }}
-                className="px-4 pt-4 pb-3 flex items-center justify-between"
-              >
-                <p
-                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-                  className="text-xs font-bold tracking-widest uppercase"
-                >
-                  Categories
-                </p>
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="px-5 md:px-8 pt-5 pb-0 flex-shrink-0"
+          >
+            <div className="md:hidden flex items-center gap-3 mb-3">
+              {(mobilePanel === "items" || mobilePanel === "addons") && (
                 <button
-                  onClick={() => setShowAddCat(true)}
-                  style={{
-                    color: t.accent,
-                    background: t.accentBg,
-                    border: `1px solid ${t.accentBorder}`,
-                  }}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold hover:opacity-80 transition-opacity"
-                >
-                  +
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-2">
-                <CategoryList />
-              </div>
-            </div>
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <ItemsPanel />
-            </div>
-          </div>
-
-          <div className="md:hidden flex-1 overflow-hidden relative">
-            <div
-              className={`absolute inset-0 overflow-y-auto transition-transform duration-300 ${mobilePanel === "categories" ? "translate-x-0" : "-translate-x-full"}`}
-              style={{ background: t.bg }}
-            >
-              <div className="p-4">
-                <CategoryList />
-                <button
-                  onClick={() => setShowAddCat(true)}
+                  onClick={() => setMobilePanel("categories")}
                   style={{
                     background: t.accentBg,
                     border: `1px solid ${t.accentBorder}`,
                     color: t.accent,
                     fontFamily: "'Lato', sans-serif",
                   }}
-                  className="w-full mt-3 py-3 rounded-xl text-xs font-semibold tracking-wider uppercase text-center"
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-semibold"
                 >
-                  + New Category
+                  ← Back
                 </button>
-              </div>
-            </div>
-            <div
-              className={`absolute inset-0 flex flex-col overflow-hidden transition-transform duration-300 ${mobilePanel === "items" ? "translate-x-0" : "translate-x-full"}`}
-              style={{ background: t.bg }}
-            >
-              <ItemsPanel />
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          {addonGroups.length === 0 && (
-            <p
-              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-              className="text-sm italic"
-            >
-              No add-ons yet.
-            </p>
-          )}
-          {addonGroups.map((group) => (
-            <div key={group} className="mb-8">
-              <p
+              )}
+              <h1
                 style={{
                   fontFamily: "'Cormorant Garamond', serif",
                   color: t.text,
-                  borderBottom: `1px solid ${t.border}`,
                 }}
-                className="text-xl font-bold pb-3 mb-3"
+                className="text-2xl font-bold"
               >
-                {group}
-              </p>
-              <div className="space-y-2">
-                {addons
-                  .filter((a) => a.group === group)
-                  .map((addon) => (
-                    <div
-                      key={addon.id}
-                      style={{
-                        background: t.surface,
-                        border: `1px solid ${t.border}`,
-                      }}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p
-                          style={{
-                            color: t.text,
-                            fontFamily: "'Lato', sans-serif",
-                          }}
-                          className="text-sm font-semibold"
-                        >
-                          {addon.name}
-                        </p>
-                        <p
-                          style={{
-                            color: t.accent,
-                            fontFamily: "'Lato', sans-serif",
-                          }}
-                          className="text-xs font-bold mt-0.5"
-                        >
-                          AED {addon.price.toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => openEditAddon(addon)}
-                          style={{ color: t.subtle }}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => deleteAddon(addon.id)}
-                          style={{ color: t.subtle }}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm"
-                        >
-                          🗑️
-                        </button>
-                        <Toggle
-                          value={addon.enabled}
-                          onChange={() => toggleAddon(addon.id)}
-                          t={t}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                {mobilePanel === "categories"
+                  ? "Menu"
+                  : mobilePanel === "items"
+                    ? selectedCat?.name
+                    : "Add-Ons"}
+              </h1>
+            </div>
+            <div className="hidden md:flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h1
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  color: t.text,
+                }}
+                className="text-3xl md:text-4xl font-bold tracking-tight"
+              >
+                Menu
+              </h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                {[
+                  ["Download CSV 📥", null],
+                  ["Upload CSV 📤", null],
+                ].map(([label]) => (
+                  <button
+                    key={label}
+                    style={{
+                      background: t.surface2,
+                      border: `1px solid ${t.border2}`,
+                      color: t.subtle,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-medium px-4 py-2.5 rounded-lg tracking-wide hover:opacity-80 transition-all active:scale-95"
+                  >
+                    {label}
+                  </button>
+                ))}
+                <button
+                  onClick={section === "menu" ? openAddItem : openAddAddon}
+                  style={{
+                    background: t.accent,
+                    color: "#fff",
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wide hover:opacity-90 transition-all active:scale-95"
+                >
+                  + {section === "menu" ? "Add Item" : "Add Add-On"}
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {showAddCat && (
-        <Modal title="New Category" onClose={() => setShowAddCat(false)} t={t}>
-          <Field
-            label="Category Name"
-            value={newCatName}
-            onChange={setNewCatName}
-            placeholder="e.g. Wraps"
-            t={t}
-          />
-          <button
-            onClick={addCategory}
-            style={{
-              background: t.accent,
-              color: "#fff",
-              fontFamily: "'Lato', sans-serif",
-            }}
-            className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
-          >
-            Create Category
-          </button>
-        </Modal>
-      )}
-      {showItemModal && (
-        <Modal
-          title={editingItem ? "Edit Item" : "Add Item"}
-          onClose={() => setShowItemModal(false)}
-          t={t}
-        >
-          <div className="mb-5">
-            <label
-              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-              className="text-xs font-bold tracking-widest uppercase block mb-2"
-            >
-              Icon
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => setItemForm((f) => ({ ...f, emoji: e }))}
-                  style={{
-                    background: itemForm.emoji === e ? t.accentBg : t.surface2,
-                    border: `1px solid ${itemForm.emoji === e ? t.accent : t.border2}`,
-                  }}
-                  className="w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all"
-                >
-                  {e}
-                </button>
-              ))}
+            <div className="flex items-center justify-between">
+              <div className="flex gap-5">
+                {[
+                  ["menu", "Menu Items"],
+                  ["addons", "Add-Ons"],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      setSection(id);
+                      setMobilePanel(id === "addons" ? "addons" : "categories");
+                    }}
+                    style={{
+                      color: section === id ? t.accent : t.subtle,
+                      borderBottomColor:
+                        section === id ? t.accent : "transparent",
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="pb-3 text-sm font-semibold tracking-wide border-b-2 transition-colors"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="md:hidden flex items-center gap-2 pb-3">
+                {section === "menu" && mobilePanel === "categories" && (
+                  <button
+                    onClick={() => setShowAddCat(true)}
+                    style={{
+                      background: t.accentBg,
+                      border: `1px solid ${t.accentBorder}`,
+                      color: t.accent,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  >
+                    + Category
+                  </button>
+                )}
+                {section === "menu" && mobilePanel === "items" && (
+                  <button
+                    onClick={openAddItem}
+                    style={{
+                      background: t.accent,
+                      color: "#fff",
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  >
+                    + Add Item
+                  </button>
+                )}
+                {section === "addons" && (
+                  <button
+                    onClick={openAddAddon}
+                    style={{
+                      background: t.accent,
+                      color: "#fff",
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  >
+                    + Add-On
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-          <Field
-            label="Item Name"
-            value={itemForm.name}
-            onChange={(v) => setItemForm((f) => ({ ...f, name: v }))}
-            placeholder="e.g. Chicken Wrap"
-            t={t}
-          />
-          <Field
-            label="Price (AED)"
-            value={itemForm.price}
-            onChange={(v) => setItemForm((f) => ({ ...f, price: v }))}
-            type="number"
-            placeholder="0.00"
-            t={t}
-          />
-          <button
-            onClick={saveItem}
-            style={{
-              background: t.accent,
-              color: "#fff",
-              fontFamily: "'Lato', sans-serif",
-            }}
-            className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
-          >
-            {editingItem ? "Save Changes" : "Add Item"}
-          </button>
-        </Modal>
-      )}
-      {showAddonModal && (
-        <Modal
-          title={editingAddon ? "Edit Add-On" : "New Add-On"}
-          onClose={() => setShowAddonModal(false)}
-          t={t}
-        >
-          <Field
-            label="Add-On Name"
-            value={addonForm.name}
-            onChange={(v) => setAddonForm((f) => ({ ...f, name: v }))}
-            placeholder="e.g. Extra Sauce"
-            t={t}
-          />
-          <Field
-            label="Price (AED)"
-            value={addonForm.price}
-            onChange={(v) => setAddonForm((f) => ({ ...f, price: v }))}
-            type="number"
-            placeholder="0.00"
-            t={t}
-          />
-          <Field
-            label="Group"
-            value={addonForm.group}
-            onChange={(v) => setAddonForm((f) => ({ ...f, group: v }))}
-            placeholder="e.g. Sauces"
-            t={t}
-          />
-          <button
-            onClick={saveAddon}
-            style={{
-              background: t.accent,
-              color: "#fff",
-              fontFamily: "'Lato', sans-serif",
-            }}
-            className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
-          >
-            {editingAddon ? "Save Changes" : "Add Add-On"}
-          </button>
-        </Modal>
+
+          {section === "menu" ? (
+            <>
+              <div className="hidden md:flex flex-1 overflow-hidden">
+                <div
+                  style={{
+                    background: t.surface,
+                    borderRight: `1px solid ${t.border}`,
+                    width: 220,
+                    minWidth: 180,
+                  }}
+                  className="flex-shrink-0 flex flex-col overflow-hidden"
+                >
+                  <div
+                    style={{ borderBottom: `1px solid ${t.border}` }}
+                    className="px-4 pt-4 pb-3 flex items-center justify-between"
+                  >
+                    <p
+                      style={{
+                        color: t.subtle,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-xs font-bold tracking-widest uppercase"
+                    >
+                      Categories
+                    </p>
+                    <button
+                      onClick={() => setShowAddCat(true)}
+                      style={{
+                        color: t.accent,
+                        background: t.accentBg,
+                        border: `1px solid ${t.accentBorder}`,
+                      }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold hover:opacity-80 transition-opacity"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2">
+                    <CategoryList />
+                  </div>
+                </div>
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <ItemsPanel />
+                </div>
+              </div>
+
+              <div className="md:hidden flex-1 overflow-hidden relative">
+                <div
+                  className={`absolute inset-0 overflow-y-auto transition-transform duration-300 ${mobilePanel === "categories" ? "translate-x-0" : "-translate-x-full"}`}
+                  style={{ background: t.bg }}
+                >
+                  <div className="p-4">
+                    <CategoryList />
+                    <button
+                      onClick={() => setShowAddCat(true)}
+                      style={{
+                        background: t.accentBg,
+                        border: `1px solid ${t.accentBorder}`,
+                        color: t.accent,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="w-full mt-3 py-3 rounded-xl text-xs font-semibold tracking-wider uppercase text-center"
+                    >
+                      + New Category
+                    </button>
+                  </div>
+                </div>
+                <div
+                  className={`absolute inset-0 flex flex-col overflow-hidden transition-transform duration-300 ${mobilePanel === "items" ? "translate-x-0" : "translate-x-full"}`}
+                  style={{ background: t.bg }}
+                >
+                  <ItemsPanel />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+              {addonGroups.length === 0 && (
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm italic"
+                >
+                  No add-ons yet.
+                </p>
+              )}
+              {addonGroups.map((group) => (
+                <div key={group} className="mb-8">
+                  <p
+                    style={{
+                      fontFamily: "'Cormorant Garamond', serif",
+                      color: t.text,
+                      borderBottom: `1px solid ${t.border}`,
+                    }}
+                    className="text-xl font-bold pb-3 mb-3"
+                  >
+                    {group}
+                  </p>
+                  <div className="space-y-2">
+                    {addons
+                      .filter((a) => a.group === group)
+                      .map((addon) => (
+                        <div
+                          key={addon.id}
+                          style={{
+                            background: t.surface,
+                            border: `1px solid ${t.border}`,
+                          }}
+                          className="flex items-center gap-3 rounded-xl px-4 py-3"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p
+                              style={{
+                                color: t.text,
+                                fontFamily: "'Lato', sans-serif",
+                              }}
+                              className="text-sm font-semibold"
+                            >
+                              {addon.name}
+                            </p>
+                            <p
+                              style={{
+                                color: t.accent,
+                                fontFamily: "'Lato', sans-serif",
+                              }}
+                              className="text-xs font-bold mt-0.5"
+                            >
+                              AED {addon.price.toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEditAddon(addon)}
+                              style={{ color: t.subtle }}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => deleteAddon(addon.id)}
+                              style={{ color: t.subtle }}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm"
+                            >
+                              🗑️
+                            </button>
+                            <Toggle
+                              value={addon.enabled}
+                              onChange={() => toggleAddon(addon.id)}
+                              t={t}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showAddCat && (
+            <Modal
+              title="New Category"
+              onClose={() => setShowAddCat(false)}
+              t={t}
+            >
+              <Field
+                label="Category Name"
+                value={newCatName}
+                onChange={setNewCatName}
+                placeholder="e.g. Wraps"
+                t={t}
+              />
+              <button
+                onClick={addCategory}
+                style={{
+                  background: t.accent,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
+              >
+                Create Category
+              </button>
+            </Modal>
+          )}
+          {showItemModal && (
+            <Modal
+              title={editingItem ? "Edit Item" : "Add Item"}
+              onClose={() => setShowItemModal(false)}
+              t={t}
+            >
+              <div className="mb-5">
+                <label
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs font-bold tracking-widest uppercase block mb-2"
+                >
+                  Icon
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {EMOJIS.map((e) => (
+                    <button
+                      key={e}
+                      onClick={() => setItemForm((f) => ({ ...f, emoji: e }))}
+                      style={{
+                        background:
+                          itemForm.emoji === e ? t.accentBg : t.surface2,
+                        border: `1px solid ${itemForm.emoji === e ? t.accent : t.border2}`,
+                      }}
+                      className="w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Field
+                label="Item Name"
+                value={itemForm.name}
+                onChange={(v) => setItemForm((f) => ({ ...f, name: v }))}
+                placeholder="e.g. Chicken Wrap"
+                t={t}
+              />
+              <Field
+                label="Price (AED)"
+                value={itemForm.price}
+                onChange={(v) => setItemForm((f) => ({ ...f, price: v }))}
+                type="number"
+                placeholder="0.00"
+                t={t}
+              />
+              <button
+                onClick={saveItem}
+                disabled={savingItem}
+                style={{
+                  background: t.accent,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                  opacity: savingItem ? 0.7 : 1,
+                }}
+                className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
+              >
+                {savingItem
+                  ? "Saving…"
+                  : editingItem
+                    ? "Save Changes"
+                    : "Add Item"}
+              </button>
+            </Modal>
+          )}
+          {showAddonModal && (
+            <Modal
+              title={editingAddon ? "Edit Add-On" : "New Add-On"}
+              onClose={() => setShowAddonModal(false)}
+              t={t}
+            >
+              <Field
+                label="Add-On Name"
+                value={addonForm.name}
+                onChange={(v) => setAddonForm((f) => ({ ...f, name: v }))}
+                placeholder="e.g. Extra Sauce"
+                t={t}
+              />
+              <Field
+                label="Price (AED)"
+                value={addonForm.price}
+                onChange={(v) => setAddonForm((f) => ({ ...f, price: v }))}
+                type="number"
+                placeholder="0.00"
+                t={t}
+              />
+              <Field
+                label="Group"
+                value={addonForm.group}
+                onChange={(v) => setAddonForm((f) => ({ ...f, group: v }))}
+                placeholder="e.g. Sauces"
+                t={t}
+              />
+              <button
+                onClick={saveAddon}
+                style={{
+                  background: t.accent,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
+              >
+                {editingAddon ? "Save Changes" : "Add Add-On"}
+              </button>
+            </Modal>
+          )}
+        </>
       )}
     </div>
   );
@@ -2962,7 +3166,7 @@ export default function Dashboard({ user, onLogout }) {
       case "orders":
         return <OrdersPage t={t} />;
       case "menu":
-        return <MenuPage t={t} />;
+        return <MenuPage t={t} user={user} />;
       default:
         return (
           <div className="p-8 flex items-center justify-center min-h-[50vh]">
