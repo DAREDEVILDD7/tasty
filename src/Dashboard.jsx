@@ -1951,6 +1951,8 @@ function MenuPage({ t, user }) {
   const [loadError, setLoadError] = useState(null);
   const [orderDirty, setOrderDirty] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [itemOrderDirty, setItemOrderDirty] = useState(false);
+  const [savingItemOrder, setSavingItemOrder] = useState(false);
 
   const [section, setSection] = useState("menu");
   const [selectedCatId, setSelectedCatId] = useState(null);
@@ -1976,6 +1978,36 @@ function MenuPage({ t, user }) {
 
   // Derive rest_id from user role
   const restId = user?.role === "owner" ? user?.main_rest : user?.rest_id;
+
+  // Detect touch-primary device (used to swap drag handle for arrow buttons)
+  const isTouch = useRef(
+    typeof window !== "undefined" &&
+      (navigator.maxTouchPoints > 0 || "ontouchstart" in window),
+  ).current;
+
+  // ── Arrow-based reorder helpers (mobile) ───────────────────────────────────
+  const moveCat = (index, dir) => {
+    const next = [...categories];
+    const target = index + dir;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setCategories(next);
+    setOrderDirty(true);
+  };
+
+  const moveItem = (index, dir) => {
+    setCategories((prev) =>
+      prev.map((c) => {
+        if (c.id !== selectedCatId) return c;
+        const items = [...c.items];
+        const target = index + dir;
+        if (target < 0 || target >= items.length) return c;
+        [items[index], items[target]] = [items[target], items[index]];
+        return { ...c, items };
+      }),
+    );
+    setItemOrderDirty(true);
+  };
 
   // ── Fetch categories + items on mount ──────────────────────────────────────
   useEffect(() => {
@@ -2135,6 +2167,39 @@ function MenuPage({ t, user }) {
       console.error("Failed to save order:", err);
     } finally {
       setSavingOrder(false);
+    }
+  };
+
+  // ── Save item sort_order to DB ─────────────────────────────────────────────
+  const saveItemOrder = async () => {
+    if (!selectedCat) return;
+    setSavingItemOrder(true);
+    try {
+      const updates = selectedCat.items.map((item, i) =>
+        supabase
+          .from("Menu")
+          .update({ sort_order: i + 1 })
+          .eq("id", item.id),
+      );
+      await Promise.all(updates);
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id !== selectedCatId
+            ? c
+            : {
+                ...c,
+                items: c.items.map((item, i) => ({
+                  ...item,
+                  sort_order: i + 1,
+                })),
+              },
+        ),
+      );
+      setItemOrderDirty(false);
+    } catch (err) {
+      console.error("Failed to save item order:", err);
+    } finally {
+      setSavingItemOrder(false);
     }
   };
 
@@ -2482,22 +2547,57 @@ function MenuPage({ t, user }) {
           }}
           className="flex items-center gap-2 px-3 py-3 rounded-lg transition-colors duration-150"
         >
-          {/* Drag handle only — isolates drag from row clicks */}
-          <span
-            draggable
-            onDragStart={(e) => {
-              e.stopPropagation();
-              dragCat.current = i;
-            }}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              catTouchDrag.onPointerDown(cat.id, e);
-            }}
-            style={{ color: t.muted, touchAction: "none", cursor: "grab" }}
-            className="text-sm flex-shrink-0 select-none px-1 py-1 -ml-1 rounded hover:opacity-60"
-          >
-            ⠿
-          </span>
+          {/* Desktop: drag handle | Mobile: arrow buttons */}
+          {isTouch ? (
+            <div className="flex flex-col gap-0.5 flex-shrink-0 -ml-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveCat(i, -1);
+                }}
+                disabled={i === 0}
+                style={{
+                  color: i === 0 ? t.muted : t.subtle,
+                  opacity: i === 0 ? 0.3 : 1,
+                  lineHeight: 1,
+                }}
+                className="text-xs px-1 rounded active:scale-90 transition-transform"
+              >
+                ▲
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveCat(i, 1);
+                }}
+                disabled={i === categories.length - 1}
+                style={{
+                  color: i === categories.length - 1 ? t.muted : t.subtle,
+                  opacity: i === categories.length - 1 ? 0.3 : 1,
+                  lineHeight: 1,
+                }}
+                className="text-xs px-1 rounded active:scale-90 transition-transform"
+              >
+                ▼
+              </button>
+            </div>
+          ) : (
+            <span
+              draggable
+              onDragStart={(e) => {
+                e.stopPropagation();
+                dragCat.current = i;
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                catTouchDrag.onPointerDown(cat.id, e);
+              }}
+              style={{ color: t.muted, touchAction: "none", cursor: "grab" }}
+              className="text-sm flex-shrink-0 select-none px-1 py-1 -ml-1 rounded hover:opacity-60"
+            >
+              ⠿
+            </span>
+          )}
           <span
             style={{ fontFamily: "'Lato', sans-serif" }}
             className="text-sm font-semibold flex-1 truncate"
@@ -2576,7 +2676,7 @@ function MenuPage({ t, user }) {
           No items yet. Tap "+ Add Item" to get started.
         </div>
       )}
-      {catItems.map((item) => (
+      {catItems.map((item, itemIdx) => (
         <div
           key={item.id}
           ref={(el) => {
@@ -2594,22 +2694,51 @@ function MenuPage({ t, user }) {
           }}
           className="flex items-center gap-3 rounded-xl px-3 py-3 mb-2.5 transition-colors hover:shadow-sm"
         >
-          {/* Drag handle only */}
-          <span
-            draggable
-            onDragStart={(e) => {
-              e.stopPropagation();
-              dragItem.current = item.id;
-            }}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              itemTouchDrag.onPointerDown(item.id, e);
-            }}
-            style={{ color: t.muted, touchAction: "none", cursor: "grab" }}
-            className="text-xs select-none flex-shrink-0 px-1 py-2 -ml-1 rounded hover:opacity-60"
-          >
-            ⠿
-          </span>
+          {/* Desktop: drag handle | Mobile: arrow buttons */}
+          {isTouch ? (
+            <div className="flex flex-col gap-0.5 flex-shrink-0 -ml-1">
+              <button
+                onClick={() => moveItem(itemIdx, -1)}
+                disabled={itemIdx === 0}
+                style={{
+                  color: itemIdx === 0 ? t.muted : t.subtle,
+                  opacity: itemIdx === 0 ? 0.3 : 1,
+                  lineHeight: 1,
+                }}
+                className="text-xs px-1 rounded active:scale-90 transition-transform"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => moveItem(itemIdx, 1)}
+                disabled={itemIdx === catItems.length - 1}
+                style={{
+                  color: itemIdx === catItems.length - 1 ? t.muted : t.subtle,
+                  opacity: itemIdx === catItems.length - 1 ? 0.3 : 1,
+                  lineHeight: 1,
+                }}
+                className="text-xs px-1 rounded active:scale-90 transition-transform"
+              >
+                ▼
+              </button>
+            </div>
+          ) : (
+            <span
+              draggable
+              onDragStart={(e) => {
+                e.stopPropagation();
+                dragItem.current = item.id;
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                itemTouchDrag.onPointerDown(item.id, e);
+              }}
+              style={{ color: t.muted, touchAction: "none", cursor: "grab" }}
+              className="text-xs select-none flex-shrink-0 px-1 py-2 -ml-1 rounded hover:opacity-60"
+            >
+              ⠿
+            </span>
+          )}
           <div
             style={{ background: t.surface2, border: `1px solid ${t.border}` }}
             className="w-11 h-11 rounded-lg flex-shrink-0 select-none overflow-hidden"
@@ -2678,6 +2807,22 @@ function MenuPage({ t, user }) {
           </div>
         </div>
       ))}
+      {/* Save Item Order button — appears after arrow reorder */}
+      {itemOrderDirty && (
+        <button
+          onClick={saveItemOrder}
+          disabled={savingItemOrder}
+          style={{
+            background: t.accent,
+            color: "#fff",
+            fontFamily: "'Lato', sans-serif",
+            opacity: savingItemOrder ? 0.7 : 1,
+          }}
+          className="mt-1 mb-2 w-full py-2 rounded-lg text-xs font-semibold tracking-wider hover:opacity-90 active:scale-95 transition-all"
+        >
+          {savingItemOrder ? "Saving…" : "💾 Save Item Order"}
+        </button>
+      )}
     </div>
   );
 
