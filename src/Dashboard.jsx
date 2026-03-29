@@ -1966,6 +1966,9 @@ function MenuPage({ t, user }) {
   const [editingItem, setEditingItem] = useState(null);
   const [editingAddon, setEditingAddon] = useState(null);
   const [newCatName, setNewCatName] = useState("");
+  const [editingCatId, setEditingCatId] = useState(null);
+  const [editingCatName, setEditingCatName] = useState("");
+  const [savingCatName, setSavingCatName] = useState(false);
   const [itemForm, setItemForm] = useState({
     name: "",
     price: "",
@@ -2257,6 +2260,37 @@ function MenuPage({ t, user }) {
     }
   };
 
+  // ── Rename category → immediate DB ────────────────────────────────────────
+  const renameCat = async () => {
+    const trimmed = editingCatName.trim();
+    if (!trimmed || !editingCatId) {
+      setEditingCatId(null);
+      return;
+    }
+    const original = categories.find((c) => c.id === editingCatId)?.name;
+    if (trimmed === original) {
+      setEditingCatId(null);
+      return;
+    }
+    setSavingCatName(true);
+    // Optimistic update
+    setCategories((p) =>
+      p.map((c) => (c.id === editingCatId ? { ...c, name: trimmed } : c)),
+    );
+    const { error } = await supabase
+      .from("Categories")
+      .update({ name: trimmed })
+      .eq("id", editingCatId);
+    if (error) {
+      console.error("Failed to rename category:", error);
+      setCategories((p) =>
+        p.map((c) => (c.id === editingCatId ? { ...c, name: original } : c)),
+      );
+    }
+    setSavingCatName(false);
+    setEditingCatId(null);
+  };
+
   // ── Item visible toggle → immediate DB ────────────────────────────────────
   const toggleItem = async (cid, iid) => {
     const cat = categories.find((c) => c.id === cid);
@@ -2384,11 +2418,17 @@ function MenuPage({ t, user }) {
     }
     const p = parseFloat(itemForm.price);
     if (isNaN(p) || p < 0) {
-      setItemForm((f) => ({ ...f, imageError: "Price must be a valid positive number." }));
+      setItemForm((f) => ({
+        ...f,
+        imageError: "Price must be a valid positive number.",
+      }));
       return;
     }
     if (!restId) {
-      setItemForm((f) => ({ ...f, imageError: "No restaurant found. Please re-login." }));
+      setItemForm((f) => ({
+        ...f,
+        imageError: "No restaurant found. Please re-login.",
+      }));
       return;
     }
     if (!selectedCatId) {
@@ -2408,7 +2448,12 @@ function MenuPage({ t, user }) {
         const ext = itemForm.imageFile.name.split(".").pop().toLowerCase();
         const filePath = `${restId}/menu/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-        console.log("[saveItem] Uploading to bucket:", bucketName, "path:", filePath);
+        console.log(
+          "[saveItem] Uploading to bucket:",
+          bucketName,
+          "path:",
+          filePath,
+        );
 
         const { error: uploadErr } = await supabase.storage
           .from(bucketName)
@@ -2460,7 +2505,9 @@ function MenuPage({ t, user }) {
                           name: itemForm.name.trim(),
                           price: p,
                           description: itemForm.description.trim() || null,
-                          image_path: itemForm.imageFile ? imagePath : i.image_path,
+                          image_path: itemForm.imageFile
+                            ? imagePath
+                            : i.image_path,
                         }
                       : i,
                   ),
@@ -2468,7 +2515,7 @@ function MenuPage({ t, user }) {
           ),
         );
 
-      // ── INSERT new item ──────────────────────────────────────────────────
+        // ── INSERT new item ──────────────────────────────────────────────────
       } else {
         const sortOrder = (selectedCat?.items?.length || 0) + 1;
         const payload = {
@@ -2518,7 +2565,6 @@ function MenuPage({ t, user }) {
       }
 
       setShowItemModal(false);
-
     } catch (err) {
       console.error("[saveItem] Caught error:", err);
       setItemForm((f) => ({
@@ -2728,28 +2774,87 @@ function MenuPage({ t, user }) {
       {selectedCat && (
         <div
           style={{ borderBottom: `1px solid ${t.border}` }}
-          className="flex items-center justify-between pb-4 mb-4"
+          className="flex items-center justify-between pb-4 mb-4 gap-3"
         >
-          <p
-            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
-            className="text-xl font-bold"
-          >
-            {selectedCat.name}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => deleteCat(selectedCat.id)}
-              style={{ color: t.subtle }}
-              className="text-sm hover:text-red-500 transition-colors p-1"
+          {/* Category name — static or inline edit */}
+          {editingCatId === selectedCat.id ? (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <input
+                autoFocus
+                value={editingCatName}
+                onChange={(e) => setEditingCatName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") renameCat();
+                  if (e.key === "Escape") setEditingCatId(null);
+                }}
+                style={{
+                  background: t.surface2,
+                  border: `1px solid ${t.accent}`,
+                  color: t.text,
+                  fontFamily: "'Cormorant Garamond', serif",
+                }}
+                className="text-xl font-bold rounded-lg px-3 py-1 outline-none flex-1 min-w-0"
+              />
+              <button
+                onClick={renameCat}
+                disabled={savingCatName}
+                style={{
+                  background: t.accent,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0 hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+              >
+                {savingCatName ? "…" : "Save"}
+              </button>
+              <button
+                onClick={() => setEditingCatId(null)}
+                style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs px-2 py-1.5 rounded-lg flex-shrink-0 hover:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <p
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                color: t.text,
+              }}
+              className="text-xl font-bold truncate flex-1 min-w-0"
             >
-              🗑️
-            </button>
-            <Toggle
-              value={selectedCat.visible}
-              onChange={() => toggleCat(selectedCat.id)}
-              t={t}
-            />
-          </div>
+              {selectedCat.name}
+            </p>
+          )}
+          {/* Action buttons — only shown when not in rename mode */}
+          {editingCatId !== selectedCat.id && (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => {
+                  setEditingCatId(selectedCat.id);
+                  setEditingCatName(selectedCat.name);
+                }}
+                style={{ color: t.subtle }}
+                className="text-sm hover:opacity-60 transition-opacity p-1"
+                title="Rename category"
+              >
+                ✏️
+              </button>
+              <button
+                onClick={() => deleteCat(selectedCat.id)}
+                style={{ color: t.subtle }}
+                className="text-sm hover:text-red-500 transition-colors p-1"
+                title="Delete category"
+              >
+                🗑️
+              </button>
+              <Toggle
+                value={selectedCat.visible}
+                onChange={() => toggleCat(selectedCat.id)}
+                t={t}
+              />
+            </div>
+          )}
         </div>
       )}
       {catItems.length === 0 && (
@@ -2864,7 +2969,7 @@ function MenuPage({ t, user }) {
               style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
               className="text-sm font-bold mt-0.5"
             >
-              AED {Number(item.price).toFixed(2)}
+              KD {Number(item.price).toFixed(3)}
             </p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -3207,7 +3312,7 @@ function MenuPage({ t, user }) {
                               }}
                               className="text-xs font-bold mt-0.5"
                             >
-                              AED {addon.price.toFixed(2)}
+                              KD {addon.price.toFixed(3)}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -3268,7 +3373,9 @@ function MenuPage({ t, user }) {
           {showItemModal && (
             <Modal
               title={editingItem ? "Edit Item" : "Add Item"}
-              onClose={() => { setShowItemModal(false); }}
+              onClose={() => {
+                setShowItemModal(false);
+              }}
               t={t}
             >
               {/* ── Error banner — shown at top so it's never missed ── */}
@@ -3282,7 +3389,10 @@ function MenuPage({ t, user }) {
                   className="rounded-xl px-4 py-3 mb-5 flex items-start gap-2"
                 >
                   <span className="text-base flex-shrink-0">⚠️</span>
-                  <p style={{ color: "#B83232" }} className="text-sm leading-snug">
+                  <p
+                    style={{ color: "#B83232" }}
+                    className="text-sm leading-snug"
+                  >
                     {itemForm.imageError}
                   </p>
                 </div>
@@ -3430,11 +3540,11 @@ function MenuPage({ t, user }) {
 
               {/* ── Price ── */}
               <Field
-                label="Price (AED)"
+                label="Price (KD)"
                 value={itemForm.price}
                 onChange={(v) => setItemForm((f) => ({ ...f, price: v }))}
                 type="number"
-                placeholder="0.00"
+                placeholder="0.000"
                 t={t}
               />
 
@@ -3472,11 +3582,11 @@ function MenuPage({ t, user }) {
                 t={t}
               />
               <Field
-                label="Price (AED)"
+                label="Price (KD)"
                 value={addonForm.price}
                 onChange={(v) => setAddonForm((f) => ({ ...f, price: v }))}
                 type="number"
-                placeholder="0.00"
+                placeholder="0.000"
                 t={t}
               />
               <Field
