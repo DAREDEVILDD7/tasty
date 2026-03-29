@@ -1944,7 +1944,7 @@ function OrdersPage({ t }) {
 // ─── Menu Page ────────────────────────────────────────────────────────────────
 function MenuPage({ t, user }) {
   // categories shape: { id, name, visible, sort_order, items: [...] }
-  // items shape: { id, name, price, is_available, visible, description, image_path, sort_order, categ_id, rest_id, emoji }
+  // items shape: { id, name, price, is_available, visible, description, image_path, sort_order, categ_id, rest_id }
   const [categories, setCategories] = useState([]);
   const [addons, setAddons] = useState(INITIAL_ADDONS);
   const [loading, setLoading] = useState(true);
@@ -1953,7 +1953,7 @@ function MenuPage({ t, user }) {
   const [savingOrder, setSavingOrder] = useState(false);
   const [itemOrderDirty, setItemOrderDirty] = useState(false);
   const [savingItemOrder, setSavingItemOrder] = useState(false);
-  // Snapshots of last-saved order — used to detect real changes vs round-trips
+  // Snapshots of last-saved order for dirty detection
   const savedCatOrder = useRef([]);
   const savedItemOrder = useRef({});
 
@@ -1969,8 +1969,10 @@ function MenuPage({ t, user }) {
   const [itemForm, setItemForm] = useState({
     name: "",
     price: "",
-    emoji: "🍽️",
     description: "",
+    imageFile: null,
+    imagePreview: null,
+    imageError: "",
   });
   const [addonForm, setAddonForm] = useState({
     name: "",
@@ -2050,7 +2052,7 @@ function MenuPage({ t, user }) {
 
         if (itemErr) throw itemErr;
 
-        // Map emoji from name/description (not in schema, default to 🍽️)
+        // Group items by category
         const itemsBycat = {};
         (items || []).forEach((item) => {
           const cid = item.categ_id;
@@ -2060,13 +2062,13 @@ function MenuPage({ t, user }) {
 
         const built = cats.map((c) => ({
           ...c,
-          enabled: c.visible, // alias for UI consistency
+          enabled: c.visible,
           items: itemsBycat[c.id] || [],
         }));
 
         setCategories(built);
         setSelectedCatId(built[0]?.id || null);
-        // Snapshot DB order so we can detect actual changes
+        // Snapshot DB order for dirty detection
         savedCatOrder.current = built.map((c) => c.id);
         savedItemOrder.current = Object.fromEntries(
           built.map((c) => [c.id, c.items.map((i) => i.id)]),
@@ -2240,41 +2242,17 @@ function MenuPage({ t, user }) {
 
   // ── Delete category → DB ───────────────────────────────────────────────────
   const deleteCat = async (id) => {
-    // Compute remaining order optimistically
-    const remaining = categories.filter((c) => c.id !== id);
-    const resequenced = remaining.map((c, i) => ({ ...c, sort_order: i + 1 }));
-
-    // Optimistic UI update
-    setCategories(resequenced);
+    // Optimistic remove from UI
+    setCategories((p) => p.filter((c) => c.id !== id));
     if (selectedCatId === id) {
-      setSelectedCatId(resequenced[0]?.id || null);
+      const remaining = categories.filter((c) => c.id !== id);
+      setSelectedCatId(remaining[0]?.id || null);
     }
     setMobilePanel("categories");
-
-    // Update snapshot so dirty flags stay clean after delete
-    savedCatOrder.current = resequenced.map((c) => c.id);
-
-    try {
-      // Delete the category
-      const { error: delError } = await supabase
-        .from("Categories")
-        .delete()
-        .eq("id", id);
-      if (delError) throw delError;
-
-      // Resequence sort_order for all remaining categories in DB
-      if (resequenced.length > 0) {
-        await Promise.all(
-          resequenced.map((c) =>
-            supabase
-              .from("Categories")
-              .update({ sort_order: c.sort_order })
-              .eq("id", c.id),
-          ),
-        );
-      }
-    } catch (error) {
+    const { error } = await supabase.from("Categories").delete().eq("id", id);
+    if (error) {
       console.error("Failed to delete category:", error);
+      // Re-fetch to restore correct state
       window.location.reload();
     }
   };
@@ -2359,50 +2337,26 @@ function MenuPage({ t, user }) {
 
   // ── Delete item → DB ───────────────────────────────────────────────────────
   const deleteItem = async (cid, iid) => {
-    // Compute remaining items with resequenced sort_order
-    const cat = categories.find((c) => c.id === cid);
-    const remaining = (cat?.items || []).filter((i) => i.id !== iid);
-    const resequenced = remaining.map((item, i) => ({ ...item, sort_order: i + 1 }));
-
-    // Optimistic UI update
     setCategories((p) =>
-      p.map((c) => (c.id !== cid ? c : { ...c, items: resequenced })),
+      p.map((c) =>
+        c.id !== cid ? c : { ...c, items: c.items.filter((i) => i.id !== iid) },
+      ),
     );
-
-    // Update item order snapshot for this category
-    savedItemOrder.current = {
-      ...savedItemOrder.current,
-      [cid]: resequenced.map((i) => i.id),
-    };
-
-    try {
-      // Delete the item
-      const { error: delError } = await supabase
-        .from("Menu")
-        .delete()
-        .eq("id", iid);
-      if (delError) throw delError;
-
-      // Resequence sort_order for remaining items in DB
-      if (resequenced.length > 0) {
-        await Promise.all(
-          resequenced.map((item) =>
-            supabase
-              .from("Menu")
-              .update({ sort_order: item.sort_order })
-              .eq("id", item.id),
-          ),
-        );
-      }
-    } catch (error) {
-      console.error("Failed to delete item:", error);
-    }
+    const { error } = await supabase.from("Menu").delete().eq("id", iid);
+    if (error) console.error("Failed to delete item:", error);
   };
 
   // ── Open item modal ────────────────────────────────────────────────────────
   const openAddItem = () => {
     setEditingItem(null);
-    setItemForm({ name: "", price: "", emoji: "🍽️", description: "" });
+    setItemForm({
+      name: "",
+      price: "",
+      description: "",
+      imageFile: null,
+      imagePreview: null,
+      imageError: "",
+    });
     setShowItemModal(true);
   };
   const openEditItem = (item) => {
@@ -2410,29 +2364,89 @@ function MenuPage({ t, user }) {
     setItemForm({
       name: item.name,
       price: String(item.price),
-      emoji: item.emoji || "🍽️",
       description: item.description || "",
+      imageFile: null,
+      imagePreview:
+        item.image_path && item.image_path.trim() !== ""
+          ? item.image_path
+          : null,
+      imageError: "",
     });
     setShowItemModal(true);
   };
 
   // ── Save item → INSERT or UPDATE DB ───────────────────────────────────────
   const saveItem = async () => {
+    // ── Client-side validation ───────────────────────────────────────────────
+    if (!itemForm.name.trim()) {
+      setItemForm((f) => ({ ...f, imageError: "Item name is required." }));
+      return;
+    }
     const p = parseFloat(itemForm.price);
-    if (!itemForm.name.trim() || isNaN(p)) return;
+    if (isNaN(p) || p < 0) {
+      setItemForm((f) => ({ ...f, imageError: "Price must be a valid positive number." }));
+      return;
+    }
+    if (!restId) {
+      setItemForm((f) => ({ ...f, imageError: "No restaurant found. Please re-login." }));
+      return;
+    }
+    if (!selectedCatId) {
+      setItemForm((f) => ({ ...f, imageError: "No category selected." }));
+      return;
+    }
+
     setSavingItem(true);
+    setItemForm((f) => ({ ...f, imageError: "" }));
+
     try {
+      // ── Upload image if a new file was selected ──────────────────────────
+      let imagePath = editingItem?.image_path || "/foodlogo.jpg";
+
+      if (itemForm.imageFile) {
+        const bucketName = "feastrush-menu";
+        const ext = itemForm.imageFile.name.split(".").pop().toLowerCase();
+        const filePath = `${restId}/menu/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+        console.log("[saveItem] Uploading to bucket:", bucketName, "path:", filePath);
+
+        const { error: uploadErr } = await supabase.storage
+          .from(bucketName)
+          .upload(filePath, itemForm.imageFile, { upsert: false });
+
+        if (uploadErr) {
+          console.error("[saveItem] Upload error:", uploadErr);
+          throw new Error("Image upload failed: " + uploadErr.message);
+        }
+
+        const { data: urlData } = supabase.storage
+          .from(bucketName)
+          .getPublicUrl(filePath);
+        imagePath = urlData?.publicUrl || "/foodlogo.jpg";
+        console.log("[saveItem] Image public URL:", imagePath);
+      }
+
+      // ── UPDATE existing item ─────────────────────────────────────────────
       if (editingItem) {
-        // UPDATE
+        const updates = {
+          name: itemForm.name.trim(),
+          price: p,
+          description: itemForm.description.trim() || null,
+        };
+        if (itemForm.imageFile) updates.image_path = imagePath;
+
+        console.log("[saveItem] Updating item id:", editingItem.id, updates);
+
         const { error } = await supabase
           .from("Menu")
-          .update({
-            name: itemForm.name.trim(),
-            price: p,
-            description: itemForm.description.trim() || null,
-          })
+          .update(updates)
           .eq("id", editingItem.id);
-        if (error) throw error;
+
+        if (error) {
+          console.error("[saveItem] Update error:", error);
+          throw new Error(error.message || "Failed to update item.");
+        }
+
         setCategories((prev) =>
           prev.map((c) =>
             c.id !== selectedCatId
@@ -2446,47 +2460,71 @@ function MenuPage({ t, user }) {
                           name: itemForm.name.trim(),
                           price: p,
                           description: itemForm.description.trim() || null,
-                          emoji: itemForm.emoji,
+                          image_path: itemForm.imageFile ? imagePath : i.image_path,
                         }
                       : i,
                   ),
                 },
           ),
         );
+
+      // ── INSERT new item ──────────────────────────────────────────────────
       } else {
-        // INSERT
         const sortOrder = (selectedCat?.items?.length || 0) + 1;
+        const payload = {
+          rest_id: restId,
+          categ_id: selectedCatId,
+          name: itemForm.name.trim(),
+          price: p,
+          description: itemForm.description.trim() || null,
+          image_path: imagePath,
+          is_available: true,
+          visible: true,
+          recommended: false,
+          sort_order: sortOrder,
+        };
+
+        console.log("[saveItem] Inserting payload:", payload);
+
         const { data, error } = await supabase
           .from("Menu")
-          .insert({
-            rest_id: restId,
-            categ_id: selectedCatId,
-            name: itemForm.name.trim(),
-            price: p,
-            description: itemForm.description.trim() || null,
-            image_path: "",
-            is_available: true,
-            visible: true,
-            recommended: false,
-            sort_order: sortOrder,
-          })
+          .insert(payload)
           .select()
           .single();
-        if (error) throw error;
+
+        if (error) {
+          console.error("[saveItem] Insert error:", error);
+          throw new Error(error.message || "Failed to insert item.");
+        }
+
+        console.log("[saveItem] Inserted successfully:", data);
+
         setCategories((prev) =>
           prev.map((c) =>
             c.id !== selectedCatId
               ? c
-              : {
-                  ...c,
-                  items: [...c.items, { ...data, emoji: itemForm.emoji }],
-                },
+              : { ...c, items: [...c.items, { ...data }] },
           ),
         );
+
+        // Update item order snapshot for new item
+        savedItemOrder.current = {
+          ...savedItemOrder.current,
+          [selectedCatId]: [
+            ...(savedItemOrder.current[selectedCatId] || []),
+            data.id,
+          ],
+        };
       }
+
       setShowItemModal(false);
+
     } catch (err) {
-      console.error("Failed to save item:", err);
+      console.error("[saveItem] Caught error:", err);
+      setItemForm((f) => ({
+        ...f,
+        imageError: err.message || "Something went wrong. Please try again.",
+      }));
     } finally {
       setSavingItem(false);
     }
@@ -2566,24 +2604,6 @@ function MenuPage({ t, user }) {
   };
 
   const addonGroups = [...new Set(addons.map((a) => a.group))];
-  const EMOJIS = [
-    "🍽️",
-    "🍛",
-    "🍜",
-    "🥞",
-    "☕",
-    "🍚",
-    "🥭",
-    "🍋",
-    "🍲",
-    "🥗",
-    "🍗",
-    "🥩",
-    "🧆",
-    "🫔",
-    "🥘",
-    "🍱",
-  ];
 
   const CategoryList = () => (
     <div className="flex flex-col gap-0.5">
@@ -2811,12 +2831,12 @@ function MenuPage({ t, user }) {
               src={
                 item.image_path && item.image_path.trim() !== ""
                   ? item.image_path
-                  : "/logo.png"
+                  : "/foodlogo.jpg"
               }
               alt={item.name}
               className="w-full h-full object-cover rounded-lg"
               onError={(e) => {
-                e.currentTarget.src = "/logo.png";
+                e.currentTarget.src = "/foodlogo.jpg";
               }}
             />
           </div>
@@ -3248,33 +3268,126 @@ function MenuPage({ t, user }) {
           {showItemModal && (
             <Modal
               title={editingItem ? "Edit Item" : "Add Item"}
-              onClose={() => setShowItemModal(false)}
+              onClose={() => { setShowItemModal(false); }}
               t={t}
             >
+              {/* ── Error banner — shown at top so it's never missed ── */}
+              {itemForm.imageError && (
+                <div
+                  style={{
+                    background: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="rounded-xl px-4 py-3 mb-5 flex items-start gap-2"
+                >
+                  <span className="text-base flex-shrink-0">⚠️</span>
+                  <p style={{ color: "#B83232" }} className="text-sm leading-snug">
+                    {itemForm.imageError}
+                  </p>
+                </div>
+              )}
+
+              {/* ── Image Upload ── */}
               <div className="mb-5">
                 <label
                   style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
                   className="text-xs font-bold tracking-widest uppercase block mb-2"
                 >
-                  Icon
+                  Item Image{" "}
+                  <span
+                    style={{ color: t.muted }}
+                    className="normal-case font-normal"
+                  >
+                    (optional)
+                  </span>
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {EMOJIS.map((e) => (
-                    <button
-                      key={e}
-                      onClick={() => setItemForm((f) => ({ ...f, emoji: e }))}
-                      style={{
-                        background:
-                          itemForm.emoji === e ? t.accentBg : t.surface2,
-                        border: `1px solid ${itemForm.emoji === e ? t.accent : t.border2}`,
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="item-image-upload"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                      setItemForm((f) => ({
+                        ...f,
+                        imageError: "Image must be under 5 MB.",
+                      }));
+                      return;
+                    }
+                    const preview = URL.createObjectURL(file);
+                    setItemForm((f) => ({
+                      ...f,
+                      imageFile: file,
+                      imagePreview: preview,
+                      imageError: "",
+                    }));
+                  }}
+                />
+                <label
+                  htmlFor="item-image-upload"
+                  className="flex flex-col items-center justify-center rounded-xl overflow-hidden transition-all hover:opacity-80 active:scale-[0.98]"
+                  style={{
+                    background: t.surface2,
+                    border: `2px dashed ${itemForm.imagePreview ? t.accent : t.border2}`,
+                    cursor: "pointer",
+                    minHeight: 140,
+                  }}
+                >
+                  {itemForm.imagePreview ? (
+                    <img
+                      src={itemForm.imagePreview}
+                      alt="Preview"
+                      className="w-full object-cover"
+                      style={{ maxHeight: 180 }}
+                      onError={(e) => {
+                        e.currentTarget.src = "/foodlogo.jpg";
                       }}
-                      className="w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all"
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-6 px-4 text-center">
+                      <span className="text-3xl">🖼️</span>
+                      <p
+                        style={{
+                          color: t.subtle,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="text-sm font-medium"
+                      >
+                        Tap to upload image
+                      </p>
+                      <p
+                        style={{
+                          color: t.muted,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="text-xs"
+                      >
+                        PNG, JPG, WEBP · max 5 MB
+                      </p>
+                    </div>
+                  )}
+                </label>
+                {itemForm.imagePreview && (
+                  <button
+                    onClick={() =>
+                      setItemForm((f) => ({
+                        ...f,
+                        imageFile: null,
+                        imagePreview: null,
+                      }))
+                    }
+                    style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                    className="text-xs mt-2 hover:opacity-60 transition-opacity"
+                  >
+                    ✕ Remove image
+                  </button>
+                )}
               </div>
+
+              {/* ── Item Name ── */}
               <Field
                 label="Item Name"
                 value={itemForm.name}
@@ -3282,6 +3395,40 @@ function MenuPage({ t, user }) {
                 placeholder="e.g. Chicken Wrap"
                 t={t}
               />
+
+              {/* ── Description (optional) ── */}
+              <div className="mb-5">
+                <label
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs font-semibold tracking-widest uppercase block mb-2"
+                >
+                  Description{" "}
+                  <span
+                    style={{ color: t.muted }}
+                    className="normal-case font-normal"
+                  >
+                    (optional)
+                  </span>
+                </label>
+                <textarea
+                  value={itemForm.description}
+                  onChange={(e) =>
+                    setItemForm((f) => ({ ...f, description: e.target.value }))
+                  }
+                  placeholder="A short description of the item…"
+                  rows={2}
+                  style={{
+                    background: t.surface2,
+                    border: `1px solid ${t.border2}`,
+                    color: t.text,
+                    fontFamily: "'Lato', sans-serif",
+                    resize: "none",
+                  }}
+                  className="w-full rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 transition-all"
+                />
+              </div>
+
+              {/* ── Price ── */}
               <Field
                 label="Price (AED)"
                 value={itemForm.price}
@@ -3290,6 +3437,8 @@ function MenuPage({ t, user }) {
                 placeholder="0.00"
                 t={t}
               />
+
+              {/* ── Submit ── */}
               <button
                 onClick={saveItem}
                 disabled={savingItem}
