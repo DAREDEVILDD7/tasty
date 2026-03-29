@@ -2143,6 +2143,7 @@ function MenuPage({ t, user }) {
         return { ...c, items };
       }),
     );
+    setItemOrderDirty(true);
     dragItem.current = null;
     overItem.current = null;
   };
@@ -2912,6 +2913,21 @@ function MenuPage({ t, user }) {
                     {label}
                   </button>
                 ))}
+                {section === "menu" && itemOrderDirty && (
+                  <button
+                    onClick={saveItemOrder}
+                    disabled={savingItemOrder}
+                    style={{
+                      background: t.green,
+                      color: "#fff",
+                      fontFamily: "'Lato', sans-serif",
+                      opacity: savingItemOrder ? 0.7 : 1,
+                    }}
+                    className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wide hover:opacity-90 transition-all active:scale-95"
+                  >
+                    {savingItemOrder ? "Saving…" : "💾 Save Item Order"}
+                  </button>
+                )}
                 <button
                   onClick={section === "menu" ? openAddItem : openAddAddon}
                   style={{
@@ -2965,17 +2981,34 @@ function MenuPage({ t, user }) {
                   </button>
                 )}
                 {section === "menu" && mobilePanel === "items" && (
-                  <button
-                    onClick={openAddItem}
-                    style={{
-                      background: t.accent,
-                      color: "#fff",
-                      fontFamily: "'Lato', sans-serif",
-                    }}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                  >
-                    + Add Item
-                  </button>
+                  <>
+                    {itemOrderDirty && (
+                      <button
+                        onClick={saveItemOrder}
+                        disabled={savingItemOrder}
+                        style={{
+                          background: t.green,
+                          color: "#fff",
+                          fontFamily: "'Lato', sans-serif",
+                          opacity: savingItemOrder ? 0.7 : 1,
+                        }}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                      >
+                        {savingItemOrder ? "Saving…" : "💾 Save"}
+                      </button>
+                    )}
+                    <button
+                      onClick={openAddItem}
+                      style={{
+                        background: t.accent,
+                        color: "#fff",
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    >
+                      + Add Item
+                    </button>
+                  </>
                 )}
                 {section === "addons" && (
                   <button
