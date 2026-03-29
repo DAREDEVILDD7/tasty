@@ -1953,6 +1953,9 @@ function MenuPage({ t, user }) {
   const [savingOrder, setSavingOrder] = useState(false);
   const [itemOrderDirty, setItemOrderDirty] = useState(false);
   const [savingItemOrder, setSavingItemOrder] = useState(false);
+  // Snapshots of last-saved order — used to detect real changes vs round-trips
+  const savedCatOrder = useRef([]);
+  const savedItemOrder = useRef({});
 
   const [section, setSection] = useState("menu");
   const [selectedCatId, setSelectedCatId] = useState(null);
@@ -2063,6 +2066,11 @@ function MenuPage({ t, user }) {
 
         setCategories(built);
         setSelectedCatId(built[0]?.id || null);
+        // Snapshot DB order so we can detect actual changes
+        savedCatOrder.current = built.map((c) => c.id);
+        savedItemOrder.current = Object.fromEntries(
+          built.map((c) => [c.id, c.items.map((i) => i.id)]),
+        );
       } catch (err) {
         console.error(err);
         setLoadError("Failed to load menu. " + (err.message || ""));
@@ -2232,17 +2240,41 @@ function MenuPage({ t, user }) {
 
   // ── Delete category → DB ───────────────────────────────────────────────────
   const deleteCat = async (id) => {
-    // Optimistic remove from UI
-    setCategories((p) => p.filter((c) => c.id !== id));
+    // Compute remaining order optimistically
+    const remaining = categories.filter((c) => c.id !== id);
+    const resequenced = remaining.map((c, i) => ({ ...c, sort_order: i + 1 }));
+
+    // Optimistic UI update
+    setCategories(resequenced);
     if (selectedCatId === id) {
-      const remaining = categories.filter((c) => c.id !== id);
-      setSelectedCatId(remaining[0]?.id || null);
+      setSelectedCatId(resequenced[0]?.id || null);
     }
     setMobilePanel("categories");
-    const { error } = await supabase.from("Categories").delete().eq("id", id);
-    if (error) {
+
+    // Update snapshot so dirty flags stay clean after delete
+    savedCatOrder.current = resequenced.map((c) => c.id);
+
+    try {
+      // Delete the category
+      const { error: delError } = await supabase
+        .from("Categories")
+        .delete()
+        .eq("id", id);
+      if (delError) throw delError;
+
+      // Resequence sort_order for all remaining categories in DB
+      if (resequenced.length > 0) {
+        await Promise.all(
+          resequenced.map((c) =>
+            supabase
+              .from("Categories")
+              .update({ sort_order: c.sort_order })
+              .eq("id", c.id),
+          ),
+        );
+      }
+    } catch (error) {
       console.error("Failed to delete category:", error);
-      // Re-fetch to restore correct state
       window.location.reload();
     }
   };
@@ -2327,13 +2359,44 @@ function MenuPage({ t, user }) {
 
   // ── Delete item → DB ───────────────────────────────────────────────────────
   const deleteItem = async (cid, iid) => {
+    // Compute remaining items with resequenced sort_order
+    const cat = categories.find((c) => c.id === cid);
+    const remaining = (cat?.items || []).filter((i) => i.id !== iid);
+    const resequenced = remaining.map((item, i) => ({ ...item, sort_order: i + 1 }));
+
+    // Optimistic UI update
     setCategories((p) =>
-      p.map((c) =>
-        c.id !== cid ? c : { ...c, items: c.items.filter((i) => i.id !== iid) },
-      ),
+      p.map((c) => (c.id !== cid ? c : { ...c, items: resequenced })),
     );
-    const { error } = await supabase.from("Menu").delete().eq("id", iid);
-    if (error) console.error("Failed to delete item:", error);
+
+    // Update item order snapshot for this category
+    savedItemOrder.current = {
+      ...savedItemOrder.current,
+      [cid]: resequenced.map((i) => i.id),
+    };
+
+    try {
+      // Delete the item
+      const { error: delError } = await supabase
+        .from("Menu")
+        .delete()
+        .eq("id", iid);
+      if (delError) throw delError;
+
+      // Resequence sort_order for remaining items in DB
+      if (resequenced.length > 0) {
+        await Promise.all(
+          resequenced.map((item) =>
+            supabase
+              .from("Menu")
+              .update({ sort_order: item.sort_order })
+              .eq("id", item.id),
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Failed to delete item:", error);
+    }
   };
 
   // ── Open item modal ────────────────────────────────────────────────────────
@@ -2968,7 +3031,6 @@ function MenuPage({ t, user }) {
                 )}
                 {section === "menu" && mobilePanel === "items" && (
                   <>
-
                     <button
                       onClick={openAddItem}
                       style={{
