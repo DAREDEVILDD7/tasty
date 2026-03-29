@@ -2913,21 +2913,7 @@ function MenuPage({ t, user }) {
                     {label}
                   </button>
                 ))}
-                {section === "menu" && itemOrderDirty && (
-                  <button
-                    onClick={saveItemOrder}
-                    disabled={savingItemOrder}
-                    style={{
-                      background: t.green,
-                      color: "#fff",
-                      fontFamily: "'Lato', sans-serif",
-                      opacity: savingItemOrder ? 0.7 : 1,
-                    }}
-                    className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wide hover:opacity-90 transition-all active:scale-95"
-                  >
-                    {savingItemOrder ? "Saving…" : "💾 Save Item Order"}
-                  </button>
-                )}
+
                 <button
                   onClick={section === "menu" ? openAddItem : openAddAddon}
                   style={{
