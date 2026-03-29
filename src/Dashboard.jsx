@@ -2968,21 +2968,7 @@ function MenuPage({ t, user }) {
                 )}
                 {section === "menu" && mobilePanel === "items" && (
                   <>
-                    {itemOrderDirty && (
-                      <button
-                        onClick={saveItemOrder}
-                        disabled={savingItemOrder}
-                        style={{
-                          background: t.green,
-                          color: "#fff",
-                          fontFamily: "'Lato', sans-serif",
-                          opacity: savingItemOrder ? 0.7 : 1,
-                        }}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                      >
-                        {savingItemOrder ? "Saving…" : "💾 Save"}
-                      </button>
-                    )}
+
                     <button
                       onClick={openAddItem}
                       style={{
