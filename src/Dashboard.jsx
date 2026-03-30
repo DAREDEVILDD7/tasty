@@ -1976,6 +1976,8 @@ function MenuPage({ t, user }) {
     imageFile: null,
     imagePreview: null,
     imageError: "",
+    avail_from: "", // "HH:MM" Kuwait time, "" = no limit
+    avail_to: "", // "HH:MM" Kuwait time, "" = no limit
   });
   const [addonForm, setAddonForm] = useState({
     name: "",
@@ -1983,9 +1985,69 @@ function MenuPage({ t, user }) {
     group: "",
   });
   const [savingItem, setSavingItem] = useState(false);
+  // Confirm-delete dialog: { type: "cat"|"item", catId, itemId, name }
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  // Time-limit override warning: item that user tried to toggle against its window
+  const [timeBlockedItem, setTimeBlockedItem] = useState(null);
 
   // Derive rest_id from user role
   const restId = user?.role === "owner" ? user?.main_rest : user?.rest_id;
+
+  // ── Kuwait time helpers (UTC+3, no DST) ───────────────────────────────────
+  const getKuwaitHHMM = () => {
+    const now = new Date();
+    const totalMins =
+      (now.getUTCHours() * 60 + now.getUTCMinutes() + 180) % 1440;
+    return `${String(Math.floor(totalMins / 60)).padStart(2, "0")}:${String(totalMins % 60).padStart(2, "0")}`;
+  };
+
+  // Returns "in-window" | "out-window" | "no-limit"
+  // Handles overnight spans e.g. 22:00 → 02:00
+  const getWindowStatus = (avail_from, avail_to) => {
+    if (!avail_from || !avail_to) return "no-limit";
+    const now = getKuwaitHHMM();
+    const overnight = avail_to <= avail_from; // e.g. 22:00 → 02:00
+    const inWindow = overnight
+      ? now >= avail_from || now < avail_to
+      : now >= avail_from && now < avail_to;
+    return inWindow ? "in-window" : "out-window";
+  };
+
+  // Auto-check every minute: set is_available based on window, reset at avail_from
+  useEffect(() => {
+    const tick = async () => {
+      const nowHHMM = getKuwaitHHMM();
+      const toUpdate = []; // { id, is_available }
+      setCategories((prev) => {
+        const next = prev.map((c) => ({
+          ...c,
+          items: c.items.map((item) => {
+            const { avail_from, avail_to } = item;
+            if (!avail_from || !avail_to) return item;
+            const status = getWindowStatus(avail_from, avail_to);
+            // At the start of the window → restore to In Stock
+            if (nowHHMM === avail_from.slice(0, 5) && !item.is_available) {
+              toUpdate.push({ id: item.id, is_available: true });
+              return { ...item, is_available: true };
+            }
+            // Outside window → mark Out of Stock
+            if (status === "out-window" && item.is_available) {
+              toUpdate.push({ id: item.id, is_available: false });
+              return { ...item, is_available: false };
+            }
+            return item;
+          }),
+        }));
+        return next;
+      });
+      for (const { id, is_available } of toUpdate) {
+        await supabase.from("Menu").update({ is_available }).eq("id", id);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 60_000);
+    return () => clearInterval(interval);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Detect touch-primary device (used to swap drag handle for arrow buttons)
   const isTouch = useRef(
@@ -2048,7 +2110,7 @@ function MenuPage({ t, user }) {
         const { data: items, error: itemErr } = await supabase
           .from("Menu")
           .select(
-            "id, name, price, is_available, visible, description, image_path, sort_order, categ_id, recommended",
+            "id, name, price, is_available, visible, description, image_path, sort_order, categ_id, recommended, avail_from, avail_to",
           )
           .eq("rest_id", restId)
           .order("sort_order", { ascending: true });
@@ -2244,18 +2306,42 @@ function MenuPage({ t, user }) {
   };
 
   // ── Delete category → DB ───────────────────────────────────────────────────
-  const deleteCat = async (id) => {
-    // Optimistic remove from UI
-    setCategories((p) => p.filter((c) => c.id !== id));
-    if (selectedCatId === id) {
-      const remaining = categories.filter((c) => c.id !== id);
-      setSelectedCatId(remaining[0]?.id || null);
-    }
+  const confirmDeleteCat = (id) => {
+    const cat = categories.find((c) => c.id === id);
+    setConfirmDelete({
+      type: "cat",
+      catId: id,
+      name: cat?.name || "this category",
+    });
+  };
+
+  const executeDeleteCat = async () => {
+    const { catId } = confirmDelete;
+    setConfirmDelete(null);
+    const remaining = categories.filter((c) => c.id !== catId);
+    const resequenced = remaining.map((c, i) => ({ ...c, sort_order: i + 1 }));
+    setCategories(resequenced);
+    if (selectedCatId === catId) setSelectedCatId(resequenced[0]?.id || null);
     setMobilePanel("categories");
-    const { error } = await supabase.from("Categories").delete().eq("id", id);
-    if (error) {
-      console.error("Failed to delete category:", error);
-      // Re-fetch to restore correct state
+    savedCatOrder.current = resequenced.map((c) => c.id);
+    try {
+      const { error: delErr } = await supabase
+        .from("Categories")
+        .delete()
+        .eq("id", catId);
+      if (delErr) throw delErr;
+      if (resequenced.length > 0) {
+        await Promise.all(
+          resequenced.map((c) =>
+            supabase
+              .from("Categories")
+              .update({ sort_order: c.sort_order })
+              .eq("id", c.id),
+          ),
+        );
+      }
+    } catch (err) {
+      console.error("Failed to delete category:", err);
       window.location.reload();
     }
   };
@@ -2330,11 +2416,20 @@ function MenuPage({ t, user }) {
     }
   };
 
-  // ── Item is_available toggle → immediate DB ────────────────────────────────
+  // ── Item is_available toggle → immediate DB (with time-window guard) ────────
   const toggleItemStock = async (cid, iid) => {
     const cat = categories.find((c) => c.id === cid);
     const item = cat?.items.find((i) => i.id === iid);
     if (!item) return;
+
+    const status = getWindowStatus(item.avail_from, item.avail_to);
+
+    // Trying to mark In Stock but outside the time window → block and warn
+    if (!item.is_available && status === "out-window") {
+      setTimeBlockedItem(item);
+      return;
+    }
+
     const newVal = !item.is_available;
     setCategories((p) =>
       p.map((c) =>
@@ -2369,15 +2464,54 @@ function MenuPage({ t, user }) {
     }
   };
 
-  // ── Delete item → DB ───────────────────────────────────────────────────────
-  const deleteItem = async (cid, iid) => {
+  // ── Delete item → confirmation then DB ────────────────────────────────────
+  const confirmDeleteItem = (cid, iid) => {
+    const item = categories
+      .find((c) => c.id === cid)
+      ?.items.find((i) => i.id === iid);
+    setConfirmDelete({
+      type: "item",
+      catId: cid,
+      itemId: iid,
+      name: item?.name || "this item",
+    });
+  };
+
+  const executeDeleteItem = async () => {
+    const { catId, itemId } = confirmDelete;
+    setConfirmDelete(null);
+    const cat = categories.find((c) => c.id === catId);
+    const remaining = (cat?.items || []).filter((i) => i.id !== itemId);
+    const resequenced = remaining.map((item, i) => ({
+      ...item,
+      sort_order: i + 1,
+    }));
     setCategories((p) =>
-      p.map((c) =>
-        c.id !== cid ? c : { ...c, items: c.items.filter((i) => i.id !== iid) },
-      ),
+      p.map((c) => (c.id !== catId ? c : { ...c, items: resequenced })),
     );
-    const { error } = await supabase.from("Menu").delete().eq("id", iid);
-    if (error) console.error("Failed to delete item:", error);
+    savedItemOrder.current = {
+      ...savedItemOrder.current,
+      [catId]: resequenced.map((i) => i.id),
+    };
+    try {
+      const { error: delErr } = await supabase
+        .from("Menu")
+        .delete()
+        .eq("id", itemId);
+      if (delErr) throw delErr;
+      if (resequenced.length > 0) {
+        await Promise.all(
+          resequenced.map((item) =>
+            supabase
+              .from("Menu")
+              .update({ sort_order: item.sort_order })
+              .eq("id", item.id),
+          ),
+        );
+      }
+    } catch (err) {
+      console.error("Failed to delete item:", err);
+    }
   };
 
   // ── Open item modal ────────────────────────────────────────────────────────
@@ -2390,6 +2524,8 @@ function MenuPage({ t, user }) {
       imageFile: null,
       imagePreview: null,
       imageError: "",
+      avail_from: "",
+      avail_to: "",
     });
     setShowItemModal(true);
   };
@@ -2405,6 +2541,8 @@ function MenuPage({ t, user }) {
           ? item.image_path
           : null,
       imageError: "",
+      avail_from: item.avail_from ? item.avail_from.slice(0, 5) : "",
+      avail_to: item.avail_to ? item.avail_to.slice(0, 5) : "",
     });
     setShowItemModal(true);
   };
@@ -2477,6 +2615,8 @@ function MenuPage({ t, user }) {
           name: itemForm.name.trim(),
           price: p,
           description: itemForm.description.trim() || null,
+          avail_from: itemForm.avail_from || null,
+          avail_to: itemForm.avail_to || null,
         };
         if (itemForm.imageFile) updates.image_path = imagePath;
 
@@ -2505,6 +2645,8 @@ function MenuPage({ t, user }) {
                           name: itemForm.name.trim(),
                           price: p,
                           description: itemForm.description.trim() || null,
+                          avail_from: itemForm.avail_from || null,
+                          avail_to: itemForm.avail_to || null,
                           image_path: itemForm.imageFile
                             ? imagePath
                             : i.image_path,
@@ -2529,6 +2671,8 @@ function MenuPage({ t, user }) {
           visible: true,
           recommended: false,
           sort_order: sortOrder,
+          avail_from: itemForm.avail_from || null,
+          avail_to: itemForm.avail_to || null,
         };
 
         console.log("[saveItem] Inserting payload:", payload);
@@ -2841,7 +2985,7 @@ function MenuPage({ t, user }) {
                 ✏️
               </button>
               <button
-                onClick={() => deleteCat(selectedCat.id)}
+                onClick={() => confirmDeleteCat(selectedCat.id)}
                 style={{ color: t.subtle }}
                 className="text-sm hover:text-red-500 transition-colors p-1"
                 title="Delete category"
@@ -2971,6 +3115,24 @@ function MenuPage({ t, user }) {
             >
               KD {Number(item.price).toFixed(3)}
             </p>
+            {item.avail_from && item.avail_to && (
+              <p
+                style={{
+                  color:
+                    getWindowStatus(item.avail_from, item.avail_to) ===
+                    "in-window"
+                      ? t.green
+                      : t.muted,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-xs mt-0.5"
+              >
+                🕐 {item.avail_from.slice(0, 5)} – {item.avail_to.slice(0, 5)}{" "}
+                KWT
+                {getWindowStatus(item.avail_from, item.avail_to) ===
+                  "out-window" && " · Outside window"}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
@@ -2981,7 +3143,7 @@ function MenuPage({ t, user }) {
               ✏️
             </button>
             <button
-              onClick={() => deleteItem(selectedCatId, item.id)}
+              onClick={() => confirmDeleteItem(selectedCatId, item.id)}
               style={{ color: t.subtle }}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm"
             >
@@ -3548,6 +3710,193 @@ function MenuPage({ t, user }) {
                 t={t}
               />
 
+              {/* ── Availability Window ── */}
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-2">
+                  <label
+                    style={{
+                      color: t.subtle,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-semibold tracking-widest uppercase"
+                  >
+                    Availability Window{" "}
+                    <span
+                      style={{ color: t.muted }}
+                      className="normal-case font-normal"
+                    >
+                      (Kuwait time · optional)
+                    </span>
+                  </label>
+                  {(itemForm.avail_from || itemForm.avail_to) && (
+                    <button
+                      onClick={() =>
+                        setItemForm((f) => ({
+                          ...f,
+                          avail_from: "",
+                          avail_to: "",
+                        }))
+                      }
+                      style={{
+                        color: t.muted,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-xs hover:opacity-60 transition-opacity"
+                    >
+                      ✕ Clear
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: "avail_from", label: "From" },
+                    { key: "avail_to", label: "To" },
+                  ].map(({ key, label }) => (
+                    <div key={key}>
+                      <p
+                        style={{
+                          color: t.muted,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="text-xs mb-1.5"
+                      >
+                        {label}
+                      </p>
+                      {/* Custom styled time picker — scrollable hour/minute columns */}
+                      {(() => {
+                        const val = itemForm[key] || "";
+                        const [hh, mm] = val ? val.split(":") : ["", ""];
+                        const curH = hh !== "" ? parseInt(hh) : null;
+                        const curM = mm !== "" ? parseInt(mm) : null;
+                        const setTime = (h, m) => {
+                          if (h === null || m === null) {
+                            setItemForm((f) => ({ ...f, [key]: "" }));
+                          } else {
+                            setItemForm((f) => ({
+                              ...f,
+                              [key]: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+                            }));
+                          }
+                        };
+                        return (
+                          <div
+                            style={{
+                              background: t.surface2,
+                              border: `1px solid ${val ? t.accent : t.border2}`,
+                              borderRadius: 12,
+                              overflow: "hidden",
+                            }}
+                          >
+                            {/* Display row */}
+                            <div
+                              style={{
+                                borderBottom: `1px solid ${t.border}`,
+                                background: val ? t.accentBg : "transparent",
+                              }}
+                              className="flex items-center justify-center gap-1 py-2.5"
+                            >
+                              <span
+                                style={{
+                                  color: val ? t.accent : t.muted,
+                                  fontFamily: "'Lato', sans-serif",
+                                }}
+                                className="text-lg font-bold tabular-nums"
+                              >
+                                {val
+                                  ? `${String(curH).padStart(2, "0")}:${String(curM).padStart(2, "0")}`
+                                  : "--:--"}
+                              </span>
+                            </div>
+                            {/* Hour scroll */}
+                            <div className="flex" style={{ height: 120 }}>
+                              <div
+                                className="flex-1 overflow-y-auto"
+                                style={{ scrollbarWidth: "none" }}
+                              >
+                                {Array.from({ length: 24 }, (_, h) => (
+                                  <button
+                                    key={h}
+                                    onClick={() => setTime(h, curM ?? 0)}
+                                    style={{
+                                      background:
+                                        curH === h ? t.accent : "transparent",
+                                      color: curH === h ? "#fff" : t.subtle,
+                                      fontFamily: "'Lato', sans-serif",
+                                      width: "100%",
+                                      display: "block",
+                                      padding: "5px 0",
+                                      fontSize: 13,
+                                      fontWeight: curH === h ? 700 : 400,
+                                      borderBottom: `1px solid ${t.border}`,
+                                    }}
+                                  >
+                                    {String(h).padStart(2, "0")}
+                                  </button>
+                                ))}
+                              </div>
+                              <div style={{ width: 1, background: t.border }} />
+                              {/* Minute scroll — 5-min steps */}
+                              <div
+                                className="flex-1 overflow-y-auto"
+                                style={{ scrollbarWidth: "none" }}
+                              >
+                                {Array.from(
+                                  { length: 12 },
+                                  (_, i) => i * 5,
+                                ).map((m) => (
+                                  <button
+                                    key={m}
+                                    onClick={() => setTime(curH ?? 0, m)}
+                                    style={{
+                                      background:
+                                        curM === m ? t.accent : "transparent",
+                                      color: curM === m ? "#fff" : t.subtle,
+                                      fontFamily: "'Lato', sans-serif",
+                                      width: "100%",
+                                      display: "block",
+                                      padding: "5px 0",
+                                      fontSize: 13,
+                                      fontWeight: curM === m ? 700 : 400,
+                                      borderBottom: `1px solid ${t.border}`,
+                                    }}
+                                  >
+                                    :{String(m).padStart(2, "0")}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
+                {itemForm.avail_from && itemForm.avail_to && (
+                  <p
+                    style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                    className="text-xs mt-2"
+                  >
+                    Item available {itemForm.avail_from} → {itemForm.avail_to}{" "}
+                    KWT daily.
+                    {itemForm.avail_to <= itemForm.avail_from
+                      ? " (overnight span)"
+                      : ""}
+                  </p>
+                )}
+                {(itemForm.avail_from || itemForm.avail_to) &&
+                  !(itemForm.avail_from && itemForm.avail_to) && (
+                    <p
+                      style={{
+                        color: "#B45309",
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-xs mt-2"
+                    >
+                      ⚠️ Set both From and To to enable the time window.
+                    </p>
+                  )}
+              </div>
+
               {/* ── Submit ── */}
               <button
                 onClick={saveItem}
@@ -3608,6 +3957,176 @@ function MenuPage({ t, user }) {
                 {editingAddon ? "Save Changes" : "Add Add-On"}
               </button>
             </Modal>
+          )}
+
+          {/* ── Confirm Delete Modal ─────────────────────────────────────── */}
+          {confirmDelete && (
+            <div
+              className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
+              style={{
+                background: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(4px)",
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setConfirmDelete(null);
+              }}
+            >
+              <div
+                style={{
+                  background: t.surface,
+                  border: `1px solid ${t.border}`,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              >
+                <div className="px-6 pt-6 pb-2 text-center">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"
+                    style={{
+                      background: "#FEF2F2",
+                      border: "1px solid #FECACA",
+                    }}
+                  >
+                    🗑️
+                  </div>
+                  <p
+                    style={{
+                      color: t.text,
+                      fontFamily: "'Cormorant Garamond', serif",
+                    }}
+                    className="text-xl font-bold mb-2"
+                  >
+                    {confirmDelete.type === "cat"
+                      ? "Delete Category?"
+                      : "Delete Item?"}
+                  </p>
+                  <p
+                    style={{ color: t.subtle }}
+                    className="text-sm leading-relaxed"
+                  >
+                    <span style={{ color: t.text }} className="font-semibold">
+                      "{confirmDelete.name}"
+                    </span>{" "}
+                    will be permanently deleted.
+                    {confirmDelete.type === "cat" &&
+                      " All items in this category will also be removed."}{" "}
+                    This cannot be undone.
+                  </p>
+                </div>
+                <div className="p-6 flex gap-3">
+                  <button
+                    onClick={() => setConfirmDelete(null)}
+                    style={{
+                      background: t.surface2,
+                      border: `1px solid ${t.border2}`,
+                      color: t.text,
+                    }}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() =>
+                      confirmDelete.type === "cat"
+                        ? executeDeleteCat()
+                        : executeDeleteItem()
+                    }
+                    style={{ background: "#B83232", color: "#fff" }}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Time-Limit Override Warning ──────────────────────────────── */}
+          {timeBlockedItem && (
+            <div
+              className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
+              style={{
+                background: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(4px)",
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setTimeBlockedItem(null);
+              }}
+            >
+              <div
+                style={{
+                  background: t.surface,
+                  border: `1px solid ${t.border}`,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              >
+                <div className="px-6 pt-6 pb-2 text-center">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"
+                    style={{
+                      background: "#FFFBEB",
+                      border: "1px solid #FCD34D",
+                    }}
+                  >
+                    🕐
+                  </div>
+                  <p
+                    style={{
+                      color: t.text,
+                      fontFamily: "'Cormorant Garamond', serif",
+                    }}
+                    className="text-xl font-bold mb-2"
+                  >
+                    Outside Availability Window
+                  </p>
+                  <p
+                    style={{ color: t.subtle }}
+                    className="text-sm leading-relaxed mb-1"
+                  >
+                    <span style={{ color: t.text }} className="font-semibold">
+                      "{timeBlockedItem.name}"
+                    </span>{" "}
+                    is set to be available only between{" "}
+                    <span style={{ color: t.accent }} className="font-semibold">
+                      {timeBlockedItem.avail_from?.slice(0, 5)} –{" "}
+                      {timeBlockedItem.avail_to?.slice(0, 5)} KWT
+                    </span>
+                    .
+                  </p>
+                  <p
+                    style={{ color: t.subtle }}
+                    className="text-sm leading-relaxed"
+                  >
+                    To mark it In Stock now, first update the time window to
+                    include the current time, or clear the time limit entirely.
+                  </p>
+                </div>
+                <div className="p-6 flex gap-3">
+                  <button
+                    onClick={() => setTimeBlockedItem(null)}
+                    style={{
+                      background: t.surface2,
+                      border: `1px solid ${t.border2}`,
+                      color: t.text,
+                    }}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
+                  >
+                    Got it
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTimeBlockedItem(null);
+                      openEditItem(timeBlockedItem);
+                    }}
+                    style={{ background: t.accent, color: "#fff" }}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    ✏️ Edit Time Limit
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}
