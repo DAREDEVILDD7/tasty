@@ -1,1025 +1,1439 @@
 import { useState, useEffect, useCallback } from "react";
+import { supabase } from "./supabaseClient";
 
-// ─── Global CSS ───────────────────────────────────────────────────────────────
-const GLOBAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+/* ─────────────────────────────────────────────────────────────────────────────
+   UTILITY HELPERS
+───────────────────────────────────────────────────────────────────────────── */
+const fmt = (n) => `KD ${Number(n || 0).toFixed(3)}`;
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+const getRestIdFromUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("rest_id");
+};
 
-  :root {
-    --brand:       #E8340A;
-    --brand-light: #FF5733;
-    --brand-bg:    #FFF5F2;
-    --gold:        #D4A017;
-    --dark:        #1A1209;
-    --charcoal:    #2D2416;
-    --warm-gray:   #6B5E4E;
-    --muted:       #A89880;
-    --border:      #EDE3D8;
-    --surface:     #FFFDF9;
-    --card:        #FFFFFF;
-    --sidebar-w:   340px;
-    --shadow-sm:   0 2px 8px rgba(26,18,9,.07);
-    --shadow-md:   0 6px 24px rgba(26,18,9,.10);
-    --shadow-lg:   0 16px 48px rgba(26,18,9,.14);
-    --radius:      16px;
-    --radius-sm:   10px;
-    --font-display:'Playfair Display', Georgia, serif;
-    --font-body:   'DM Sans', sans-serif;
-    --font-mono:   'DM Mono', monospace;
-    --transition:  220ms cubic-bezier(.4,0,.2,1);
-  }
+/* ─────────────────────────────────────────────────────────────────────────────
+   ICONS
+───────────────────────────────────────────────────────────────────────────── */
+const Icon = {
+  cart: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>),
+  user: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>),
+  close: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>),
+  search: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>),
+  pin: (<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>),
+  plus: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>),
+  minus: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>),
+  trash: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>),
+  star: (<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>),
+  check: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>),
+  truck: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>),
+  clock: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>),
+  edit: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>),
+  home: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>),
+  work: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>),
+  receipt: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>),
+  whatsapp: (<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>),
+};
 
-  html, body { font-family: var(--font-body); background: #F2EDE4; color: var(--dark); }
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL STYLES
+───────────────────────────────────────────────────────────────────────────── */
+const GlobalStyle = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  @keyframes fadeUp  { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
-  @keyframes slideUp { from { transform:translateY(100%); opacity:0 } to { transform:none; opacity:1 } }
-  @keyframes pulse   { 0%,100%{ box-shadow:0 0 0 0 rgba(232,52,10,.4) } 70%{ box-shadow:0 0 0 10px rgba(232,52,10,0) } }
-  @keyframes bounce  { 0%,100%{ transform:scale(1) } 50%{ transform:scale(1.2) } }
+    :root {
+      --bg: #f6f6f6;
+      --surface: #ffffff;
+      --surface2: #f6f6f6;
+      --surface3: #ededed;
+      --border: #e8e8e8;
+      --text: #000000;
+      --text2: #545454;
+      --text3: #a0a0a0;
+      --green: #06c167;
+      --green-hover: #04a857;
+      --green-light: #e6f9f0;
+      --red: #e74c3c;
+      --warning: #ff9f0a;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 20px rgba(0,0,0,0.11);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,0.14);
+      --transition: 0.18s cubic-bezier(0.4,0,0.2,1);
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --navbar-h: 60px;
+    }
 
-  /* ── HEADER ── */
-  .site-header {
-    position: sticky; top: 0; z-index: 200;
-    background: rgba(255,253,249,.94);
-    backdrop-filter: blur(18px);
-    border-bottom: 1px solid var(--border);
-  }
-  .site-header-inner {
-    max-width: 1280px; margin: 0 auto; padding: 0 24px;
-    height: 60px; display: flex; align-items: center; gap: 16px;
-  }
-  .header-logo { font-family: var(--font-display); font-size: 22px; font-weight: 900; color: var(--brand); white-space: nowrap; letter-spacing: -.5px; }
-  .header-logo span { color: var(--gold); }
-  .header-branch { display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1; min-width: 0; }
-  .branch-label { font-size: 10px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
-  .branch-name  { font-size: 13px; font-weight: 600; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .branch-chevron { color: var(--brand); font-size: 11px; flex-shrink: 0; }
-  .header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-  .icon-btn {
-    width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--brand-bg); color: var(--brand); font-size: 16px;
-    transition: background var(--transition), transform var(--transition); position: relative;
-  }
-  .icon-btn:hover { background: var(--brand); color: #fff; transform: scale(1.05); }
-  .badge {
-    position: absolute; top: -3px; right: -3px;
-    background: var(--brand); color: #fff; font-size: 9px; font-weight: 700;
-    font-family: var(--font-mono); width: 16px; height: 16px; border-radius: 50%;
-    border: 2px solid var(--surface); display: flex; align-items: center;
-    justify-content: center; animation: pulse 2s infinite;
-  }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+    button { font-family: var(--font); cursor: pointer; border: none; background: none; outline: none; }
+    input, textarea { font-family: var(--font); outline: none; }
 
-  /* ── PAGE LAYOUT ── */
-  .page-body {
-    max-width: 1280px; margin: 0 auto; padding: 24px 24px 48px;
-    display: grid; grid-template-columns: 1fr var(--sidebar-w);
-    gap: 24px; align-items: start;
-  }
-  .main-col { min-width: 0; }
-  .side-col  { position: sticky; top: 84px; display: flex; flex-direction: column; gap: 16px; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
 
-  /* ── LOCATION + TOGGLE ROW ── */
-  .loc-toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .loc-row { display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1; min-width: 0; margin-right: 12px; }
-  .loc-pin { color: var(--brand); font-size: 13px; flex-shrink: 0; }
-  .loc-text { font-size: 12px; font-weight: 500; color: var(--charcoal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .loc-chevron { color: var(--warm-gray); font-size: 11px; flex-shrink: 0; }
-  .delivery-toggle { display: flex; border-radius: 99px; overflow: hidden; border: 1.5px solid var(--brand); flex-shrink: 0; }
-  .toggle-btn { padding: 6px 18px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; transition: background var(--transition), color var(--transition); font-family: var(--font-body); }
-  .toggle-btn.active { background: var(--brand); color: #fff; }
-  .toggle-btn:not(.active) { background: transparent; color: var(--brand); }
+    @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes scaleIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes shimmer { 0% { background-position:-600px 0; } 100% { background-position:600px 0; } }
+    @keyframes pop     { 0%,100% { transform:scale(1); } 50% { transform:scale(1.14); } }
+    @keyframes pulse   { 0%,100% { transform:scale(1); } 50% { transform:scale(1.06); } }
+    @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
 
-  /* ── CAROUSEL ── */
-  .carousel-wrap { border-radius: var(--radius); overflow: hidden; position: relative; margin-bottom: 20px; }
-  .carousel-track { display: flex; transition: transform .55s cubic-bezier(.4,0,.2,1); }
-  .carousel-slide { min-width: 100%; height: 220px; position: relative; overflow: hidden; flex-shrink: 0; }
-  .slide-bg-emoji { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 160px; opacity: .13; }
-  .carousel-overlay { position: absolute; inset: 0; background: linear-gradient(120deg, rgba(26,18,9,.72) 0%, rgba(26,18,9,.08) 65%); display: flex; flex-direction: column; justify-content: flex-end; padding: 24px 28px; }
-  .slide-tag   { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--gold); margin-bottom: 5px; }
-  .slide-title { font-family: var(--font-display); font-size: 28px; font-weight: 900; color: #fff; line-height: 1.15; }
-  .slide-sub   { font-size: 13px; color: rgba(255,255,255,.75); margin-top: 4px; }
-  .carousel-dots { display: flex; gap: 5px; justify-content: center; padding: 8px 0 2px; }
-  .dot { width: 6px; height: 6px; border-radius: 99px; background: var(--border); cursor: pointer; transition: all .3s; }
-  .dot.active { background: var(--brand); width: 20px; }
+    .anim-fade  { animation: fadeUp  0.26s ease forwards; }
+    .anim-scale { animation: scaleIn 0.2s ease forwards; }
 
-  /* ── SEARCH ── */
-  .search-wrap { display: flex; gap: 8px; margin-bottom: 14px; }
-  .search-input-wrap { flex: 1; display: flex; align-items: center; gap: 8px; background: var(--card); border: 1.5px solid var(--border); border-radius: 99px; padding: 10px 16px; transition: border-color var(--transition), box-shadow var(--transition); }
-  .search-input-wrap:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(232,52,10,.1); }
-  .search-icon  { color: var(--muted); font-size: 14px; }
-  .search-input { border: none; outline: none; background: transparent; font-family: var(--font-body); font-size: 14px; color: var(--dark); flex: 1; }
-  .search-input::placeholder { color: var(--muted); }
-  .filter-btn { width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--card); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--charcoal); font-size: 16px; transition: all var(--transition); }
-  .filter-btn:hover { border-color: var(--brand); color: var(--brand); }
+    .skeleton {
+      background: linear-gradient(90deg, #efefef 25%, #e4e4e4 50%, #efefef 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: var(--radius-sm);
+    }
 
-  /* ── CATEGORIES ── */
-  .category-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 20px; }
-  .category-scroll::-webkit-scrollbar { display: none; }
-  .cat-pill { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 99px; border: 1.5px solid var(--border); background: var(--card); cursor: pointer; white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--warm-gray); transition: all var(--transition); flex-shrink: 0; }
-  .cat-pill.active { background: var(--brand); border-color: var(--brand); color: #fff; }
-  .cat-pill:hover:not(.active) { border-color: var(--brand); color: var(--brand); }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 2.5px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
 
-  /* ── MENU GRID ── */
-  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .section-title  { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--dark); }
-  .section-count  { font-size: 12px; color: var(--muted); }
+    /* Overlay */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.52);
+      backdrop-filter: blur(3px);
+      z-index: 200;
+      display: flex; align-items: flex-end; justify-content: center;
+      animation: scaleIn 0.18s ease;
+    }
+    @media (min-width: 640px) { .overlay { align-items: center; } }
 
-  .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    /* Sheet */
+    .sheet {
+      background: var(--surface);
+      width: 100%; max-width: 540px;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      max-height: 94vh; overflow-y: auto; position: relative;
+      animation: slideUp 0.28s cubic-bezier(0.34,1.4,0.64,1);
+    }
+    @media (min-width: 640px) { .sheet { border-radius: var(--radius-xl); max-height: 90vh; } }
 
-  .menu-card {
-    background: var(--card); border-radius: var(--radius); border: 1.5px solid var(--border);
-    display: flex; flex-direction: column; overflow: hidden; cursor: default;
-    transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
-    animation: fadeUp .3s ease both;
-  }
-  .menu-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: rgba(232,52,10,.25); }
-  .menu-card-img { width: 100%; height: 130px; display: flex; align-items: center; justify-content: center; font-size: 60px; background: linear-gradient(135deg,#FFF0EB,#FFF8F5); flex-shrink: 0; }
-  .menu-card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; gap: 3px; }
-  .veg-indicator { width: 12px; height: 12px; border-radius: 2px; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-bottom: 2px; }
-  .veg-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .veg-indicator.veg { color: #2E7D32; }
-  .veg-indicator.nonveg { color: var(--brand); }
-  .popular-badge { display: inline-flex; align-items: center; gap: 3px; background: var(--gold); color: #fff; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 99px; text-transform: uppercase; letter-spacing: .06em; width: fit-content; margin-bottom: 3px; }
-  .menu-card-name  { font-size: 14px; font-weight: 600; color: var(--dark); line-height: 1.3; }
-  .menu-card-desc  { font-size: 11px; color: var(--warm-gray); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex: 1; }
-  .menu-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-  .menu-card-price { font-size: 14px; font-weight: 700; color: var(--dark); font-family: var(--font-mono); }
+    .sheet-handle {
+      width: 40px; height: 4px; background: var(--border);
+      border-radius: 99px; margin: 14px auto 0;
+    }
 
-  .add-btn { background: var(--brand); color: #fff; border: none; border-radius: 8px; padding: 6px 16px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all var(--transition); font-family: var(--font-body); box-shadow: 0 2px 8px rgba(232,52,10,.3); }
-  .add-btn:hover { background: var(--brand-light); transform: scale(1.04); }
-  .qty-ctrl { display: flex; align-items: center; background: var(--brand); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(232,52,10,.3); }
-  .qty-btn  { width: 28px; height: 28px; border: none; background: transparent; color: #fff; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 700; transition: background var(--transition); }
-  .qty-btn:hover { background: rgba(255,255,255,.2); }
-  .qty-num  { width: 22px; text-align: center; color: #fff; font-size: 12px; font-weight: 700; font-family: var(--font-mono); }
+    /* Navbar */
+    .navbar {
+      position: sticky; top: 0; z-index: 100;
+      height: var(--navbar-h);
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .navbar-inner {
+      width: 100%; max-width: 1240px; margin: 0 auto;
+      padding: 0 16px; height: 100%;
+      display: flex; align-items: center; gap: 10px;
+    }
 
-  .empty-card { grid-column: 1/-1; display: flex; flex-direction: column; align-items: center; padding: 48px 20px; text-align: center; background: var(--card); border-radius: var(--radius); border: 1.5px solid var(--border); }
-  .empty-icon { font-size: 52px; margin-bottom: 12px; }
-  .empty-text { font-size: 16px; font-weight: 600; color: var(--charcoal); }
-  .empty-sub  { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    /* Hero */
+    .hero { position: relative; width: 100%; background: #111; overflow: hidden; height: 220px; }
+    @media (min-width: 480px) { .hero { height: 260px; } }
+    @media (min-width: 768px) { .hero { height: 300px; } }
+    @media (min-width: 1080px) { .hero { height: 340px; } }
+    .hero-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; transition: transform 0.5s ease; }
+    .hero:hover .hero-img { transform: scale(1.025); }
+    .hero-gradient {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.22) 50%, rgba(0,0,0,0.08) 100%);
+    }
+    .hero-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 16px 20px; }
+    @media (min-width: 480px) { .hero-content { padding: 20px 20px 24px; } }
 
-  /* ── SIDEBAR: RESTAURANT CARD ── */
-  .restaurant-card { background: var(--card); border-radius: var(--radius); border: 1.5px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); }
-  .restaurant-hero { height: 100px; background: linear-gradient(135deg,#1A1209,#3D2010); display: flex; align-items: center; justify-content: center; font-size: 54px; }
-  .restaurant-body { padding: 14px 16px; }
-  .restaurant-name { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
-  .meta-row { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--warm-gray); padding: 3px 0; }
+    /* Page */
+    .page-wrap {
+      max-width: 1240px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr;
+      background: var(--bg);
+    }
+    @media (min-width: 1080px) {
+      .page-wrap { grid-template-columns: 1fr 380px; gap: 28px; padding: 28px 24px 60px; align-items: start; }
+    }
 
-  /* ── SIDEBAR: CART PANEL ── */
-  .cart-panel { background: var(--card); border-radius: var(--radius); border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden; }
-  .cart-panel-header { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .cart-panel-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--dark); }
-  .cart-panel-count { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
-  .cart-panel-empty { padding: 28px 16px; text-align: center; }
-  .cp-empty-icon { font-size: 38px; margin-bottom: 8px; }
-  .cp-empty-text { font-size: 14px; font-weight: 600; color: var(--charcoal); }
-  .cp-empty-sub  { font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .cart-panel-items { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; max-height: 260px; overflow-y: auto; }
-  .cp-item { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-  .cp-item:last-child { border-bottom: none; padding-bottom: 0; }
-  .cp-emoji { font-size: 22px; flex-shrink: 0; }
-  .cp-info  { flex: 1; min-width: 0; }
-  .cp-name  { font-size: 12px; font-weight: 600; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cp-price { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
-  .cp-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
-  .cp-total { font-size: 12px; font-weight: 700; color: var(--dark); font-family: var(--font-mono); }
-  .cp-qty   { display: flex; align-items: center; background: var(--brand); border-radius: 6px; overflow: hidden; }
-  .cp-qty-btn { width: 22px; height: 22px; border: none; background: transparent; color: #fff; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 700; transition: background var(--transition); }
-  .cp-qty-btn:hover { background: rgba(255,255,255,.2); }
-  .cp-qty-num { width: 20px; text-align: center; color: #fff; font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
+    .cart-sidebar { display: none; }
+    @media (min-width: 1080px) {
+      .cart-sidebar { display: block; position: sticky; top: calc(var(--navbar-h) + 20px); }
+    }
 
-  .cp-bill { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--brand-bg); }
-  .bill-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--warm-gray); padding: 3px 0; }
-  .bill-row span:last-child { font-family: var(--font-mono); }
-  .bill-row.total { font-size: 14px; font-weight: 700; color: var(--dark); padding-top: 8px; border-top: 1.5px dashed var(--border); margin-top: 4px; }
-  .bill-row.total span:last-child { color: var(--brand); }
+    /* Category chips */
+    .cat-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .cat-row::-webkit-scrollbar { display: none; }
+    .cat-chip {
+      flex-shrink: 0; font-size: 13px; font-weight: 600;
+      padding: 7px 16px; border-radius: 99px;
+      border: 1.5px solid var(--border); background: var(--surface); color: var(--text2);
+      white-space: nowrap; transition: all var(--transition);
+    }
+    .cat-chip:hover:not(.active) { border-color: #bbb; color: var(--text); }
+    .cat-chip.active { background: var(--text); color: #fff; border-color: var(--text); }
 
-  .cp-promo { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 7px; }
-  .promo-input { flex: 1; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 12px; font-family: var(--font-mono); background: var(--card); color: var(--dark); outline: none; text-transform: uppercase; transition: border-color var(--transition); }
-  .promo-input:focus { border-color: var(--brand); }
-  .promo-apply-btn { padding: 8px 14px; border-radius: var(--radius-sm); border: none; background: var(--brand); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font-body); transition: background var(--transition); white-space: nowrap; }
-  .promo-apply-btn:hover { background: var(--brand-light); }
-  .promo-msg { padding: 0 16px 8px; font-size: 11px; font-weight: 600; }
+    /* ─── Menu Layout ─────────────────────────────────────────────────────────── */
 
-  .cp-checkout-btn {
-    display: flex; align-items: center; justify-content: space-between;
-    width: calc(100% - 32px); margin: 10px 16px 16px;
-    background: var(--brand); color: #fff; border: none; border-radius: var(--radius-sm);
-    padding: 13px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
-    font-family: var(--font-body); transition: all var(--transition);
-    box-shadow: 0 4px 14px rgba(232,52,10,.3);
-  }
-  .cp-checkout-btn:hover { background: var(--brand-light); transform: translateY(-1px); }
-  .cp-checkout-btn span:last-child { font-family: var(--font-mono); }
+    /* Default (mobile <480px): horizontal list rows, 1 column */
+    .menu-grid { display: flex; flex-direction: column; }
 
-  /* ── MOBILE CART BAR ── */
-  .mobile-cart-bar {
-    display: none; position: fixed; bottom: 16px; left: 16px; right: 16px; z-index: 199;
-    background: var(--dark); color: #fff; border-radius: 14px;
-    align-items: center; padding: 14px 18px; cursor: pointer;
-    box-shadow: var(--shadow-lg); animation: slideUp .35s ease;
-    transition: transform var(--transition);
-  }
-  .mobile-cart-bar:hover { transform: translateY(-2px); }
-  .mcb-icon  { font-size: 18px; margin-right: 10px; }
-  .mcb-info  { flex: 1; }
-  .mcb-count { font-size: 11px; color: rgba(255,255,255,.55); font-weight: 500; }
-  .mcb-label { font-size: 14px; font-weight: 700; }
-  .mcb-total { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--gold); }
-  .mcb-arrow { margin-left: 8px; color: rgba(255,255,255,.5); }
+    .menu-row {
+      display: flex; flex-direction: row; align-items: center; gap: 12px;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+      cursor: pointer; background: transparent; position: relative;
+      transition: background var(--transition);
+    }
+    .menu-row:last-child { border-bottom: none; }
+    .menu-row:active { background: #f7f7f7; }
 
-  /* ── DRAWERS ── */
-  .drawer-overlay { position: fixed; inset: 0; background: rgba(26,18,9,.52); z-index: 300; backdrop-filter: blur(4px); animation: fadeUp .2s ease; }
-  .drawer {
-    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 100%; max-width: 520px; background: var(--surface);
-    border-radius: 24px 24px 0 0; z-index: 301;
-    max-height: 92vh; overflow-y: auto;
-    animation: slideUp .3s cubic-bezier(.4,0,.2,1);
-    padding-bottom: env(safe-area-inset-bottom, 16px);
-  }
-  .drawer-handle { width: 36px; height: 4px; background: var(--border); border-radius: 99px; margin: 10px auto 0; }
-  .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 14px; }
-  .drawer-title  { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--dark); }
-  .close-btn { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; background: var(--border); color: var(--charcoal); font-size: 14px; display: flex; align-items: center; justify-content: center; transition: background var(--transition); }
-  .close-btn:hover { background: var(--brand); color: #fff; }
+    .menu-thumb-card {
+      width: 80px; height: 80px; flex-shrink: 0;
+      border-radius: var(--radius); background: var(--surface3);
+      overflow: hidden; position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .menu-thumb-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-  .drawer-items { padding: 0 20px; display: flex; flex-direction: column; gap: 14px; }
-  .d-item { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border); animation: fadeUp .2s ease; }
-  .d-item:last-child { border-bottom: none; }
-  .d-emoji { font-size: 28px; }
-  .d-info   { flex: 1; min-width: 0; }
-  .d-name   { font-size: 14px; font-weight: 600; color: var(--dark); }
-  .d-price  { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .d-right  { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
-  .d-total  { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--dark); }
+    .menu-card-body {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column; gap: 3px;
+    }
 
-  .drawer-promo  { padding: 14px 20px; border-top: 1px solid var(--border); }
-  .drawer-bill   { padding: 0 20px 14px; }
-  .drawer-pay    { padding: 0 20px 14px; }
-  .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
-  .promo-row { display: flex; gap: 8px; }
-  .promo-msg-drawer { font-size: 12px; font-weight: 600; margin-top: 6px; }
+    .menu-card-footer {
+      display: flex; align-items: center; justify-content: space-between; margin-top: 5px;
+    }
 
-  .pay-option { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; margin-bottom: 8px; transition: all var(--transition); }
-  .pay-option.selected { border-color: var(--brand); background: var(--brand-bg); }
-  .pay-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: border-color var(--transition); }
-  .pay-option.selected .pay-radio { border-color: var(--brand); }
-  .pay-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); display: none; }
-  .pay-option.selected .pay-dot { display: block; }
-  .pay-icon { font-size: 20px; }
-  .pay-name { font-size: 14px; font-weight: 600; color: var(--dark); }
+    /* Action col always hidden on mobile list */
+    .menu-row-action { display: none; }
 
-  .place-order-btn {
-    display: flex; align-items: center; justify-content: space-between;
-    width: calc(100% - 40px); margin: 0 20px 20px;
-    background: var(--brand); color: #fff; border: none; border-radius: var(--radius-sm);
-    padding: 16px 20px; font-size: 16px; font-weight: 700; cursor: pointer;
-    font-family: var(--font-body); transition: all var(--transition);
-    box-shadow: 0 4px 16px rgba(232,52,10,.35);
-  }
-  .place-order-btn:hover { background: var(--brand-light); transform: translateY(-1px); }
+    /* Mid tablet (480px-767px): 2-column vertical cards */
+    @media (min-width: 480px) and (max-width: 767px) {
+      .menu-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      }
+      .menu-row {
+        flex-direction: column; align-items: stretch; gap: 0;
+        padding: 0; border-bottom: none;
+        border-radius: var(--radius); border: 1px solid var(--border);
+        background: var(--surface); overflow: hidden;
+      }
+      .menu-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); transform: translateY(-2px); }
+      .menu-row:active { transform: scale(0.98); background: var(--surface); }
+      .menu-thumb-card {
+        width: 100%; height: 130px; border-radius: 0; flex-shrink: 0;
+      }
+      .menu-card-body { padding: 10px 11px 12px; gap: 4px; }
+      .menu-card-footer { margin-top: 8px; }
+    }
 
-  /* ── PROFILE ── */
-  .tab-bar { display: flex; border-bottom: 1.5px solid var(--border); margin: 0 20px 16px; }
-  .tab-btn { flex: 1; padding: 10px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); font-family: var(--font-body); border-bottom: 2.5px solid transparent; margin-bottom: -1.5px; transition: all var(--transition); }
-  .tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
-  .profile-section { padding: 0 20px 16px; }
-  .profile-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-  .profile-avatar { width: 66px; height: 66px; border-radius: 50%; background: linear-gradient(135deg,var(--brand),var(--brand-light)); display: flex; align-items: center; justify-content: center; font-size: 26px; color: #fff; font-weight: 700; font-family: var(--font-display); box-shadow: 0 4px 16px rgba(232,52,10,.3); flex-shrink: 0; }
-  .profile-display-name { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--dark); }
-  .profile-sub { font-size: 12px; color: var(--warm-gray); margin-top: 2px; }
-  .form-group { margin-bottom: 12px; }
-  .form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 5px; display: block; }
-  .form-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 13px; font-size: 14px; font-family: var(--font-body); background: var(--card); color: var(--dark); outline: none; transition: border-color var(--transition), box-shadow var(--transition); }
-  .form-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(232,52,10,.1); }
-  .form-row { display: flex; gap: 10px; }
-  .form-row .form-group { flex: 1; }
-  .save-btn { width: calc(100% - 40px); margin: 0 20px 24px; background: var(--brand); color: #fff; border: none; border-radius: var(--radius-sm); padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: var(--font-body); transition: all var(--transition); box-shadow: 0 4px 14px rgba(232,52,10,.3); }
-  .save-btn:hover { background: var(--brand-light); transform: translateY(-1px); }
+    /* Wide tablet / desktop (768px+): list rows with action column */
+    @media (min-width: 768px) {
+      .menu-grid { display: flex; flex-direction: column; }
+      .menu-row {
+        flex-direction: row; align-items: center; gap: 16px;
+        padding: 15px 0; border-bottom: 1px solid var(--border);
+        border-radius: 0; border: none; background: transparent;
+      }
+      .menu-row:last-child { border-bottom: none; }
+      .menu-row:active { background: #fafafa; }
+      .menu-thumb-card { width: 96px; height: 96px; border-radius: var(--radius); flex-shrink: 0; }
+      .menu-card-body { padding: 0; }
+      .menu-card-footer { display: none; }
+      .menu-row-action { display: flex; align-items: center; flex-shrink: 0; }
+    }
 
-  .addresses-wrap { padding: 0 20px 16px; }
-  .address-card { border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 13px; margin-bottom: 10px; cursor: pointer; transition: all var(--transition); }
-  .address-card.selected { border-color: var(--brand); background: var(--brand-bg); }
-  .address-card:hover:not(.selected) { border-color: rgba(232,52,10,.3); }
-  .addr-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .addr-icon    { font-size: 16px; }
-  .addr-label   { font-size: 13px; font-weight: 700; color: var(--dark); flex: 1; }
-  .addr-default-badge { font-size: 10px; background: var(--gold); color: #fff; padding: 2px 8px; border-radius: 99px; font-weight: 700; }
-  .addr-text    { font-size: 12px; color: var(--warm-gray); line-height: 1.5; }
-  .addr-actions { display: flex; gap: 10px; margin-top: 7px; }
-  .addr-btn     { font-size: 11px; font-weight: 600; color: var(--brand); background: none; border: none; cursor: pointer; padding: 0; font-family: var(--font-body); transition: color var(--transition); }
-  .addr-btn.del { color: var(--muted); }
-  .addr-btn.del:hover { color: #c0392b; }
-  .add-addr-btn { width: 100%; border: 1.5px dashed var(--border); border-radius: var(--radius-sm); padding: 13px; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--brand); font-family: var(--font-body); transition: all var(--transition); }
-  .add-addr-btn:hover { border-color: var(--brand); background: var(--brand-bg); }
+    /* Add button */
+    .add-btn {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--text); border: none; color: #fff; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+    }
+    .add-btn:hover { background: #333; transform: scale(1.08); }
+    .add-btn svg { width: 15px; height: 15px; }
 
-  /* ── MAP MODAL ── */
-  .map-modal { position: fixed; inset: 0; z-index: 400; background: rgba(26,18,9,.6); display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(4px); animation: fadeUp .2s ease; }
-  .map-sheet { width: 100%; max-width: 520px; background: var(--surface); border-radius: 24px 24px 0 0; overflow: hidden; animation: slideUp .3s cubic-bezier(.4,0,.2,1); max-height: 90vh; display: flex; flex-direction: column; }
-  .map-view { height: 230px; background: linear-gradient(135deg,#E8F5E9,#E3F2FD,#FFF3E0); position: relative; flex-shrink: 0; overflow: hidden; }
-  .map-grid { position: absolute; inset: 0; opacity: .2; background-image: linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px); background-size: 40px 40px; }
-  .map-pin  { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-100%); font-size: 36px; filter: drop-shadow(0 4px 8px rgba(232,52,10,.4)); animation: bounce 2s infinite; }
-  .map-zoom { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
-  .map-zoom-btn { width: 32px; height: 32px; background: #fff; border: 1px solid var(--border); border-radius: 7px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; box-shadow: var(--shadow-sm); }
-  .map-form { padding: 16px 20px; overflow-y: auto; }
-  .label-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-  .label-pill { padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); display: flex; align-items: center; gap: 5px; border: 1.5px solid var(--border); background: var(--card); color: var(--warm-gray); transition: all var(--transition); }
-  .label-pill.active { border-color: var(--brand); background: var(--brand-bg); color: var(--brand); }
-  .map-confirm-btn { width: 100%; background: var(--brand); color: #fff; border: none; border-radius: var(--radius-sm); padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: var(--font-body); transition: background var(--transition); margin-top: 4px; }
-  .map-confirm-btn:hover { background: var(--brand-light); }
+    /* Cart stepper — card footer on mobile/2-col */
+    .card-qty-row {
+      display: inline-flex; align-items: center;
+      background: var(--text); border-radius: 99px; overflow: hidden;
+    }
+    .card-qty-btn {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background var(--transition);
+    }
+    .card-qty-btn:hover { background: rgba(255,255,255,0.18); }
+    .card-qty-btn svg { width: 12px; height: 12px; }
+    .card-qty-num { font-size: 13px; font-weight: 800; min-width: 22px; text-align: center; color: #fff; }
 
-  /* ── TRACKING ── */
-  .tracking-wrap { padding: 0 20px 24px; }
-  .order-id-label { font-size: 11px; font-family: var(--font-mono); color: var(--muted); margin-bottom: 4px; }
-  .tracking-steps { display: flex; flex-direction: column; margin-top: 16px; }
-  .t-step  { display: flex; gap: 14px; padding-bottom: 20px; }
-  .t-step:last-child { padding-bottom: 0; }
-  .t-line  { display: flex; flex-direction: column; align-items: center; }
-  .t-dot   { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
-  .t-dot.done   { background: var(--brand); color: #fff; box-shadow: 0 0 0 4px rgba(232,52,10,.18); }
-  .t-dot.active { background: var(--brand); color: #fff; animation: pulse 1.5s infinite; }
-  .t-dot.pending{ background: var(--border); color: var(--muted); }
-  .t-conn  { width: 2px; flex: 1; min-height: 14px; margin: 3px 0; }
-  .t-conn.done   { background: var(--brand); }
-  .t-conn.pending{ background: var(--border); }
-  .t-label { font-size: 14px; font-weight: 600; color: var(--dark); }
-  .t-label.pending { color: var(--muted); font-weight: 400; }
-  .t-time  { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
-  .wa-btn  { width: 100%; background: #25D366; color: #fff; border: none; border-radius: var(--radius-sm); padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: var(--font-body); display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 22px; transition: background var(--transition); }
-  .wa-btn:hover { background: #1ebe5a; }
-  .delivery-info { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 13px; margin-top: 16px; }
-  .di-title { font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-  .di-row   { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; font-size: 12px; color: var(--warm-gray); }
-  .di-icon  { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+    /* Qty row — action col on desktop, modals */
+    .qty-row {
+      display: inline-flex; align-items: center;
+      border: 1.5px solid var(--border); border-radius: 99px; overflow: hidden;
+    }
+    .qty-btn {
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--transition); color: var(--text);
+    }
+    .qty-btn:hover { background: var(--surface2); }
+    .qty-btn svg { width: 14px; height: 14px; }
+    .qty-num { font-size: 14px; font-weight: 700; min-width: 28px; text-align: center; }
 
-  /* ── RESPONSIVE ── */
-  @media (max-width: 900px) {
-    .page-body { grid-template-columns: 1fr; padding: 14px 14px 80px; gap: 14px; }
-    .side-col  { display: none; }
-    .mobile-cart-bar { display: flex; }
-    .carousel-slide { height: 190px; }
-    .slide-title { font-size: 24px; }
-  }
-  @media (max-width: 520px) {
-    .menu-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-    .menu-card-img { height: 100px; font-size: 44px; }
-    .slide-title { font-size: 20px; }
-    .carousel-overlay { padding: 16px 18px; }
-    .carousel-slide { height: 165px; }
-  }
-  @media (max-width: 380px) {
-    .menu-grid { grid-template-columns: 1fr; }
-    .menu-card { flex-direction: row; }
-    .menu-card-img { width: 100px; height: auto; min-height: 95px; font-size: 44px; flex-shrink: 0; }
-    .site-header-inner { padding: 0 12px; gap: 10px; }
-  }
-  @media (min-width: 1100px) {
-    :root { --sidebar-w: 360px; }
-    .carousel-slide { height: 240px; }
-    .slide-title { font-size: 32px; }
-  }
-`;
+    /* Buttons */
+    .btn-primary {
+      background: var(--green); color: #fff;
+      font-size: 15px; font-weight: 700;
+      padding: 14px 24px; border-radius: var(--radius);
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    }
+    .btn-primary:hover { background: var(--green-hover); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(6,193,103,0.35); }
+    .btn-primary:active { transform: none; box-shadow: none; }
+    .btn-primary:disabled { background: var(--border); color: var(--text3); cursor: not-allowed; transform: none; box-shadow: none; }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const SLIDES = [
-  { tag:"Today's Special", title:"One Place, Endless Flavors!", sub:"Fresh & made to order",   emoji:"🍕", bg:["#1A1209","#3D2010"] },
-  { tag:"New Arrival",     title:"Smashed Beef Burger",         sub:"Juicy patties, bold flavors", emoji:"🍔", bg:["#0D1F12","#1A3520"] },
-  { tag:"Fan Favorite",    title:"UAE's Best Karak",            sub:"Brewed to perfection daily",  emoji:"☕", bg:["#1F1208","#3D2A0A"] },
-  { tag:"Weekend Special", title:"Chicken Fried Rice",          sub:"Tender chunks, wok-tossed",   emoji:"🍛", bg:["#0F1A22","#1A3040"] },
-];
-const CATS = [
-  { id:"all",     label:"All",         emoji:"🍽️" },
-  { id:"fav",     label:"Favorites",   emoji:"⭐" },
-  { id:"drinks",  label:"Drinks",      emoji:"☕" },
-  { id:"rice",    label:"Rice & Bowls",emoji:"🍛" },
-  { id:"burgers", label:"Burgers",     emoji:"🍔" },
-  { id:"pizza",   label:"Pizza",       emoji:"🍕" },
-  { id:"wraps",   label:"Wraps",       emoji:"🌯" },
-  { id:"desserts",label:"Desserts",    emoji:"🍰" },
-];
-const MENU = [
-  { id:1, name:"UAE's Best Karak",            price:2,  cat:"drinks",   veg:true,  pop:true,  emoji:"☕", desc:"Karak isn't just tea, it's a way of life in the UAE. Brewed to perfection with the perfect blend of spices." },
-  { id:2, name:"Hrishi's Chicken Fried Rice", price:20, cat:"rice",     veg:false, pop:true,  emoji:"🍛", desc:"Chicken fried rice, slightly heavy on the soy sauce with tender chunks of perfectly seasoned chicken." },
-  { id:3, name:"Ethan's Smashed Beef Burger", price:30, cat:"burgers",  veg:false, pop:false, emoji:"🍔", desc:"Inspired by Ethan's love for burgers and the nostalgia of late night orders. Double smashed patty, special sauce." },
-  { id:4, name:"Margherita Bliss Pizza",      price:35, cat:"pizza",    veg:true,  pop:false, emoji:"🍕", desc:"Classic margherita with San Marzano tomatoes, buffalo mozzarella and fresh basil on a crispy thin crust." },
-  { id:5, name:"Crispy Chicken Wrap",         price:22, cat:"wraps",    veg:false, pop:true,  emoji:"🌯", desc:"Golden-fried chicken strips with crunchy slaw, pickled jalapeños, and our signature garlic aioli in a toasted wrap." },
-  { id:6, name:"Mango Passion Cooler",        price:15, cat:"drinks",   veg:true,  pop:false, emoji:"🥭", desc:"A refreshing blend of Alphonso mango and passion fruit, lightly sweetened with a hint of lime." },
-  { id:7, name:"Cheesy Garlic Bread",         price:12, cat:"pizza",    veg:true,  pop:false, emoji:"🧀", desc:"Thick-cut sourdough loaded with roasted garlic butter and a generous blanket of melted cheddar and mozzarella." },
-  { id:8, name:"Date & Caramel Cake",         price:18, cat:"desserts", veg:true,  pop:true,  emoji:"🍰", desc:"A rich date sponge with warm toffee sauce and a scoop of vanilla bean ice cream. UAE's beloved dessert, elevated." },
-];
-const PROMOS    = { KARAK10:10, MUNCH20:20, WELCOME5:5 };
-const DELIV_FEE = 5;
-const fmt       = n => `AED ${n.toFixed(2)}`;
+    .btn-ghost {
+      border: 1.5px solid var(--border); color: var(--text);
+      font-size: 13px; font-weight: 600; padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      transition: all var(--transition);
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--surface);
+    }
+    .btn-ghost:hover { border-color: var(--text); background: var(--surface2); }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function Customer() {
+    /* Inputs */
+    .input-field {
+      width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px 14px; font-size: 14px; color: var(--text); background: var(--surface);
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .input-field::placeholder { color: var(--text3); }
+    .input-field:focus { border-color: var(--text); box-shadow: 0 0 0 3px rgba(0,0,0,0.05); }
+
+    .form-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--text3); margin-bottom: 6px; display: block;
+    }
+
+    /* Tabs */
+    .tab-btn {
+      font-size: 14px; font-weight: 600; color: var(--text3);
+      padding: 10px 2px; border-bottom: 2.5px solid transparent;
+      transition: all var(--transition); white-space: nowrap;
+    }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
+    .tab-btn:hover:not(.active) { color: var(--text2); }
+
+    /* Badge */
+    .badge {
+      background: var(--green); color: #fff; font-size: 10px; font-weight: 800;
+      border-radius: 99px; min-width: 18px; height: 18px;
+      display: flex; align-items: center; justify-content: center; padding: 0 5px;
+      animation: pop 0.22s ease;
+    }
+
+    /* Pill */
+    .pill {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; padding: 3px 7px; border-radius: 99px;
+    }
+
+    /* Variant option */
+    .var-opt {
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 11px 14px; display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; transition: all var(--transition); font-size: 14px;
+    }
+    .var-opt.sel { border-color: var(--text); background: #f7f7f7; }
+    .var-opt:hover:not(.sel) { border-color: #ccc; }
+
+    /* Address card */
+    .addr-card {
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px; cursor: pointer; transition: all var(--transition);
+    }
+    .addr-card.sel { border-color: var(--text); background: #fafafa; }
+    .addr-card:hover:not(.sel) { border-color: #bbb; }
+
+    /* Payment option */
+    .pay-opt {
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      cursor: pointer; flex: 1; transition: all var(--transition);
+      font-size: 12px; font-weight: 600;
+    }
+    .pay-opt.sel { border-color: var(--text); background: #fafafa; }
+    .pay-opt:hover:not(.sel) { border-color: #bbb; }
+
+    /* Order track */
+    .track-dot {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 14px; font-weight: 700; transition: all 0.35s ease;
+    }
+    .track-dot.done   { background: var(--green); color: #fff; }
+    .track-dot.active { background: var(--text); color: #fff; animation: pulse 1.6s infinite; }
+    .track-dot.pending{ background: var(--surface3); color: var(--text3); }
+    .track-line { width: 2px; height: 26px; margin-left: 17px; border-radius: 99px; background: var(--border); transition: background 0.4s ease; }
+    .track-line.done  { background: var(--green); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%);
+      background: var(--text); color: #fff;
+      padding: 10px 22px; border-radius: 99px;
+      font-size: 13px; font-weight: 600; z-index: 9999; white-space: nowrap;
+      animation: toastIn 0.22s ease; box-shadow: var(--shadow-md);
+    }
+    @media (min-width: 1080px) { .toast { bottom: 28px; } }
+
+    /* Mobile cart bar */
+    .mobile-cart-bar {
+      display: flex; position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--text); color: #fff;
+      padding: 14px 20px;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+      align-items: center; justify-content: space-between;
+      z-index: 150; cursor: pointer; transition: background var(--transition);
+      box-shadow: 0 -2px 16px rgba(0,0,0,0.15);
+    }
+    .mobile-cart-bar:hover { background: #222; }
+    @media (min-width: 1080px) { .mobile-cart-bar { display: none; } }
+
+    /* Search */
+    .search-wrap { position: relative; }
+    .search-icon {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      width: 15px; height: 15px; color: var(--text3); pointer-events: none;
+    }
+    .search-input {
+      width: 100%; background: var(--surface3); border: 1.5px solid transparent;
+      border-radius: 99px; padding: 11px 38px 11px 40px;
+      font-size: 14px; color: var(--text); transition: all var(--transition);
+    }
+    .search-input::placeholder { color: var(--text3); }
+    .search-input:focus { background: var(--surface); border-color: var(--border); outline: none; box-shadow: 0 0 0 3px rgba(0,0,0,0.04); }
+
+    /* Price: tablet-only inline price hidden on mobile, card-footer hidden on tablet */
+    /* Price visibility toggle by breakpoint */
+    .tablet-price { display: none; }
+    /* Mobile list (<480px): footer shows price, tablet-price hidden */
+    /* 2-col cards (480-767px): footer shows price, tablet-price hidden */
+    /* List rows (768px+): tablet-price visible, footer hidden */
+    @media (min-width: 768px) {
+      .tablet-price { display: block; }
+      .menu-card-footer { display: none !important; }
+    }
+
+    .section-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+
+    .info-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.88);
+      white-space: nowrap;
+    }
+    .info-chip svg { width: 12px; height: 12px; flex-shrink: 0; }
+  `}</style>
+);
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MINOR COMPONENTS
+───────────────────────────────────────────────────────────────────────────── */
+const Toast = ({ message }) => message ? <div className="toast">{message}</div> : null;
+
+const LoadingScreen = () => (
+  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", gap:16 }}>
+    <div className="spinner" />
+    <p style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Loading menu…</p>
+  </div>
+);
+
+const ErrorScreen = ({ message }) => (
+  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", gap:12, padding:24, textAlign:"center" }}>
+    <div style={{ fontSize:52 }}>🍽️</div>
+    <h2 style={{ fontSize:22, fontWeight:800 }}>Restaurant not found</h2>
+    <p style={{ color:"var(--text2)", fontSize:14, maxWidth:300 }}>{message || "Please check the link and try again."}</p>
+  </div>
+);
+
+const SkeletonRow = () => (
+  <div style={{ display:"flex", alignItems:"center", gap:14, padding:"16px 0", borderBottom:"1px solid var(--border)" }}>
+    <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8 }}>
+      <div className="skeleton" style={{ height:14, width:"50%", borderRadius:4 }} />
+      <div className="skeleton" style={{ height:12, width:"80%", borderRadius:4 }} />
+      <div className="skeleton" style={{ height:13, width:"25%", borderRadius:4 }} />
+    </div>
+    <div className="skeleton" style={{ width:90, height:90, borderRadius:"var(--radius)", flexShrink:0 }} />
+  </div>
+);
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MENU ITEM MODAL
+───────────────────────────────────────────────────────────────────────────── */
+const MenuItemModal = ({ item, onClose, onAddToCart }) => {
+  const [qty, setQty] = useState(1);
+  const [selectedVariants, setSelectedVariants] = useState({});
+  const [selectedAddOns, setSelectedAddOns] = useState([]);
+  const [variantGroups, setVariantGroups] = useState([]);
+  const [addOns, setAddOns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [note, setNote] = useState("");
+
   useEffect(() => {
-    const s = document.createElement("style");
-    s.textContent = GLOBAL_CSS;
-    document.head.appendChild(s);
-    return () => document.head.removeChild(s);
-  }, []);
+    const fetchExtras = async () => {
+      try {
+        const [vgRes, aoRes] = await Promise.all([
+          supabase.from("Variant_Groups").select("*, Variant_Options(*)").eq("menu_id", item.id),
+          supabase.from("Add_Ons").select("*").eq("rest_id", item.rest_id),
+        ]);
+        setVariantGroups(vgRes.data || []);
+        setAddOns(aoRes.data || []);
+        const defaults = {};
+        (vgRes.data || []).forEach(g => {
+          if (g.is_required && !g.is_multiple && g["Variant_Options"]?.length)
+            defaults[g.id] = g["Variant_Options"][0].id;
+        });
+        setSelectedVariants(defaults);
+      } catch {/* silent */} finally { setLoading(false); }
+    };
+    fetchExtras();
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [item.id, item.rest_id]);
 
-  const [slide,      setSlide]      = useState(0);
-  const [cat,        setCat]        = useState("all");
-  const [search,     setSearch]     = useState("");
-  const [cart,       setCart]       = useState({});
-  const [mode,       setMode]       = useState("Delivery");
-  const [drawer,     setDrawer]     = useState(null);
-  const [payMethod,  setPayMethod]  = useState("card");
-  const [promoInput, setPromoInput] = useState("");
-  const [appliedPromo,  setAppliedPromo]  = useState(null);
-  const [promoMsg,      setPromoMsg]      = useState(null); // { text, ok }
-  const [orderPlaced,   setOrderPlaced]   = useState(null);
-  const [profileTab,    setProfileTab]    = useState("info");
-  const [showMap,       setShowMap]       = useState(false);
-  const [editingAddr,   setEditingAddr]   = useState(null);
-  const [mapInput,      setMapInput]      = useState("");
-  const [selectedAddrId,setSelectedAddrId]= useState(1);
-  const [profile, setProfile] = useState({ name:"", phone:"", email:"", flat:"", building:"", area:"" });
-  const [addresses, setAddresses] = useState([
-    { id:1, label:"Home", icon:"🏠", text:"Al Mamzar Plaza - Al Taawun St - Al Mamzar - Sharjah", default:true },
-    { id:2, label:"Work", icon:"🏢", text:"Laffah Restaurant Building, Al Mamzar Plaza - Al Taawun St", default:false },
-  ]);
-
-  // Carousel auto-advance
-  useEffect(() => {
-    const t = setInterval(() => setSlide(s => (s+1) % SLIDES.length), 4200);
-    return () => clearInterval(t);
-  }, []);
-
-  const add    = useCallback(id => setCart(c => ({ ...c, [id]:(c[id]||0)+1 })), []);
-  const remove = useCallback(id => setCart(c => { const n={...c}; n[id]>1 ? n[id]-- : delete n[id]; return n; }), []);
-
-  const cartCount    = Object.values(cart).reduce((a,b) => a+b, 0);
-  const itemTotal    = Object.entries(cart).reduce((s,[id,q]) => { const it=MENU.find(i=>i.id===+id); return s+(it?it.price*q:0); }, 0);
-  const discount     = appliedPromo ? (PROMOS[appliedPromo]/100)*itemTotal : 0;
-  const afterDiscount= itemTotal - discount;
-  const totalWithVAT = (afterDiscount + DELIV_FEE) * 1.05;
-  const currentAddr  = addresses.find(a => a.id===selectedAddrId) || addresses[0];
-
-  const applyPromo = () => {
-    if (PROMOS[promoInput]) {
-      setAppliedPromo(promoInput);
-      setPromoMsg({ text:`✅ ${promoInput} applied — ${PROMOS[promoInput]}% off!`, ok:true });
+  const toggleVariant = (groupId, optionId, isMultiple) => {
+    if (isMultiple) {
+      setSelectedVariants(prev => {
+        const cur = Array.isArray(prev[groupId]) ? prev[groupId] : [];
+        return { ...prev, [groupId]: cur.includes(optionId) ? cur.filter(x => x !== optionId) : [...cur, optionId] };
+      });
     } else {
-      setAppliedPromo(null);
-      setPromoMsg({ text:"❌ Invalid promo code", ok:false });
+      setSelectedVariants(prev => ({ ...prev, [groupId]: optionId }));
     }
   };
 
-  const placeOrder = () => {
-    const id = "ORD-" + Math.floor(Math.random()*9000+1000);
-    setOrderPlaced({ id, time: new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) });
-    setCart({}); setAppliedPromo(null); setPromoMsg(null); setDrawer("track");
+  const toggleAddOn = id => setSelectedAddOns(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const calcExtra = () => {
+    let extra = 0;
+    variantGroups.forEach(g => {
+      const allOpts = g["Variant_Options"] || [];
+      const sel = selectedVariants[g.id];
+      if (Array.isArray(sel)) sel.forEach(sid => { const o = allOpts.find(x => x.id === sid); if (o) extra += Number(o.price_adj); });
+      else if (sel) { const o = allOpts.find(x => x.id === sel); if (o) extra += Number(o.price_adj); }
+    });
+    addOns.forEach(a => { if (selectedAddOns.includes(a.id)) extra += Number(a.price); });
+    return extra;
   };
 
-  const saveAddr = () => {
-    if (!mapInput.trim()) return;
-    if (editingAddr?.id) {
-      setAddresses(a => a.map(x => x.id===editingAddr.id ? {...x,text:mapInput,label:editingAddr.label,icon:editingAddr.icon} : x));
-    } else {
-      const n = { id:Date.now(), label:editingAddr?.label||"New", icon:editingAddr?.icon||"📍", text:mapInput, default:false };
-      setAddresses(a => [...a,n]); setSelectedAddrId(n.id);
-    }
-    setShowMap(false); setMapInput(""); setEditingAddr(null);
-  };
-
-  const filtered = MENU.filter(item => {
-    const mc = cat==="all" || item.cat===cat || (cat==="fav" && item.pop);
-    const ms = !search || item.name.toLowerCase().includes(search.toLowerCase()) || item.desc.toLowerCase().includes(search.toLowerCase());
-    return mc && ms;
+  const unitPrice = Number(item.price) + calcExtra();
+  const total = unitPrice * qty;
+  const canAdd = () => variantGroups.every(g => {
+    if (!g.is_required) return true;
+    const sel = selectedVariants[g.id];
+    return g.is_multiple ? (Array.isArray(sel) && sel.length > 0) : !!sel;
   });
-
-  // Shared bill display used in both sidebar and drawer
-  const BillRows = ({ compact }) => (
-    <>
-      <div className="bill-row"><span>Item Total</span><span>{fmt(itemTotal)}</span></div>
-      {appliedPromo && <div className="bill-row" style={{color:"#2E7D32"}}><span>Discount ({PROMOS[appliedPromo]}%)</span><span>-{fmt(discount)}</span></div>}
-      <div className="bill-row"><span>Delivery Fee</span><span>{fmt(DELIV_FEE)}</span></div>
-      <div className="bill-row"><span>VAT (5%)</span><span>{fmt((afterDiscount+DELIV_FEE)*0.05)}</span></div>
-      <div className="bill-row total"><span>Total</span><span>{fmt(totalWithVAT)}</span></div>
-    </>
-  );
+  const handleAdd = () => { if (!canAdd()) return; onAddToCart({ item, qty, selectedVariants, selectedAddOns, unitPrice, note }); onClose(); };
 
   return (
-    <>
-      {/* ── HEADER ── */}
-      <header className="site-header">
-        <div className="site-header-inner">
-          <div className="header-logo">Mix <span>&</span> Munch</div>
-          <div className="header-branch">
-            <div>
-              <div className="branch-label">Delivery from</div>
-              <div className="branch-name">Mix & Munch, Sharjah City Centre</div>
-            </div>
-            <span className="branch-chevron">▾</span>
-          </div>
-          <div className="header-actions">
-            <button className="icon-btn" onClick={() => setDrawer("cart")} aria-label="Cart">
-              🛒
-              {cartCount > 0 && <span className="badge">{cartCount}</span>}
-            </button>
-            <button className="icon-btn" onClick={() => setDrawer("profile")} aria-label="Profile">👤</button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── PAGE BODY ── */}
-      <div className="page-body">
-
-        {/* ══ MAIN COLUMN ══ */}
-        <div className="main-col">
-
-          {/* Location + toggle */}
-          <div className="loc-toggle-row">
-            <div className="loc-row" onClick={() => { setDrawer("profile"); setProfileTab("addresses"); }}>
-              <span className="loc-pin">📍</span>
-              <span className="loc-text">{currentAddr?.text || "Set delivery address"}</span>
-              <span className="loc-chevron">▾</span>
-            </div>
-            <div className="delivery-toggle">
-              {["Delivery","Pickup"].map(m => (
-                <button key={m} className={`toggle-btn${mode===m?" active":""}`} onClick={()=>setMode(m)}>{m}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Carousel – NO arrows */}
-          <div className="carousel-wrap">
-            <div className="carousel-track" style={{ transform:`translateX(-${slide*100}%)` }}>
-              {SLIDES.map((s,i) => (
-                <div key={i} className="carousel-slide"
-                  style={{ background:`linear-gradient(135deg,${s.bg[0]} 0%,${s.bg[1]} 100%)` }}>
-                  <div className="slide-bg-emoji">{s.emoji}</div>
-                  <div className="carousel-overlay">
-                    <div className="slide-tag">{s.tag}</div>
-                    <div className="slide-title">{s.title}</div>
-                    <div className="slide-sub">{s.sub}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="carousel-dots">
-              {SLIDES.map((_,i) => (
-                <div key={i} className={`dot${slide===i?" active":""}`} onClick={()=>setSlide(i)} />
-              ))}
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="search-wrap">
-            <div className="search-input-wrap">
-              <span className="search-icon">🔍</span>
-              <input className="search-input" placeholder="Search dishes..." value={search} onChange={e=>setSearch(e.target.value)} />
-              {search && <span style={{cursor:"pointer",color:"var(--muted)",fontSize:13}} onClick={()=>setSearch("")}>✕</span>}
-            </div>
-            <button className="filter-btn">⚙️</button>
-          </div>
-
-          {/* Categories */}
-          <div className="category-scroll">
-            {CATS.map(c => (
-              <button key={c.id} className={`cat-pill${cat===c.id?" active":""}`} onClick={()=>setCat(c.id)}>
-                <span>{c.emoji}</span>{c.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Section header */}
-          <div className="section-header">
-            <div className="section-title">{cat==="all" ? "All Dishes" : CATS.find(c=>c.id===cat)?.label}</div>
-            <span className="section-count">{filtered.length} item{filtered.length!==1?"s":""}</span>
-          </div>
-
-          {/* Menu grid */}
-          <div className="menu-grid">
-            {filtered.length === 0 ? (
-              <div className="empty-card">
-                <div className="empty-icon">🍽️</div>
-                <div className="empty-text">Nothing found</div>
-                <div className="empty-sub">Try a different search or category</div>
-              </div>
-            ) : filtered.map((item,idx) => (
-              <div key={item.id} className="menu-card" style={{animationDelay:`${idx*40}ms`}}>
-                <div className="menu-card-img">{item.emoji}</div>
-                <div className="menu-card-body">
-                  <div className={`veg-indicator ${item.veg?"veg":"nonveg"}`}><div className="veg-dot"/></div>
-                  {item.pop && <div className="popular-badge">⭐ Popular</div>}
-                  <div className="menu-card-name">{item.name}</div>
-                  <div className="menu-card-desc">{item.desc}</div>
-                  <div className="menu-card-footer">
-                    <div className="menu-card-price">{fmt(item.price)}</div>
-                    {!cart[item.id] ? (
-                      <button className="add-btn" onClick={()=>add(item.id)}>Add</button>
-                    ) : (
-                      <div className="qty-ctrl">
-                        <button className="qty-btn" onClick={()=>remove(item.id)}>−</button>
-                        <span className="qty-num">{cart[item.id]}</span>
-                        <button className="qty-btn" onClick={()=>add(item.id)}>+</button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div style={{ margin:"12px 16px 0", borderRadius:"var(--radius)", overflow:"hidden", height:210, background:"var(--surface3)", position:"relative" }}>
+          {item.image_path
+            ? <img src={item.image_path} alt={item.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e => { e.target.style.display="none"; }} />
+            : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:60 }}>🍽️</div>
+          }
+          {item.recommended && <span className="pill" style={{ position:"absolute", top:10, left:10, background:"#fff8e1", color:"#e65100" }}>⭐ Popular</span>}
         </div>
 
-        {/* ══ SIDEBAR (desktop only) ══ */}
-        <div className="side-col">
-          {/* Restaurant card */}
-          <div className="restaurant-card">
-            <div className="restaurant-hero">🍽️</div>
-            <div className="restaurant-body">
-              <div className="restaurant-name">Mix & Munch, Sharjah City Centre</div>
-              <div style={{display:"flex",flexDirection:"column",gap:0}}>
-                {[["🕐","6:00 AM – 11:00 PM"],["🛵","~25 min delivery"],["💰","AED 20 min. order"],["⭐","4.8 · 2,100+ reviews"]].map(([icon,text])=>(
-                  <div key={text} className="meta-row"><span>{icon}</span><span>{text}</span></div>
-                ))}
-              </div>
-            </div>
-          </div>
+        <div style={{ padding:"20px 20px 36px" }}>
+          <h2 style={{ fontSize:22, fontWeight:800, marginBottom:5, letterSpacing:"-0.4px" }}>{item.name}</h2>
+          {item.description && <p style={{ color:"var(--text2)", fontSize:14, lineHeight:1.65, marginBottom:10 }}>{item.description}</p>}
+          <p style={{ fontSize:18, fontWeight:800, marginBottom:20 }}>{fmt(item.price)}</p>
 
-          {/* Cart panel */}
-          <div className="cart-panel">
-            <div className="cart-panel-header">
-              <div className="cart-panel-title">Your Order</div>
-              {cartCount > 0 && <div className="cart-panel-count">{cartCount} item{cartCount!==1?"s":""}</div>}
-            </div>
-
-            {cartCount === 0 ? (
-              <div className="cart-panel-empty">
-                <div className="cp-empty-icon">🛒</div>
-                <div className="cp-empty-text">Cart is empty</div>
-                <div className="cp-empty-sub">Add items from the menu</div>
-              </div>
-            ) : (
-              <>
-                <div className="cart-panel-items">
-                  {Object.entries(cart).map(([id,qty]) => {
-                    const it=MENU.find(i=>i.id===+id); if(!it) return null;
-                    return (
-                      <div key={id} className="cp-item">
-                        <span className="cp-emoji">{it.emoji}</span>
-                        <div className="cp-info">
-                          <div className="cp-name">{it.name}</div>
-                          <div className="cp-price">{fmt(it.price)} × {qty}</div>
-                        </div>
-                        <div className="cp-right">
-                          <div className="cp-total">{fmt(it.price*qty)}</div>
-                          <div className="cp-qty">
-                            <button className="cp-qty-btn" onClick={()=>remove(+id)}>−</button>
-                            <span className="cp-qty-num">{qty}</span>
-                            <button className="cp-qty-btn" onClick={()=>add(+id)}>+</button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="cp-promo">
-                  <input className="promo-input" placeholder="PROMO CODE" value={promoInput}
-                    onChange={e=>{ setPromoInput(e.target.value.toUpperCase()); setPromoMsg(null); }} />
-                  <button className="promo-apply-btn" onClick={applyPromo}>Apply</button>
-                </div>
-                {promoMsg && <div className="promo-msg" style={{color:promoMsg.ok?"#2E7D32":"var(--brand)"}}>{promoMsg.text}</div>}
-
-                <div className="cp-bill"><BillRows /></div>
-
-                {mode==="Delivery" && (
-                  <div style={{padding:"10px 16px 0",display:"flex",alignItems:"center",gap:8,borderTop:"1px solid var(--border)"}}>
-                    <span style={{fontSize:18}}>{currentAddr?.icon}</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"var(--dark)"}}>{currentAddr?.label}</div>
-                      <div style={{fontSize:11,color:"var(--warm-gray)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{currentAddr?.text}</div>
+          {loading
+            ? <div style={{ display:"flex", justifyContent:"center", padding:"28px 0" }}><div className="spinner" /></div>
+            : <>
+                {variantGroups.map(g => (
+                  <div key={g.id} style={{ marginBottom:20 }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                      <p style={{ fontWeight:700, fontSize:14 }}>{g.name}</p>
+                      {g.is_required && <span className="pill" style={{ background:"#f0f0f0", color:"var(--text2)" }}>Required</span>}
                     </div>
-                    <button style={{fontSize:11,color:"var(--brand)",background:"none",border:"none",cursor:"pointer",fontWeight:700,fontFamily:"var(--font-body)",flexShrink:0}}
-                      onClick={()=>{setDrawer("profile");setProfileTab("addresses");}}>Change</button>
-                  </div>
-                )}
-                <button className="cp-checkout-btn" onClick={placeOrder}>
-                  <span>Place Order →</span><span>{fmt(totalWithVAT)}</span>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── MOBILE CART BAR ── */}
-      {cartCount > 0 && (
-        <div className="mobile-cart-bar" onClick={()=>setDrawer("cart")}>
-          <span className="mcb-icon">🛒</span>
-          <div className="mcb-info">
-            <div className="mcb-count">{cartCount} item{cartCount!==1?"s":""} in cart</div>
-            <div className="mcb-label">View Order</div>
-          </div>
-          <span className="mcb-total">{fmt(itemTotal)}</span>
-          <span className="mcb-arrow">›</span>
-        </div>
-      )}
-
-      {/* ══ DRAWERS ══ */}
-      {drawer && (
-        <>
-          <div className="drawer-overlay" onClick={()=>setDrawer(null)} />
-          <div className="drawer">
-            <div className="drawer-handle" />
-
-            {/* CART DRAWER */}
-            {drawer==="cart" && (
-              <>
-                <div className="drawer-header">
-                  <div className="drawer-title">Your Cart</div>
-                  <button className="close-btn" onClick={()=>setDrawer(null)}>✕</button>
-                </div>
-                {cartCount===0 ? (
-                  <div className="cart-panel-empty" style={{padding:"40px 20px"}}>
-                    <div className="cp-empty-icon">🛒</div>
-                    <div className="cp-empty-text">Cart is empty</div>
-                    <div className="cp-empty-sub">Add some delicious items!</div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="drawer-items">
-                      {Object.entries(cart).map(([id,qty]) => {
-                        const it=MENU.find(i=>i.id===+id); if(!it) return null;
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      {(g["Variant_Options"] || []).map(opt => {
+                        const sel = selectedVariants[g.id];
+                        const isSel = g.is_multiple ? (Array.isArray(sel) && sel.includes(opt.id)) : sel === opt.id;
                         return (
-                          <div key={id} className="d-item">
-                            <span className="d-emoji">{it.emoji}</span>
-                            <div className="d-info"><div className="d-name">{it.name}</div><div className="d-price">{fmt(it.price)} × {qty}</div></div>
-                            <div className="d-right">
-                              <div className="d-total">{fmt(it.price*qty)}</div>
-                              <div className="qty-ctrl">
-                                <button className="qty-btn" onClick={()=>remove(+id)}>−</button>
-                                <span className="qty-num">{qty}</span>
-                                <button className="qty-btn" onClick={()=>add(+id)}>+</button>
+                          <div key={opt.id} className={`var-opt${isSel ? " sel" : ""}`} onClick={() => toggleVariant(g.id, opt.id, g.is_multiple)}>
+                            <span style={{ fontWeight: isSel ? 600 : 400 }}>{opt.name}</span>
+                            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                              {Number(opt.price_adj) !== 0 && <span style={{ fontSize:13, color:"var(--text2)", fontWeight:600 }}>+{fmt(opt.price_adj)}</span>}
+                              <div style={{ width:20, height:20, borderRadius: g.is_multiple ? 4 : "50%", border:`2px solid ${isSel?"var(--text)":"var(--border)"}`, background:isSel?"var(--text)":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all var(--transition)", flexShrink:0 }}>
+                                {isSel && <span style={{ color:"#fff", width:12, height:12 }}>{Icon.check}</span>}
                               </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="drawer-promo">
-                      <div className="section-label">Promo Code</div>
-                      <div className="promo-row">
-                        <input className="promo-input" placeholder="ENTER CODE" value={promoInput}
-                          onChange={e=>{ setPromoInput(e.target.value.toUpperCase()); setPromoMsg(null); }} />
-                        <button className="promo-apply-btn" onClick={applyPromo}>Apply</button>
-                      </div>
-                      {promoMsg && <div className="promo-msg-drawer" style={{color:promoMsg.ok?"#2E7D32":"var(--brand)"}}>{promoMsg.text}</div>}
-                    </div>
-                    <div className="drawer-bill">
-                      <div className="section-label">Bill Details</div>
-                      <BillRows />
-                    </div>
-                    <div className="drawer-pay">
-                      <div className="section-label">Payment</div>
-                      {[{id:"cash",icon:"💵",name:"Cash on Delivery"},{id:"card",icon:"💳",name:"Card Machine"},{id:"online",icon:"📱",name:"Online Payment"}].map(p=>(
-                        <div key={p.id} className={`pay-option${payMethod===p.id?" selected":""}`} onClick={()=>setPayMethod(p.id)}>
-                          <div className="pay-radio"><div className="pay-dot"/></div>
-                          <span className="pay-icon">{p.icon}</span>
-                          <span className="pay-name">{p.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {mode==="Delivery" && (
-                      <div style={{padding:"0 20px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--border)",paddingTop:14}}>
-                        <span style={{fontSize:20}}>{currentAddr?.icon}</span>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:13,fontWeight:700,color:"var(--dark)"}}>{currentAddr?.label}</div>
-                          <div style={{fontSize:12,color:"var(--warm-gray)"}}>{currentAddr?.text}</div>
-                        </div>
-                        <button style={{fontSize:12,color:"var(--brand)",background:"none",border:"none",cursor:"pointer",fontWeight:700,fontFamily:"var(--font-body)",flexShrink:0}}
-                          onClick={()=>{setDrawer("profile");setProfileTab("addresses");}}>Change</button>
-                      </div>
-                    )}
-                    <button className="place-order-btn" onClick={placeOrder}>
-                      <span>Place Order →</span>
-                      <span style={{fontFamily:"var(--font-mono)"}}>{fmt(totalWithVAT)}</span>
-                    </button>
-                  </>
-                )}
-              </>
-            )}
-
-            {/* PROFILE DRAWER */}
-            {drawer==="profile" && (
-              <>
-                <div className="drawer-header">
-                  <div className="drawer-title">My Profile</div>
-                  <button className="close-btn" onClick={()=>setDrawer(null)}>✕</button>
-                </div>
-                <div className="tab-bar">
-                  {[["info","👤 Info"],["addresses","📍 Addresses"],["orders","📋 Orders"]].map(([t,l])=>(
-                    <button key={t} className={`tab-btn${profileTab===t?" active":""}`} onClick={()=>setProfileTab(t)}>{l}</button>
-                  ))}
-                </div>
-
-                {profileTab==="info" && (
-                  <div className="profile-section">
-                    <div className="profile-row">
-                      <div className="profile-avatar">{profile.name ? profile.name[0].toUpperCase() : "👤"}</div>
-                      <div>
-                        <div className="profile-display-name">{profile.name||"Your Name"}</div>
-                        <div className="profile-sub">{profile.phone||"Add phone number"}</div>
-                      </div>
-                    </div>
-                    {[["Full Name","name","Enter your name","text"],["Phone Number","phone","+971 50 000 0000","tel"],["Email","email","you@example.com","email"]].map(([label,key,ph,type])=>(
-                      <div key={key} className="form-group">
-                        <label className="form-label">{label}</label>
-                        <input className="form-input" type={type} placeholder={ph} value={profile[key]} onChange={e=>setProfile(p=>({...p,[key]:e.target.value}))} />
-                      </div>
-                    ))}
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Flat / Unit</label>
-                        <input className="form-input" placeholder="Flat 12A" value={profile.flat} onChange={e=>setProfile(p=>({...p,flat:e.target.value}))} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Building</label>
-                        <input className="form-input" placeholder="Building name" value={profile.building} onChange={e=>setProfile(p=>({...p,building:e.target.value}))} />
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Area / Landmark</label>
-                      <input className="form-input" placeholder="Nearest landmark or area" value={profile.area} onChange={e=>setProfile(p=>({...p,area:e.target.value}))} />
-                    </div>
                   </div>
-                )}
+                ))}
 
-                {profileTab==="addresses" && (
-                  <div className="addresses-wrap">
-                    {addresses.map(addr => (
-                      <div key={addr.id} className={`address-card${selectedAddrId===addr.id?" selected":""}`} onClick={()=>setSelectedAddrId(addr.id)}>
-                        <div className="addr-header">
-                          <span className="addr-icon">{addr.icon}</span>
-                          <span className="addr-label">{addr.label}</span>
-                          {addr.default && <span className="addr-default-badge">Default</span>}
-                        </div>
-                        <div className="addr-text">{addr.text}</div>
-                        <div className="addr-actions">
-                          <button className="addr-btn" onClick={e=>{e.stopPropagation();setEditingAddr(addr);setMapInput(addr.text);setShowMap(true);}}>✏️ Edit</button>
-                          <button className="addr-btn" onClick={e=>{e.stopPropagation();setAddresses(a=>a.map(x=>({...x,default:x.id===addr.id})));}}>⭐ Set Default</button>
-                          {addresses.length>1 && <button className="addr-btn del" onClick={e=>{e.stopPropagation();setAddresses(a=>a.filter(x=>x.id!==addr.id));}}>🗑 Delete</button>}
-                        </div>
-                      </div>
-                    ))}
-                    <button className="add-addr-btn" onClick={()=>{setEditingAddr({label:"New Address",icon:"📍"});setMapInput("");setShowMap(true);}}>
-                      <span style={{fontSize:18}}>＋</span> Add New Address
-                    </button>
-                  </div>
-                )}
-
-                {profileTab==="orders" && (
-                  <div style={{padding:"0 20px 24px"}}>
-                    {orderPlaced ? (
-                      <div style={{background:"var(--brand-bg)",border:"1.5px solid rgba(232,52,10,.2)",borderRadius:"var(--radius-sm)",padding:16}}>
-                        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                          <span style={{fontSize:24}}>🎉</span>
-                          <div>
-                            <div style={{fontSize:14,fontWeight:700,color:"var(--dark)"}}>Order #{orderPlaced.id}</div>
-                            <div style={{fontSize:12,color:"var(--warm-gray)"}}>Placed at {orderPlaced.time}</div>
+                {addOns.length > 0 && (
+                  <div style={{ marginBottom:20 }}>
+                    <p style={{ fontWeight:700, fontSize:14, marginBottom:10 }}>Add-ons</p>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      {addOns.map(ao => {
+                        const isSel = selectedAddOns.includes(ao.id);
+                        return (
+                          <div key={ao.id} className={`var-opt${isSel ? " sel" : ""}`} onClick={() => toggleAddOn(ao.id)}>
+                            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                              {ao.is_required && <span className="pill" style={{ background:"#f0f0f0", color:"var(--text2)" }}>Required</span>}
+                              <span style={{ fontWeight: isSel ? 600 : 400 }}>{ao.name}</span>
+                            </div>
+                            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                              {Number(ao.price) > 0 && <span style={{ fontSize:13, color:"var(--text2)", fontWeight:600 }}>+{fmt(ao.price)}</span>}
+                              <div style={{ width:20, height:20, borderRadius:4, border:`2px solid ${isSel?"var(--text)":"var(--border)"}`, background:isSel?"var(--text)":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all var(--transition)", flexShrink:0 }}>
+                                {isSel && <span style={{ color:"#fff", width:12, height:12 }}>{Icon.check}</span>}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <button className="addr-btn" onClick={()=>setDrawer("track")}>📦 Track Order →</button>
-                      </div>
-                    ) : (
-                      <div style={{textAlign:"center",padding:"40px 0"}}>
-                        <div style={{fontSize:48,marginBottom:10}}>📋</div>
-                        <div style={{fontSize:15,fontWeight:600,color:"var(--charcoal)"}}>No orders yet</div>
-                        <div style={{fontSize:13,color:"var(--muted)",marginTop:4}}>Your order history will appear here</div>
-                      </div>
-                    )}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
-                {profileTab==="info" && <button className="save-btn" onClick={()=>setDrawer(null)}>Save Profile ✓</button>}
+                <div style={{ marginBottom:24 }}>
+                  <label className="form-label">Special instructions (optional)</label>
+                  <textarea className="input-field" placeholder="E.g. no onions, extra sauce…" rows={2} style={{ resize:"none" }} value={note} onChange={e => setNote(e.target.value)} />
+                </div>
               </>
-            )}
+          }
 
-            {/* TRACKING DRAWER */}
-            {drawer==="track" && orderPlaced && (
-              <>
-                <div className="drawer-header">
-                  <div className="drawer-title">Track Order</div>
-                  <button className="close-btn" onClick={()=>setDrawer(null)}>✕</button>
-                </div>
-                <div className="tracking-wrap">
-                  <div className="order-id-label">Order #{orderPlaced.id}</div>
-                  <TrackingSteps time={orderPlaced.time} />
-                  <button className="wa-btn">💬 Get Order Updates on WhatsApp</button>
-                  <div className="delivery-info">
-                    <div className="di-title">🏪 Mix & Munch, Sharjah City Centre</div>
-                    <div className="di-row"><span className="di-icon">📍</span><span>789 Sharjah City Centre, Sharjah</span></div>
-                    <div className="di-row"><span className="di-icon">🛵</span><span>{currentAddr?.text}</span></div>
-                    <div className="di-row"><span className="di-icon">🕐</span><span>Placed {new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}, {orderPlaced.time}</span></div>
-                  </div>
-                </div>
-              </>
-            )}
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div className="qty-row">
+              <button className="qty-btn" onClick={() => setQty(q => Math.max(1, q-1))}>{Icon.minus}</button>
+              <span className="qty-num">{qty}</span>
+              <button className="qty-btn" onClick={() => setQty(q => q+1)}>{Icon.plus}</button>
+            </div>
+            <button className="btn-primary" style={{ flex:1, opacity:canAdd()?1:0.45 }} onClick={handleAdd} disabled={!canAdd()}>
+              Add to order · {fmt(total)}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CART PANEL
+───────────────────────────────────────────────────────────────────────────── */
+const CartPanel = ({ cart, restaurant, onUpdateQty, onCheckout, isModal, onClose }) => {
+  const [promoCode, setPromoCode] = useState("");
+  const itemTotal = cart.reduce((s,c) => s + c.unitPrice * c.qty, 0);
+  const deliveryFee = itemTotal > 0 ? 0.500 : 0;
+  const vat = itemTotal * 0.05;
+  const total = itemTotal + deliveryFee + vat;
+
+  const content = (
+    <div style={{ padding: isModal ? "20px 20px 36px" : "16px 20px 24px" }}>
+      {isModal && (
+        <>
+          <div className="sheet-handle" style={{ marginBottom:0 }} />
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, marginTop:16 }}>
+            <h2 style={{ fontSize:20, fontWeight:800 }}>Your order</h2>
+            <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <span style={{ width:16, height:16 }}>{Icon.close}</span>
+            </button>
           </div>
         </>
       )}
+      {!isModal && (
+        <div style={{ paddingBottom:14, borderBottom:"1px solid var(--border)", marginBottom:16 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:2 }}>{restaurant?.name}</p>
+          <h3 style={{ fontSize:18, fontWeight:800 }}>Your order</h3>
+        </div>
+      )}
 
-      {/* ── MAP MODAL ── */}
-      {showMap && (
-        <div className="map-modal" onClick={e=>e.target===e.currentTarget&&setShowMap(false)}>
-          <div className="map-sheet">
-            <div className="drawer-handle" />
-            <div className="drawer-header">
-              <div className="drawer-title">{editingAddr?.id?"Edit":"Add"} Address</div>
-              <button className="close-btn" onClick={()=>setShowMap(false)}>✕</button>
-            </div>
-            <div className="map-view">
-              <div className="map-grid"/>
-              <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:.28}} viewBox="0 0 400 230">
-                <line x1="0" y1="85"  x2="400" y2="85"  stroke="#90CAF9" strokeWidth="8"/>
-                <line x1="0" y1="155" x2="400" y2="155" stroke="#90CAF9" strokeWidth="5"/>
-                <line x1="85"  y1="0" x2="85"  y2="230" stroke="#90CAF9" strokeWidth="6"/>
-                <line x1="225" y1="0" x2="225" y2="230" stroke="#90CAF9" strokeWidth="4"/>
-                <line x1="305" y1="0" x2="305" y2="230" stroke="#90CAF9" strokeWidth="3"/>
-                <rect x="95"  y="95"  width="60" height="45" fill="#A5D6A7" rx="4"/>
-                <rect x="165" y="95"  width="50" height="45" fill="#FFCC80" rx="4"/>
-                <rect x="235" y="100" width="55" height="40" fill="#B3E5FC" rx="4"/>
-                <rect x="95"  y="28"  width="50" height="50" fill="#FFCC80" rx="4"/>
-                <rect x="155" y="28"  width="60" height="50" fill="#A5D6A7" rx="4"/>
-              </svg>
-              <div className="map-pin">📍</div>
-              <div className="map-zoom">
-                <button className="map-zoom-btn">+</button>
-                <button className="map-zoom-btn">−</button>
-                <button className="map-zoom-btn">🧭</button>
+      {cart.length === 0 ? (
+        <div style={{ textAlign:"center", padding:"44px 0" }}>
+          <div style={{ fontSize:44, marginBottom:12 }}>🛒</div>
+          <p style={{ fontWeight:700, fontSize:15, marginBottom:4 }}>Your cart is empty</p>
+          <p style={{ color:"var(--text3)", fontSize:13 }}>Add items to get started</p>
+        </div>
+      ) : (
+        <>
+          {cart.map((c, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:12, paddingBottom:14, borderBottom:"1px solid var(--border)", marginBottom:14 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontWeight:600, fontSize:14, marginBottom:2 }}>{c.item.name}</p>
+                {c.note && <p style={{ fontSize:12, color:"var(--text3)", marginBottom:3, fontStyle:"italic" }}>"{c.note}"</p>}
+                <p style={{ fontSize:13, color:"var(--text2)", fontWeight:700 }}>{fmt(c.unitPrice)}</p>
+              </div>
+              <div className="qty-row" style={{ flexShrink:0 }}>
+                <button className="qty-btn" onClick={() => onUpdateQty(i, c.qty-1)}>
+                  {c.qty === 1 ? <span style={{ width:14, height:14 }}>{Icon.trash}</span> : Icon.minus}
+                </button>
+                <span className="qty-num">{c.qty}</span>
+                <button className="qty-btn" onClick={() => onUpdateQty(i, c.qty+1)}>{Icon.plus}</button>
               </div>
             </div>
-            <div className="map-form">
-              <div className="form-group">
-                <div className="form-label">Label</div>
-                <div className="label-pills">
-                  {[["🏠","Home"],["🏢","Work"],["📍","Other"]].map(([icon,label])=>(
-                    <button key={label} className={`label-pill${editingAddr?.label===label?" active":""}`}
-                      onClick={()=>setEditingAddr(e=>({...e,icon,label}))}>
-                      {icon} {label}
-                    </button>
+          ))}
+
+          <div style={{ display:"flex", gap:8, marginBottom:18 }}>
+            <input className="input-field" placeholder="Promo code" value={promoCode} onChange={e => setPromoCode(e.target.value)} style={{ flex:1, borderRadius:99, padding:"9px 16px", fontSize:13 }} />
+            <button className="btn-ghost" style={{ borderRadius:99, whiteSpace:"nowrap", padding:"9px 18px" }}>Apply</button>
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:7, paddingBottom:14, borderBottom:"1px solid var(--border)", marginBottom:14 }}>
+            {[["Subtotal", fmt(itemTotal)],["Delivery fee", fmt(deliveryFee)],["VAT (5%)", fmt(vat)]].map(([label, val]) => (
+              <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"var(--text2)" }}>
+                <span>{label}</span><span style={{ fontWeight:500 }}>{val}</span>
+              </div>
+            ))}
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:15, fontWeight:800, color:"var(--text)", marginTop:4 }}>
+              <span>Total</span><span>{fmt(total)}</span>
+            </div>
+          </div>
+
+          {restaurant?.min_order && itemTotal < restaurant.min_order && (
+            <div style={{ background:"#fff8e1", border:"1px solid #ffe082", borderRadius:"var(--radius-sm)", padding:"10px 14px", marginBottom:14, fontSize:13, color:"#e65100", fontWeight:500 }}>
+              ⚠️ Min. order {fmt(restaurant.min_order)} · add {fmt(restaurant.min_order - itemTotal)} more
+            </div>
+          )}
+
+          <button className="btn-primary" onClick={() => onCheckout(total)} disabled={!!(restaurant?.min_order && itemTotal < restaurant.min_order)}>
+            Go to checkout · {fmt(total)}
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  if (isModal) return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>{content}</div>
+    </div>
+  );
+
+  return (
+    <div style={{ background:"var(--surface)", borderRadius:"var(--radius-lg)", border:"1px solid var(--border)", boxShadow:"var(--shadow)" }}>
+      {content}
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CHECKOUT MODAL
+───────────────────────────────────────────────────────────────────────────── */
+const CheckoutModal = ({ total, restaurant, addresses, defaultAddr, onClose, onPlaceOrder, onAddAddress }) => {
+  const [selectedAddr, setSelectedAddr] = useState(defaultAddr?.id || null);
+  const [payMethod, setPayMethod] = useState("Cash");
+  const [notes, setNotes] = useState("");
+  const [placing, setPlacing] = useState(false);
+
+  const addr = addresses.find(a => a.id === selectedAddr);
+  const handlePlace = async () => {
+    if (!addr && restaurant) return alert("Please select a delivery address.");
+    setPlacing(true);
+    await onPlaceOrder({ address:addr, payMethod, notes });
+    setPlacing(false);
+  };
+
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div style={{ padding:"16px 20px 36px" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
+            <h2 style={{ fontSize:20, fontWeight:800 }}>Checkout</h2>
+            <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <span style={{ width:16, height:16 }}>{Icon.close}</span>
+            </button>
+          </div>
+
+          <div style={{ marginBottom:22 }}>
+            <label className="form-label">Delivery address</label>
+            {addresses.length === 0
+              ? <button className="btn-ghost" style={{ width:"100%", justifyContent:"center" }} onClick={onAddAddress}>
+                  <span style={{ width:16, height:16 }}>{Icon.plus}</span> Add address
+                </button>
+              : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {addresses.map(a => (
+                    <div key={a.id} className={`addr-card${selectedAddr===a.id?" sel":""}`} onClick={() => setSelectedAddr(a.id)}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                        <span style={{ width:14, height:14, color:"var(--text2)" }}>{a.label==="Work"?Icon.work:Icon.home}</span>
+                        <span style={{ fontWeight:700, fontSize:14 }}>{a.label}</span>
+                        {selectedAddr===a.id && <span style={{ marginLeft:"auto", width:18, height:18, color:"var(--green)" }}>{Icon.check}</span>}
+                      </div>
+                      <p style={{ fontSize:13, color:"var(--text2)", paddingLeft:22 }}>
+                        {[a.apartment_no&&`Apt ${a.apartment_no}`,a.floor&&`Floor ${a.floor}`,a.bldg_name,a.street,a.block].filter(Boolean).join(", ")}
+                      </p>
+                    </div>
                   ))}
+                  <button className="btn-ghost" style={{ justifyContent:"center" }} onClick={onAddAddress}>
+                    <span style={{ width:14, height:14 }}>{Icon.plus}</span> Add new address
+                  </button>
                 </div>
+            }
+          </div>
+
+          <div style={{ marginBottom:22 }}>
+            <label className="form-label">Payment method</label>
+            <div style={{ display:"flex", gap:8 }}>
+              {[["Cash","💵"],["Card","💳"],["Online","📱"]].map(([m,emoji]) => (
+                <div key={m} className={`pay-opt${payMethod===m?" sel":""}`} onClick={() => setPayMethod(m)}>
+                  <span style={{ fontSize:22 }}>{emoji}</span>
+                  <span>{m}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom:22 }}>
+            <label className="form-label">Order notes (optional)</label>
+            <textarea className="input-field" placeholder="Any requests for the restaurant?" rows={2} style={{ resize:"none" }} value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+
+          <div style={{ background:"var(--surface2)", borderRadius:"var(--radius-sm)", padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+            <span style={{ fontWeight:600, fontSize:14 }}>Total to pay</span>
+            <span style={{ fontWeight:800, fontSize:18 }}>{fmt(total)}</span>
+          </div>
+
+          <button className="btn-primary" style={{ height:52 }} onClick={handlePlace} disabled={placing || !selectedAddr}>
+            {placing ? <div className="spinner" style={{ width:22, height:22, borderWidth:2, borderTopColor:"#fff" }} /> : `Place order · ${fmt(total)}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ORDER TRACK MODAL
+───────────────────────────────────────────────────────────────────────────── */
+const OrderTrackModal = ({ order, restaurant, address, onClose }) => {
+  const steps = [
+    { label:"Order placed!", emoji:"✅" },
+    { label:"Waiting for restaurant to accept", emoji:"🍽️" },
+    { label:"Your food is being prepared", emoji:"👨‍🍳" },
+    { label:"On the way to you!", emoji:"🛵" },
+  ];
+  const currentStep = order?.status==="accepted"?2:order?.status==="preparing"?3:order?.status==="on_the_way"?4:1;
+
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div style={{ padding:"16px 20px 36px" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+            <h2 style={{ fontSize:20, fontWeight:800 }}>Track order</h2>
+            <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <span style={{ width:16, height:16 }}>{Icon.close}</span>
+            </button>
+          </div>
+          <p style={{ fontSize:13, color:"var(--text3)", fontWeight:500, marginBottom:24 }}>Order #{order?.id}</p>
+
+          <div style={{ marginBottom:24 }}>
+            {steps.map((s,i) => {
+              const n=i+1, isDone=n<currentStep, isActive=n===currentStep;
+              return (
+                <div key={i}>
+                  <div style={{ display:"flex", alignItems:"center", gap:14, padding:"8px 0" }}>
+                    <div className={`track-dot ${isDone?"done":isActive?"active":"pending"}`}>
+                      {isDone ? <span style={{ width:16, height:16 }}>{Icon.check}</span> : <span>{isActive?s.emoji:n}</span>}
+                    </div>
+                    <p style={{ fontWeight:isActive?700:400, color:isDone||isActive?"var(--text)":"var(--text3)", fontSize:14, transition:"all 0.3s" }}>{s.label}</p>
+                  </div>
+                  {i < steps.length-1 && <div className={`track-line${isDone?" done":""}`} />}
+                </div>
+              );
+            })}
+          </div>
+
+          {restaurant?.ph_no && (
+            <a href={`https://wa.me/${restaurant.ph_no.replace(/\D/g,"")}?text=Hi! My order ID is %23${order?.id}. Can you give me an update?`}
+              target="_blank" rel="noreferrer"
+              style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, width:"100%", padding:"14px 20px", background:"#25D366", color:"#fff", borderRadius:"var(--radius)", fontWeight:700, fontSize:15, textDecoration:"none", marginBottom:16 }}>
+              <span style={{ width:20, height:20 }}>{Icon.whatsapp}</span>
+              Get updates on WhatsApp
+            </a>
+          )}
+
+          <div style={{ background:"var(--surface2)", borderRadius:"var(--radius)", padding:"14px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:16 }}>🏪</span>
+              <div>
+                <p style={{ fontWeight:700, fontSize:13 }}>{restaurant?.name}{restaurant?.branch_name?`, ${restaurant.branch_name}`:""}</p>
+                {restaurant?.address && <p style={{ fontSize:12, color:"var(--text3)" }}>{restaurant.address}</p>}
               </div>
-              <div className="form-group">
-                <div className="form-label">Full Address</div>
-                <input className="form-input" placeholder="Enter address or directions..."
-                  value={mapInput} onChange={e=>setMapInput(e.target.value)} />
+            </div>
+            {address && (
+              <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+                <span style={{ fontSize:16 }}>📍</span>
+                <p style={{ fontSize:12, color:"var(--text2)" }}>{[address.apartment_no&&`Apt ${address.apartment_no}`,address.street,address.block].filter(Boolean).join(", ")}</p>
               </div>
-              <div className="form-group">
-                <div className="form-label">Additional Instructions</div>
-                <input className="form-input" placeholder="Building name, floor, landmark..." />
-              </div>
-              <button className="map-confirm-btn" onClick={saveAddr}>Confirm Location ✓</button>
+            )}
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:16 }}>🕒</span>
+              <p style={{ fontSize:12, color:"var(--text2)" }}>Placed {new Date().toLocaleString([],{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"short"})}</p>
             </div>
           </div>
         </div>
-      )}
-    </>
+      </div>
+    </div>
   );
-}
+};
 
-// ─── Tracking Steps ───────────────────────────────────────────────────────────
-function TrackingSteps({ time }) {
-  const [step, setStep] = useState(1);
-  useEffect(() => {
-    let i = 1;
-    const t = setInterval(() => { i++; setStep(i); if (i >= 4) clearInterval(t); }, 3000);
-    return () => clearInterval(t);
-  }, []);
-  const STEPS = [
-    { label:"Your order has been placed!", icon:"✅" },
-    { label:"Waiting for restaurant to accept", icon:"🍴" },
-    { label:"Your food is being prepared", icon:"👨‍🍳" },
-    { label:"Order arriving soon!", icon:"🛵" },
-  ];
+/* ─────────────────────────────────────────────────────────────────────────────
+   PROFILE MODAL
+───────────────────────────────────────────────────────────────────────────── */
+const ProfileModal = ({ customer, addresses, onClose, onSaveProfile, onSaveAddress, onDeleteAddress, onSetDefault, defaultAddrId }) => {
+  const [tab, setTab] = useState("info");
+  const [form, setForm] = useState({ cust_name:customer?.cust_name||"", ph_num:customer?.ph_num||"" });
+  const [editAddr, setEditAddr] = useState(null);
+  const [addingNew, setAddingNew] = useState(false);
+  const [addrForm, setAddrForm] = useState({ label:"Home", street:"", block:"", bldg_name:"", apartment_no:"", floor:"", landmark:"", note:"" });
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveProfile = async () => { setSaving(true); await onSaveProfile(form); setSaving(false); };
+  const startEditAddr = addr => {
+    setEditAddr(addr?.id||null);
+    setAddrForm({ label:addr?.label||"Home", street:addr?.street||"", block:addr?.block||"", bldg_name:addr?.bldg_name||"", apartment_no:addr?.apartment_no||"", floor:addr?.floor||"", landmark:addr?.landmark||"", note:addr?.note||"" });
+    setAddingNew(!addr);
+  };
+  const handleSaveAddr = async () => { setSaving(true); await onSaveAddress({ ...addrForm, id:editAddr }); setEditAddr(null); setAddingNew(false); setSaving(false); };
+
   return (
-    <div className="tracking-steps">
-      {STEPS.map((s,i) => {
-        const done=i<step, active=i===step, pending=i>step;
-        return (
-          <div key={i} className="t-step">
-            <div className="t-line">
-              <div className={`t-dot ${done?"done":active?"active":"pending"}`}>{done?"✓":active?"…":i+1}</div>
-              {i<STEPS.length-1 && <div className={`t-conn ${done?"done":"pending"}`}/>}
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div style={{ padding:"16px 20px 0" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+            <h2 style={{ fontSize:20, fontWeight:800 }}>My profile</h2>
+            <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <span style={{ width:16, height:16 }}>{Icon.close}</span>
+            </button>
+          </div>
+          <div style={{ display:"flex", gap:24, borderBottom:"1.5px solid var(--border)", marginBottom:20 }}>
+            {[{key:"info",label:"Profile"},{key:"addresses",label:"Addresses"},{key:"orders",label:"Orders"}].map(t => (
+              <button key={t.key} className={`tab-btn${tab===t.key?" active":""}`} onClick={() => setTab(t.key)}>{t.label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ padding:"0 20px 36px" }}>
+          {tab === "info" && (
+            <div className="anim-fade" style={{ display:"flex", flexDirection:"column", gap:16 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:14, paddingBottom:16, borderBottom:"1px solid var(--border)" }}>
+                <div style={{ width:52, height:52, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <span style={{ width:24, height:24, color:"var(--text2)" }}>{Icon.user}</span>
+                </div>
+                <div>
+                  <p style={{ fontWeight:700, fontSize:16 }}>{form.cust_name||"Your Name"}</p>
+                  <p style={{ fontSize:13, color:"var(--text3)" }}>{form.ph_num||"Add phone number"}</p>
+                </div>
+              </div>
+              <div>
+                <label className="form-label">Full name</label>
+                <input className="input-field" placeholder="Enter your name" value={form.cust_name} onChange={e => setForm({...form, cust_name:e.target.value})} />
+              </div>
+              <div>
+                <label className="form-label">Phone number</label>
+                <input className="input-field" placeholder="+965 0000 0000" value={form.ph_num} onChange={e => setForm({...form, ph_num:e.target.value})} />
+              </div>
+              <button className="btn-primary" onClick={handleSaveProfile} disabled={saving}>
+                {saving ? <div className="spinner" style={{ width:20, height:20, borderWidth:2, borderTopColor:"#fff" }} /> : "Save profile"}
+              </button>
             </div>
-            <div style={{paddingTop:2}}>
-              <div className={`t-label${pending?" pending":""}`}>{s.icon} {s.label}</div>
-              {done && <div className="t-time">{time}</div>}
+          )}
+
+          {tab === "addresses" && (
+            <div className="anim-fade">
+              {(editAddr !== null || addingNew) ? (
+                <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+                    <button className="btn-ghost" style={{ padding:"6px 12px", fontSize:12 }} onClick={() => { setEditAddr(null); setAddingNew(false); }}>← Back</button>
+                    <span style={{ fontWeight:700, fontSize:15 }}>{addingNew?"New address":"Edit address"}</span>
+                  </div>
+                  <div>
+                    <label className="form-label">Label</label>
+                    <div style={{ display:"flex", gap:8 }}>
+                      {["Home","Work","Other"].map(l => (
+                        <button key={l} onClick={() => setAddrForm({...addrForm,label:l})} style={{ flex:1, padding:"9px 0", borderRadius:"var(--radius-sm)", border:`1.5px solid ${addrForm.label===l?"var(--text)":"var(--border)"}`, background:addrForm.label===l?"#fafafa":"var(--surface)", fontWeight:700, fontSize:13, cursor:"pointer", transition:"all var(--transition)" }}>
+                          {l==="Home"?"🏠":l==="Work"?"🏢":"📍"} {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {[{field:"street",label:"Street"},{field:"block",label:"Block"},{field:"bldg_name",label:"Building name"},{field:"apartment_no",label:"Apartment no.",type:"number"},{field:"floor",label:"Floor",type:"number"},{field:"landmark",label:"Landmark (optional)"},{field:"note",label:"Delivery note (optional)"}].map(({field,label,type}) => (
+                    <div key={field}>
+                      <label className="form-label">{label}</label>
+                      <input className="input-field" type={type||"text"} placeholder={label} value={addrForm[field]} onChange={e => setAddrForm({...addrForm,[field]:e.target.value})} />
+                    </div>
+                  ))}
+                  <button className="btn-primary" onClick={handleSaveAddr} disabled={saving||!addrForm.street||!addrForm.block}>
+                    {saving ? <div className="spinner" style={{ width:20, height:20, borderWidth:2, borderTopColor:"#fff" }} /> : "Save address"}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {addresses.length === 0
+                    ? <div style={{ textAlign:"center", padding:"32px 0" }}>
+                        <div style={{ fontSize:40, marginBottom:10 }}>📍</div>
+                        <p style={{ color:"var(--text2)", fontSize:14 }}>No addresses saved yet</p>
+                      </div>
+                    : addresses.map(a => (
+                        <div key={a.id} className="addr-card" style={{ borderColor:a.id===defaultAddrId?"var(--text)":"var(--border)", background:a.id===defaultAddrId?"#fafafa":"var(--surface)" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                            <span style={{ fontSize:15 }}>{a.label==="Work"?"🏢":a.label==="Home"?"🏠":"📍"}</span>
+                            <span style={{ fontWeight:700, fontSize:14 }}>{a.label}</span>
+                            {a.id===defaultAddrId && <span className="pill" style={{ marginLeft:4, background:"var(--green-light)", color:"var(--green)" }}>Default</span>}
+                          </div>
+                          <p style={{ fontSize:13, color:"var(--text2)", marginBottom:10, paddingLeft:23 }}>
+                            {[a.apartment_no&&`Apt ${a.apartment_no}`,a.floor&&`Floor ${a.floor}`,a.bldg_name,a.street,a.block].filter(Boolean).join(", ")}
+                          </p>
+                          <div style={{ display:"flex", gap:8, paddingLeft:23 }}>
+                            <button className="btn-ghost" style={{ fontSize:12, padding:"5px 12px" }} onClick={() => startEditAddr(a)}>
+                              <span style={{ width:12, height:12 }}>{Icon.edit}</span> Edit
+                            </button>
+                            {a.id !== defaultAddrId && (
+                              <button className="btn-ghost" style={{ fontSize:12, padding:"5px 12px" }} onClick={() => onSetDefault(a.id)}>
+                                <span style={{ width:12, height:12 }}>{Icon.star}</span> Default
+                              </button>
+                            )}
+                            <button className="btn-ghost" style={{ fontSize:12, padding:"5px 12px", color:"var(--red)", borderColor:"var(--red)" }} onClick={() => onDeleteAddress(a.id)}>
+                              <span style={{ width:12, height:12 }}>{Icon.trash}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                  }
+                  <button className="btn-ghost" style={{ justifyContent:"center" }} onClick={() => startEditAddr(null)}>
+                    <span style={{ width:14, height:14 }}>{Icon.plus}</span> Add new address
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "orders" && (
+            <div className="anim-fade" style={{ textAlign:"center", padding:"44px 0" }}>
+              <div style={{ fontSize:44, marginBottom:12 }}>📋</div>
+              <p style={{ fontWeight:700, fontSize:15, marginBottom:4 }}>No orders yet</p>
+              <p style={{ color:"var(--text3)", fontSize:13 }}>Your order history will appear here</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MAIN CUSTOMER COMPONENT
+───────────────────────────────────────────────────────────────────────────── */
+export default function Customer() {
+  const restId = getRestIdFromUrl();
+
+  const [restaurant, setRestaurant] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [customer, setCustomer] = useState(null);
+  const [addresses, setAddresses] = useState([]);
+  const [defaultAddrId, setDefaultAddrId] = useState(null);
+
+  const [cart, setCart] = useState([]);
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [search, setSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showCart, setShowCart] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [showTrack, setShowTrack] = useState(false);
+  const [lastOrder, setLastOrder] = useState(null);
+  const [checkoutTotal, setCheckoutTotal] = useState(0);
+  const [toast, setToast] = useState("");
+
+  // Ensure viewport meta is set for proper mobile scaling
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'viewport';
+      document.head.appendChild(meta);
+    }
+    meta.content = 'width=device-width, initial-scale=1, maximum-scale=1';
+  }, []);
+
+  const CUST_KEY = "food_order_cust_id";
+  const showToast = useCallback(msg => { setToast(msg); setTimeout(() => setToast(""), 2500); }, []);
+
+  useEffect(() => {
+    if (!restId) { setError("No restaurant ID in URL. Expected: /customer?rest_id=<id>"); setLoading(false); return; }
+    const load = async () => {
+      try {
+        const [restRes, catRes, menuRes] = await Promise.all([
+          supabase.from("Restaurants").select("*").eq("id", restId).single(),
+          supabase.from("Categories").select("*").eq("rest_id", restId).eq("visible", true).order("sort_order"),
+          supabase.from("Menu").select("*").eq("rest_id", restId).eq("visible", true).order("sort_order"),
+        ]);
+        if (restRes.error || !restRes.data) throw new Error("Restaurant not found");
+        setRestaurant(restRes.data);
+        setCategories(catRes.data || []);
+        setMenuItems((menuRes.data || []).filter(m => m.is_available));
+      } catch (e) { setError(e.message); } finally { setLoading(false); }
+    };
+    load();
+  }, [restId]);
+
+  useEffect(() => {
+    const loadCustomer = async () => {
+      try {
+        const storedId = localStorage.getItem(CUST_KEY);
+        if (storedId) {
+          const { data } = await supabase.from("Customer").select("*").eq("id", storedId).single();
+          if (data) { setCustomer(data); loadAddresses(data.id); return; }
+        }
+        const { data: newCust } = await supabase.from("Customer").insert({ cust_name:"", broadcast:false }).select().single();
+        if (newCust) { localStorage.setItem(CUST_KEY, newCust.id); setCustomer(newCust); }
+      } catch {/* silent */}
+    };
+    loadCustomer();
+  }, []);
+
+  const loadAddresses = async custId => {
+    const { data } = await supabase.from("Customer_Address").select("*").eq("cust_id", custId);
+    if (data) {
+      setAddresses(data);
+      const stored = localStorage.getItem(`default_addr_${custId}`);
+      setDefaultAddrId(stored ? Number(stored) : data[0]?.id || null);
+    }
+  };
+
+  const filteredMenu = menuItems.filter(m => {
+    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || (m.description||"").toLowerCase().includes(search.toLowerCase());
+    const matchCat = activeCategory === "all" ? true : activeCategory === "recommended" ? m.recommended : m.categ_id === activeCategory;
+    return matchSearch && matchCat;
+  });
+
+  const addToCart = useCallback(({ item, qty, selectedVariants, selectedAddOns, unitPrice, note }) => {
+    setCart(prev => {
+      const existing = prev.findIndex(c => c.item.id===item.id && JSON.stringify(c.selectedVariants)===JSON.stringify(selectedVariants) && JSON.stringify(c.selectedAddOns)===JSON.stringify(selectedAddOns));
+      if (existing >= 0) { const u=[...prev]; u[existing]={...u[existing],qty:u[existing].qty+qty}; return u; }
+      return [...prev, { item, qty, selectedVariants, selectedAddOns, unitPrice, note }];
+    });
+    showToast(`${item.name} added`);
+  }, [showToast]);
+
+  const updateQty = (index, newQty) => {
+    if (newQty <= 0) setCart(prev => prev.filter((_,i) => i !== index));
+    else setCart(prev => prev.map((c,i) => i===index ? {...c,qty:newQty} : c));
+  };
+
+  const cartCount = cart.reduce((s,c) => s+c.qty, 0);
+
+  const placeOrder = async ({ address, payMethod, notes }) => {
+    if (!customer || !restaurant) return;
+    const itemTotal = cart.reduce((s,c) => s+c.unitPrice*c.qty, 0);
+    const total = itemTotal + 0.5 + itemTotal*0.05;
+    try {
+      const { data: order, error: orderErr } = await supabase.from("Orders").insert({
+        rest_id:restaurant.id, cust_id:customer.id,
+        status:"pending", total_amount:total,
+        payment_status:"pending", payment_method:payMethod, notes:notes||"",
+      }).select().single();
+      if (orderErr) throw orderErr;
+      setLastOrder({ ...order, deliveryAddress:address });
+      setCart([]); setShowCheckout(false); setShowTrack(true);
+      showToast("Order placed! 🎉");
+      await supabase.from("Customer").update({ total_orders:(customer.total_orders||0)+1, total_amount:Number(customer.total_amount||0)+total }).eq("id", customer.id);
+    } catch { showToast("Failed to place order. Please try again."); }
+  };
+
+  const saveProfile = async form => {
+    if (!customer) return;
+    const { data } = await supabase.from("Customer").update({ cust_name:form.cust_name, ph_num:form.ph_num }).eq("id",customer.id).select().single();
+    if (data) { setCustomer(data); showToast("Profile saved!"); }
+  };
+
+  const saveAddress = async form => {
+    if (!customer) return;
+    const payload = { cust_id:customer.id, label:form.label, street:form.street, block:form.block, bldg_name:form.bldg_name||"", apartment_no:Number(form.apartment_no)||0, floor:Number(form.floor)||0, landmark:form.landmark||null, note:form.note||null, longitude:0, latitude:0 };
+    if (form.id) {
+      const { data } = await supabase.from("Customer_Address").update(payload).eq("id",form.id).select().single();
+      if (data) { setAddresses(prev => prev.map(a => a.id===form.id?data:a)); showToast("Address updated!"); }
+    } else {
+      const { data } = await supabase.from("Customer_Address").insert(payload).select().single();
+      if (data) { setAddresses(prev=>[...prev,data]); if (!defaultAddrId) { setDefaultAddrId(data.id); localStorage.setItem(`default_addr_${customer.id}`,data.id); } showToast("Address added!"); }
+    }
+  };
+
+  const deleteAddress = async id => {
+    await supabase.from("Customer_Address").delete().eq("id",id);
+    setAddresses(prev=>prev.filter(a=>a.id!==id));
+    if (defaultAddrId===id) { const rem=addresses.filter(a=>a.id!==id); setDefaultAddrId(rem[0]?.id||null); }
+    showToast("Address removed");
+  };
+
+  const setDefaultAddress = id => {
+    setDefaultAddrId(id);
+    if (customer) localStorage.setItem(`default_addr_${customer.id}`,id);
+    showToast("Default address updated");
+  };
+
+  if (loading) return (<><GlobalStyle /><LoadingScreen /></>);
+  if (error)   return (<><GlobalStyle /><ErrorScreen message={error} /></>);
+
+  const defaultAddr = addresses.find(a => a.id === defaultAddrId);
+
+  return (
+    <>
+      <GlobalStyle />
+      <Toast message={toast} />
+
+      {/* ── NAVBAR ── */}
+      <nav className="navbar">
+        <div className="navbar-inner">
+          <div style={{ minWidth:0, flexShrink:0 }}>
+            <p style={{ fontSize:15, fontWeight:800, letterSpacing:"-0.3px", lineHeight:1.1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:160 }}>
+              {restaurant?.name}
+            </p>
+            {restaurant?.branch_name && <p style={{ fontSize:11, color:"var(--text3)" }}>{restaurant.branch_name}</p>}
+          </div>
+
+          <button style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:5, minWidth:0 }} onClick={() => setShowProfile(true)}>
+            <span style={{ width:13, height:13, color:"var(--green)", flexShrink:0 }}>{Icon.pin}</span>
+            <span style={{ fontSize:12, fontWeight:600, color:"var(--text2)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {defaultAddr ? `${defaultAddr.label} · ${defaultAddr.street}` : "Add address"}
+            </span>
+          </button>
+
+          <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+            <button
+              style={{ width:36, height:36, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}
+              onClick={() => setShowProfile(true)}
+            >
+              <span style={{ width:17, height:17 }}>{Icon.user}</span>
+            </button>
+            <button
+              style={{ width:36, height:36, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}
+              onClick={() => setShowCart(true)}
+            >
+              <span style={{ width:17, height:17 }}>{Icon.cart}</span>
+              {cartCount > 0 && <span className="badge" style={{ position:"absolute", top:-3, right:-3 }}>{cartCount}</span>}
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── PAGE ── */}
+      <div className="page-wrap">
+        <main style={{ paddingBottom:100 }}>
+
+          {/* ── HERO ── */}
+          <div className="hero">
+            {restaurant?.image1_path
+              ? <img className="hero-img" src={restaurant.image1_path} alt={restaurant.name} onError={e => { e.target.style.display="none"; }} />
+              : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg,#111 0%,#2a2a2a 100%)" }} />
+            }
+            <div className="hero-gradient" />
+            <div className="hero-content">
+              <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(255,255,255,0.55)", marginBottom:5 }}>Now serving</p>
+              <h1 style={{ fontSize:20, fontWeight:800, color:"#fff", lineHeight:1.2, marginBottom:10, letterSpacing:"-0.3px" }}>
+                {restaurant?.name}
+              </h1>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"8px 14px" }}>
+                {restaurant?.working_hours && <span className="info-chip">{Icon.clock} {restaurant.working_hours}</span>}
+                {restaurant?.min_order && <span className="info-chip">🔥 Min. {fmt(restaurant.min_order)}</span>}
+                <span className="info-chip">{Icon.truck} ~25 min</span>
+              </div>
             </div>
           </div>
-        );
-      })}
-    </div>
+
+          {/* ── SEARCH + CATS — sticky ── */}
+          <div style={{ background:"var(--surface)", borderBottom:"1px solid var(--border)", position:"sticky", top:"var(--navbar-h)", zIndex:50, padding:"14px 16px 0" }}>
+            <div className="search-wrap" style={{ marginBottom:12 }}>
+              <span className="search-icon">{Icon.search}</span>
+              <input
+                className="search-input"
+                placeholder="Search dishes…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              {search && (
+                <button onClick={() => setSearch("")} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", width:20, height:20, color:"var(--text3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <span style={{ width:14, height:14 }}>{Icon.close}</span>
+                </button>
+              )}
+            </div>
+            <div className="cat-row" style={{ paddingBottom:13 }}>
+              <button className={`cat-chip${activeCategory==="all"?" active":""}`} onClick={() => setActiveCategory("all")}>All</button>
+              <button className={`cat-chip${activeCategory==="recommended"?" active":""}`} onClick={() => setActiveCategory("recommended")}>⭐ Popular</button>
+              {categories.map(c => (
+                <button key={c.id} className={`cat-chip${activeCategory===c.id?" active":""}`} onClick={() => setActiveCategory(c.id)}>{c.name}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── MENU LIST ── */}
+          <div style={{ background:"var(--surface)", padding:"0 16px 24px" }}>
+            {loading ? (
+              [1,2,3,4,5].map(k => <SkeletonRow key={k} />)
+            ) : filteredMenu.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"60px 20px" }}>
+                <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>
+                <p style={{ fontWeight:700, fontSize:15, marginBottom:4 }}>Nothing found</p>
+                <p style={{ fontSize:13, color:"var(--text3)" }}>Try a different search or category</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 0 10px" }}>
+                  <h2 className="section-title">
+                    {activeCategory==="all"?"All dishes":activeCategory==="recommended"?"Popular":categories.find(c=>c.id===activeCategory)?.name||"Menu"}
+                  </h2>
+                  <span style={{ fontSize:12, color:"var(--text3)", fontWeight:600 }}>{filteredMenu.length} items</span>
+                </div>
+                <div className="menu-grid">
+                {filteredMenu.map(item => {
+                  const inCart = cart.filter(c => c.item.id===item.id).reduce((s,c) => s+c.qty, 0);
+                  return (
+                    <div key={item.id} className="menu-row anim-fade" onClick={() => setSelectedItem(item)}>
+
+                      {/* Image thumbnail */}
+                      <div className="menu-thumb-card">
+                        {item.image_path
+                          ? <img src={item.image_path} alt={item.name} onError={e => { e.target.style.display="none"; }} />
+                          : null
+                        }
+                        {!item.image_path && <span style={{ fontSize:36 }}>🍽️</span>}
+                        {item.recommended && (
+                          <span className="pill" style={{ position:"absolute", top:6, left:6, background:"rgba(0,0,0,0.55)", color:"#fff", backdropFilter:"blur(4px)" }}>⭐ Popular</span>
+                        )}
+                      </div>
+
+                      {/* Text body */}
+                      <div className="menu-card-body">
+                        <h3 style={{ fontSize:13, fontWeight:700, lineHeight:1.35, color:"var(--text)" }}>{item.name}</h3>
+                        {item.description && (
+                          <p style={{ fontSize:12, color:"var(--text3)", lineHeight:1.45, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+                            {item.description}
+                          </p>
+                        )}
+                        {/* Card footer — mobile only */}
+                        <div className="menu-card-footer">
+                          <span style={{ fontSize:14, fontWeight:800 }}>{fmt(item.price)}</span>
+                          {inCart > 0 ? (
+                            <div className="card-qty-row" onClick={e => e.stopPropagation()}>
+                              <button className="card-qty-btn" onClick={e => { e.stopPropagation(); const idx=cart.findIndex(c=>c.item.id===item.id); if(idx>=0) updateQty(idx, cart[idx].qty-1); }}>{Icon.minus}</button>
+                              <span className="card-qty-num">{inCart}</span>
+                              <button className="card-qty-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>{Icon.plus}</button>
+                            </div>
+                          ) : (
+                            <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>
+                              {Icon.plus}
+                            </button>
+                          )}
+                        </div>
+                        {/* Price — tablet list view only */}
+                        <p className="tablet-price" style={{ fontSize:14, fontWeight:800, marginTop:4 }}>{fmt(item.price)}</p>
+                      </div>
+
+                      {/* Action column — tablet only */}
+                      <div className="menu-row-action" onClick={e => e.stopPropagation()}>
+                        {inCart > 0 ? (
+                          <div className="qty-row">
+                            <button className="qty-btn" onClick={e => { e.stopPropagation(); const idx=cart.findIndex(c=>c.item.id===item.id); if(idx>=0) updateQty(idx, cart[idx].qty-1); }}>{Icon.minus}</button>
+                            <span className="qty-num">{inCart}</span>
+                            <button className="qty-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>{Icon.plus}</button>
+                          </div>
+                        ) : (
+                          <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>
+                            {Icon.plus}
+                          </button>
+                        )}
+                      </div>
+
+                    </div>
+                  );
+                })}
+                </div>
+              </>
+            )}
+          </div>
+        </main>
+
+        {/* ── DESKTOP CART ── */}
+        <aside className="cart-sidebar">
+          <CartPanel
+            cart={cart}
+            restaurant={restaurant}
+            onUpdateQty={updateQty}
+            onRemove={i => updateQty(i, 0)}
+            onCheckout={total => { setCheckoutTotal(total); setShowCheckout(true); }}
+          />
+        </aside>
+      </div>
+
+      {/* ── MOBILE CART BAR ── */}
+      {cartCount > 0 && (
+        <div className="mobile-cart-bar" onClick={() => setShowCart(true)}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ background:"rgba(255,255,255,0.12)", borderRadius:"50%", width:28, height:28, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800 }}>{cartCount}</span>
+            <span style={{ fontWeight:700, fontSize:15 }}>View cart</span>
+          </div>
+          <span style={{ fontWeight:800, fontSize:15 }}>{fmt(cart.reduce((s,c)=>s+c.unitPrice*c.qty,0))}</span>
+        </div>
+      )}
+
+      {/* ── MODALS ── */}
+      {selectedItem && <MenuItemModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={addToCart} />}
+      {showCart && (
+        <CartPanel cart={cart} restaurant={restaurant} onUpdateQty={updateQty} onRemove={i=>updateQty(i,0)}
+          onCheckout={total => { setCheckoutTotal(total); setShowCart(false); setShowCheckout(true); }}
+          isModal onClose={() => setShowCart(false)}
+        />
+      )}
+      {showCheckout && (
+        <CheckoutModal total={checkoutTotal} restaurant={restaurant} customer={customer}
+          addresses={addresses} defaultAddr={defaultAddr}
+          onClose={() => setShowCheckout(false)} onPlaceOrder={placeOrder}
+          onAddAddress={() => { setShowCheckout(false); setShowProfile(true); }}
+        />
+      )}
+      {showTrack && lastOrder && (
+        <OrderTrackModal order={lastOrder} restaurant={restaurant} address={lastOrder.deliveryAddress} onClose={() => setShowTrack(false)} />
+      )}
+      {showProfile && (
+        <ProfileModal customer={customer} addresses={addresses}
+          onClose={() => setShowProfile(false)} onSaveProfile={saveProfile}
+          onSaveAddress={saveAddress} onDeleteAddress={deleteAddress}
+          onSetDefault={setDefaultAddress} defaultAddrId={defaultAddrId}
+        />
+      )}
+    </>
   );
 }
