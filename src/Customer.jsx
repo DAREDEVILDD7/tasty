@@ -1,1439 +1,1356 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./supabaseClient";
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   UTILITY HELPERS
-───────────────────────────────────────────────────────────────────────────── */
+/* ── helpers ──────────────────────────────────────────────────────────────── */
 const fmt = (n) => `KD ${Number(n || 0).toFixed(3)}`;
+const getRestId = () => new URLSearchParams(window.location.search).get("rest_id");
+const CUST_KEY = "frt_cust_id";
 
-const getRestIdFromUrl = () => {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("rest_id");
+/* ── tiny SVG icons ───────────────────────────────────────────────────────── */
+const Ic = {
+  search:   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  cart:     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>,
+  user:     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  home:     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  back:     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>,
+  close:    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  plus:     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  minus:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  trash:    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+  check:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  pin:      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>,
+  clock:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  star:     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  truck:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+  edit:     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  homeaddr: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  work:     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
+  wa:       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>,
 };
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   ICONS
-───────────────────────────────────────────────────────────────────────────── */
-const Icon = {
-  cart: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>),
-  user: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>),
-  close: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>),
-  search: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>),
-  pin: (<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>),
-  plus: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>),
-  minus: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>),
-  trash: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>),
-  star: (<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>),
-  check: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>),
-  truck: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>),
-  clock: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>),
-  edit: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>),
-  home: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>),
-  work: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>),
-  receipt: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>),
-  whatsapp: (<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>),
+/* ── global CSS ───────────────────────────────────────────────────────────── */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --orange:#ff5200;
+  --orange-d:#e04800;
+  --green:#1e8c45;
+  --green-l:#e8f5ee;
+  --red:#e53935;
+  --red-l:#fdecea;
+  --yellow:#f59e0b;
+  --bg:#f2f2f7;
+  --card:#ffffff;
+  --border:#ebebeb;
+  --t1:#1a1a1a;
+  --t2:#6b6b6b;
+  --t3:#aeaeb2;
+  --font:'Plus Jakarta Sans',system-ui,sans-serif;
+  --nav-h:60px;
+  --tab-h:64px;
+  --r:16px;
+  --r-sm:10px;
+  --r-pill:100px;
+  --shadow:0 2px 16px rgba(0,0,0,.09);
+  --shadow-lg:0 8px 40px rgba(0,0,0,.14);
+}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;min-height:100dvh;overscroll-behavior:none}
+button{font-family:var(--font);cursor:pointer;border:none;background:none;outline:none;-webkit-tap-highlight-color:transparent}
+input,textarea,select{font-family:var(--font);outline:none}
+img{display:block}
+a{text-decoration:none}
+::-webkit-scrollbar{width:0;height:0}
+
+/* ── keyframes ── */
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleUp{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes popBadge{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+@keyframes toast{0%{transform:translate(-50%,10px);opacity:0}15%,85%{transform:translate(-50%,0);opacity:1}100%{transform:translate(-50%,-4px);opacity:0}}
+
+/* ── overlay + sheet (shared by all bottom panels) ── */
+.overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.48);backdrop-filter:blur(2px);animation:fadeIn .2s ease}
+.sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:301;
+  background:var(--card);border-radius:var(--r) var(--r) 0 0;
+  max-height:92dvh;overflow-y:auto;overflow-x:hidden;
+  animation:slideUp .32s cubic-bezier(.34,1.1,.64,1);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media(min-width:600px){
+  .sheet{max-width:520px;left:50%;transform:translateX(-50%);border-radius:var(--r);bottom:auto;top:50%;transform:translate(-50%,-50%);max-height:90dvh;animation:scaleUp .22s ease}
+}
+.drag-pill{width:40px;height:4px;background:var(--border);border-radius:99px;margin:12px auto 0}
+
+/* ── spinner ── */
+.spin{display:inline-block;width:24px;height:24px;border:2.5px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .65s linear infinite}
+
+/* ── skeleton ── */
+.skel{background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);background-size:400px 100%;animation:shimmer 1.4s infinite;border-radius:var(--r-sm)}
+
+/* ── toast ── */
+.toast{
+  position:fixed;bottom:calc(var(--tab-h) + 12px);left:50%;
+  background:#1a1a1a;color:#fff;
+  padding:10px 20px;border-radius:var(--r-pill);
+  font-size:13px;font-weight:600;z-index:9999;white-space:nowrap;
+  animation:toast 2.6s ease forwards;pointer-events:none;
+  box-shadow:var(--shadow-lg);
+}
+@media(min-width:1024px){.toast{bottom:24px}}
+
+/* ── top nav ── */
+.topnav{
+  position:sticky;top:0;z-index:100;height:var(--nav-h);
+  background:rgba(255,255,255,.96);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:10px;
+}
+/* ── bottom tab bar (mobile only) ── */
+.tabbar{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  height:var(--tab-h);background:var(--card);
+  border-top:1px solid var(--border);
+  display:grid;grid-template-columns:repeat(3,1fr);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media(min-width:1024px){.tabbar{display:none}}
+.tab-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--t3);font-size:11px;font-weight:600;transition:color .15s}
+.tab-item.on{color:var(--orange)}
+.tab-badge{position:absolute;top:-2px;right:-8px;background:var(--orange);color:#fff;border-radius:99px;min-width:16px;height:16px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;animation:popBadge .25s ease}
+
+/* ── hero ── */
+.hero{position:relative;width:100%;background:#111;overflow:hidden}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+.hero-grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,.1) 60%,transparent 100%)}
+.hero-content{position:absolute;bottom:0;left:0;right:0;padding:16px 16px 20px;color:#fff}
+
+/* ── search bar ── */
+.search-bar{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card);border:1.5px solid var(--border);
+  border-radius:var(--r-pill);padding:0 16px;height:46px;
+  transition:border-color .15s,box-shadow .15s;
+}
+.search-bar:focus-within{border-color:#aaa;box-shadow:0 0 0 3px rgba(0,0,0,.06)}
+.search-bar input{flex:1;font-size:14px;color:var(--t1);border:none;background:none}
+.search-bar input::placeholder{color:var(--t3)}
+
+/* ── category strip ── */
+.cat-strip{display:flex;gap:8px;overflow-x:auto;padding:14px 16px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.cat-chip{flex-shrink:0;padding:7px 16px;border-radius:var(--r-pill);border:1.5px solid var(--border);background:var(--card);color:var(--t2);font-size:13px;font-weight:600;white-space:nowrap;transition:all .15s;cursor:pointer}
+.cat-chip:hover{border-color:#bbb;color:var(--t1)}
+.cat-chip.on{background:var(--t1);color:#fff;border-color:var(--t1)}
+
+/* ── menu section ── */
+.section-hd{display:flex;align-items:center;justify-content:space-between;padding:4px 16px 12px}
+.section-title{font-size:16px;font-weight:700;color:var(--t1)}
+.section-count{font-size:12px;font-weight:600;color:var(--t3)}
+
+/* ── menu card (default: swiggy-style list) ── */
+.menu-card{
+  display:flex;align-items:flex-start;gap:14px;
+  background:var(--card);padding:16px;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;position:relative;
+  transition:background .12s;
+}
+.menu-card:last-child{border-bottom:none}
+.menu-card:active{background:#fafafa}
+.menu-thumb{width:96px;height:96px;border-radius:var(--r-sm);overflow:hidden;background:#f0f0f0;flex-shrink:0;position:relative}
+.menu-thumb img{width:100%;height:100%;object-fit:cover}
+.menu-thumb-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:38px;color:var(--t3)}
+.menu-info{flex:1;min-width:0;padding-top:2px}
+.menu-name{font-size:14px;font-weight:700;color:var(--t1);line-height:1.3;margin-bottom:4px}
+.menu-desc{font-size:12.5px;color:var(--t2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px}
+.menu-price{font-size:14.5px;font-weight:800;color:var(--t1)}
+.menu-popular{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:#e65c00;background:#fff3e0;padding:2px 7px;border-radius:4px;margin-bottom:5px}
+.menu-oos{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;color:var(--red);background:var(--red-l);padding:2px 8px;border-radius:4px;margin-left:6px}
+
+/* ── add button ── */
+.add-btn{
+  position:absolute;bottom:12px;right:12px;
+  width:32px;height:32px;border-radius:var(--r-sm);
+  background:var(--card);border:1.5px solid var(--orange);
+  color:var(--orange);display:flex;align-items:center;justify-content:center;
+  transition:all .15s;font-weight:800;box-shadow:0 2px 8px rgba(255,82,0,.15);
+}
+.add-btn:hover{background:var(--orange);color:#fff}
+/* counter pill */
+.qty-pill{
+  position:absolute;bottom:12px;right:12px;
+  display:inline-flex;align-items:center;
+  background:var(--orange);border-radius:var(--r-sm);
+  overflow:hidden;height:32px;box-shadow:0 2px 8px rgba(255,82,0,.25);
+}
+.qty-pill button{width:32px;height:32px;color:#fff;display:flex;align-items:center;justify-content:center;transition:background .12s}
+.qty-pill button:hover{background:rgba(255,255,255,.2)}
+.qty-pill span{min-width:26px;text-align:center;font-size:13px;font-weight:800;color:#fff}
+
+/* ── sheet header ── */
+.sheet-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px}
+.sheet-title{font-size:18px;font-weight:800;color:var(--t1)}
+.close-btn{width:32px;height:32px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);transition:background .12s}
+.close-btn:hover{background:#ebebeb}
+
+/* ── item detail sheet ── */
+.item-img-wrap{width:100%;aspect-ratio:4/3;overflow:hidden;background:#f0f0f0;position:relative;max-height:280px}
+.item-img-wrap img{width:100%;height:100%;object-fit:cover}
+.item-img-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:72px;color:var(--t3)}
+
+/* ── variant option ── */
+.var-opt{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 16px;border:1.5px solid var(--border);border-radius:var(--r-sm);
+  cursor:pointer;transition:all .15s;
+}
+.var-opt:hover{border-color:#bbb}
+.var-opt.sel{border-color:var(--t1);background:#fafafa}
+.var-dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);transition:all .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.var-dot.sq{border-radius:5px}
+.var-dot.sel{border-color:var(--t1);background:var(--t1)}
+
+/* ── cart item row ── */
+.cart-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+.cart-row:last-child{border-bottom:none}
+
+/* ── checkout ── */
+.addr-card{border:2px solid var(--border);border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:all .15s;margin-bottom:10px}
+.addr-card:hover{border-color:#bbb}
+.addr-card.sel{border-color:var(--orange);background:#fff9f6}
+.pay-opt{flex:1;border:2px solid var(--border);border-radius:var(--r-sm);padding:14px 8px;text-align:center;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:4px}
+.pay-opt.sel{border-color:var(--orange);background:#fff9f6}
+
+/* ── track dots ── */
+.track-step{display:flex;align-items:flex-start;gap:14px;position:relative}
+.track-dot{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px}
+.track-line{position:absolute;left:18px;top:36px;width:2px;height:28px;background:var(--border);border-radius:2px}
+.track-line.done{background:var(--green)}
+
+/* ── profile tab ── */
+.ptab{font-size:14px;font-weight:600;color:var(--t3);padding:10px 4px;border-bottom:2.5px solid transparent;cursor:pointer;transition:all .15s;white-space:nowrap}
+.ptab.on{color:var(--t1);border-bottom-color:var(--orange)}
+
+/* ── button primary ── */
+.btn-primary{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:15px;background:var(--orange);color:#fff;
+  font-size:15px;font-weight:700;border-radius:var(--r);
+  transition:all .15s;cursor:pointer;border:none;font-family:var(--font);
+}
+.btn-primary:hover{background:var(--orange-d);transform:translateY(-1px);box-shadow:0 4px 16px rgba(255,82,0,.3)}
+.btn-primary:active{transform:none;box-shadow:none}
+.btn-primary:disabled{background:#d4d4d4;color:#aaa;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ── input ── */
+.inp{width:100%;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;color:var(--t1);background:#fff;transition:all .15s;font-family:var(--font)}
+.inp::placeholder{color:var(--t3)}
+.inp:focus{border-color:var(--t1);box-shadow:0 0 0 3px rgba(0,0,0,.05)}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin-bottom:7px;display:block}
+
+/* ── btn outline ── */
+.btn-out{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;font-weight:600;color:var(--t2);background:#fff;cursor:pointer;transition:all .15s;font-family:var(--font)}
+.btn-out:hover{border-color:var(--t1);color:var(--t1)}
+
+/* ── modal qty control ── */
+.qty-ctrl{display:inline-flex;align-items:center;border:1.5px solid var(--border);border-radius:var(--r-pill);overflow:hidden}
+.qty-ctrl button{width:38px;height:38px;display:flex;align-items:center;justify-content:center;color:var(--t1);transition:background .12s;cursor:pointer}
+.qty-ctrl button:hover{background:#f5f5f5}
+.qty-ctrl span{min-width:30px;text-align:center;font-size:15px;font-weight:700}
+
+/* ── cart summary line ── */
+.sum-row{display:flex;justify-content:space-between;font-size:13.5px;color:var(--t2);margin-bottom:8px}
+.sum-row.total{font-size:16px;font-weight:800;color:var(--t1);margin-top:4px}
+
+/* ── page layout ── */
+.page-wrap{max-width:1200px;margin:0 auto;padding:0 0 calc(var(--tab-h) + 16px)}
+@media(min-width:1024px){
+  .page-wrap{display:grid;grid-template-columns:1fr 380px;gap:28px;padding:28px 24px 40px;align-items:start}
+  .main-col{}
+  .cart-col{position:sticky;top:calc(var(--nav-h) + 16px)}
+}
+.content-card{background:var(--card);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+
+/* ── empty + error ── */
+.center-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;gap:12px;padding:24px;text-align:center}
+`;
+
+/* ── misc atoms ───────────────────────────────────────────────────────────── */
+const Toast = ({ msg }) => msg ? <div className="toast">{msg}</div> : null;
+const Spinner = ({ size = 24 }) => <div className="spin" style={{ width: size, height: size }} />;
+
+const Skeleton = ({ h = 80, r = 10, style = {} }) => (
+  <div className="skel" style={{ height: h, borderRadius: r, ...style }} />
+);
+
+const LoadScreen = () => (
+  <div className="center-wrap">
+    <Spinner size={36} />
+    <p style={{ fontSize: 14, color: "var(--t2)", fontWeight: 500 }}>Loading menu…</p>
+  </div>
+);
+
+const ErrScreen = ({ msg }) => (
+  <div className="center-wrap">
+    <div style={{ fontSize: 64 }}>🍽️</div>
+    <h2 style={{ fontSize: 22, fontWeight: 800 }}>Not found</h2>
+    <p style={{ color: "var(--t2)", fontSize: 14, maxWidth: 300 }}>{msg || "Check the link and try again."}</p>
+  </div>
+);
+
+/* ── check dot ────────────────────────────────────────────────────────────── */
+const CheckDot = ({ sel, multi }) => (
+  <div className={`var-dot${multi ? " sq" : ""}${sel ? " sel" : ""}`}>
+    {sel && <span style={{ color: "#fff" }}>{Ic.check}</span>}
+  </div>
+);
+
+/* ── FoodImage ────────────────────────────────────────────────────────────── */
+const FoodImage = ({ src, alt, style, className, emojiFallback = "🍽️" }) => {
+  const [err, setErr] = useState(false);
+  if (!src || err) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, ...style }} className={className}>{emojiFallback}</div>;
+  return <img src={src} alt={alt} style={style} className={className} onError={() => setErr(true)} />;
 };
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   GLOBAL STYLES
-───────────────────────────────────────────────────────────────────────────── */
-const GlobalStyle = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg: #f6f6f6;
-      --surface: #ffffff;
-      --surface2: #f6f6f6;
-      --surface3: #ededed;
-      --border: #e8e8e8;
-      --text: #000000;
-      --text2: #545454;
-      --text3: #a0a0a0;
-      --green: #06c167;
-      --green-hover: #04a857;
-      --green-light: #e6f9f0;
-      --red: #e74c3c;
-      --warning: #ff9f0a;
-      --radius: 12px;
-      --radius-sm: 8px;
-      --radius-lg: 18px;
-      --radius-xl: 24px;
-      --shadow: 0 2px 12px rgba(0,0,0,0.08);
-      --shadow-md: 0 4px 20px rgba(0,0,0,0.11);
-      --shadow-lg: 0 8px 40px rgba(0,0,0,0.14);
-      --transition: 0.18s cubic-bezier(0.4,0,0.2,1);
-      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --navbar-h: 60px;
-    }
-
-    html { scroll-behavior: smooth; }
-    body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; min-height: 100vh; }
-    button { font-family: var(--font); cursor: pointer; border: none; background: none; outline: none; }
-    input, textarea { font-family: var(--font); outline: none; }
-
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-
-    @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes slideUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes scaleIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
-    @keyframes spin    { to { transform: rotate(360deg); } }
-    @keyframes shimmer { 0% { background-position:-600px 0; } 100% { background-position:600px 0; } }
-    @keyframes pop     { 0%,100% { transform:scale(1); } 50% { transform:scale(1.14); } }
-    @keyframes pulse   { 0%,100% { transform:scale(1); } 50% { transform:scale(1.06); } }
-    @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
-
-    .anim-fade  { animation: fadeUp  0.26s ease forwards; }
-    .anim-scale { animation: scaleIn 0.2s ease forwards; }
-
-    .skeleton {
-      background: linear-gradient(90deg, #efefef 25%, #e4e4e4 50%, #efefef 75%);
-      background-size: 600px 100%;
-      animation: shimmer 1.4s infinite;
-      border-radius: var(--radius-sm);
-    }
-
-    .spinner {
-      width: 32px; height: 32px;
-      border: 2.5px solid var(--border);
-      border-top-color: var(--green);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-
-    /* Overlay */
-    .overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.52);
-      backdrop-filter: blur(3px);
-      z-index: 200;
-      display: flex; align-items: flex-end; justify-content: center;
-      animation: scaleIn 0.18s ease;
-    }
-    @media (min-width: 640px) { .overlay { align-items: center; } }
-
-    /* Sheet */
-    .sheet {
-      background: var(--surface);
-      width: 100%; max-width: 540px;
-      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      max-height: 94vh; overflow-y: auto; position: relative;
-      animation: slideUp 0.28s cubic-bezier(0.34,1.4,0.64,1);
-    }
-    @media (min-width: 640px) { .sheet { border-radius: var(--radius-xl); max-height: 90vh; } }
-
-    .sheet-handle {
-      width: 40px; height: 4px; background: var(--border);
-      border-radius: 99px; margin: 14px auto 0;
-    }
-
-    /* Navbar */
-    .navbar {
-      position: sticky; top: 0; z-index: 100;
-      height: var(--navbar-h);
-      background: rgba(255,255,255,0.97);
-      backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border);
-    }
-    .navbar-inner {
-      width: 100%; max-width: 1240px; margin: 0 auto;
-      padding: 0 16px; height: 100%;
-      display: flex; align-items: center; gap: 10px;
-    }
-
-    /* Hero */
-    .hero { position: relative; width: 100%; background: #111; overflow: hidden; height: 220px; }
-    @media (min-width: 480px) { .hero { height: 260px; } }
-    @media (min-width: 768px) { .hero { height: 300px; } }
-    @media (min-width: 1080px) { .hero { height: 340px; } }
-    .hero-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; transition: transform 0.5s ease; }
-    .hero:hover .hero-img { transform: scale(1.025); }
-    .hero-gradient {
-      position: absolute; inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.22) 50%, rgba(0,0,0,0.08) 100%);
-    }
-    .hero-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 16px 20px; }
-    @media (min-width: 480px) { .hero-content { padding: 20px 20px 24px; } }
-
-    /* Page */
-    .page-wrap {
-      max-width: 1240px; margin: 0 auto;
-      display: grid; grid-template-columns: 1fr;
-      background: var(--bg);
-    }
-    @media (min-width: 1080px) {
-      .page-wrap { grid-template-columns: 1fr 380px; gap: 28px; padding: 28px 24px 60px; align-items: start; }
-    }
-
-    .cart-sidebar { display: none; }
-    @media (min-width: 1080px) {
-      .cart-sidebar { display: block; position: sticky; top: calc(var(--navbar-h) + 20px); }
-    }
-
-    /* Category chips */
-    .cat-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-    .cat-row::-webkit-scrollbar { display: none; }
-    .cat-chip {
-      flex-shrink: 0; font-size: 13px; font-weight: 600;
-      padding: 7px 16px; border-radius: 99px;
-      border: 1.5px solid var(--border); background: var(--surface); color: var(--text2);
-      white-space: nowrap; transition: all var(--transition);
-    }
-    .cat-chip:hover:not(.active) { border-color: #bbb; color: var(--text); }
-    .cat-chip.active { background: var(--text); color: #fff; border-color: var(--text); }
-
-    /* ─── Menu Layout ─────────────────────────────────────────────────────────── */
-
-    /* Default (mobile <480px): horizontal list rows, 1 column */
-    .menu-grid { display: flex; flex-direction: column; }
-
-    .menu-row {
-      display: flex; flex-direction: row; align-items: center; gap: 12px;
-      padding: 14px 0; border-bottom: 1px solid var(--border);
-      cursor: pointer; background: transparent; position: relative;
-      transition: background var(--transition);
-    }
-    .menu-row:last-child { border-bottom: none; }
-    .menu-row:active { background: #f7f7f7; }
-
-    .menu-thumb-card {
-      width: 80px; height: 80px; flex-shrink: 0;
-      border-radius: var(--radius); background: var(--surface3);
-      overflow: hidden; position: relative;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .menu-thumb-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-    .menu-card-body {
-      flex: 1; min-width: 0;
-      display: flex; flex-direction: column; gap: 3px;
-    }
-
-    .menu-card-footer {
-      display: flex; align-items: center; justify-content: space-between; margin-top: 5px;
-    }
-
-    /* Action col always hidden on mobile list */
-    .menu-row-action { display: none; }
-
-    /* Mid tablet (480px-767px): 2-column vertical cards */
-    @media (min-width: 480px) and (max-width: 767px) {
-      .menu-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-      }
-      .menu-row {
-        flex-direction: column; align-items: stretch; gap: 0;
-        padding: 0; border-bottom: none;
-        border-radius: var(--radius); border: 1px solid var(--border);
-        background: var(--surface); overflow: hidden;
-      }
-      .menu-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); transform: translateY(-2px); }
-      .menu-row:active { transform: scale(0.98); background: var(--surface); }
-      .menu-thumb-card {
-        width: 100%; height: 130px; border-radius: 0; flex-shrink: 0;
-      }
-      .menu-card-body { padding: 10px 11px 12px; gap: 4px; }
-      .menu-card-footer { margin-top: 8px; }
-    }
-
-    /* Wide tablet / desktop (768px+): list rows with action column */
-    @media (min-width: 768px) {
-      .menu-grid { display: flex; flex-direction: column; }
-      .menu-row {
-        flex-direction: row; align-items: center; gap: 16px;
-        padding: 15px 0; border-bottom: 1px solid var(--border);
-        border-radius: 0; border: none; background: transparent;
-      }
-      .menu-row:last-child { border-bottom: none; }
-      .menu-row:active { background: #fafafa; }
-      .menu-thumb-card { width: 96px; height: 96px; border-radius: var(--radius); flex-shrink: 0; }
-      .menu-card-body { padding: 0; }
-      .menu-card-footer { display: none; }
-      .menu-row-action { display: flex; align-items: center; flex-shrink: 0; }
-    }
-
-    /* Add button */
-    .add-btn {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: var(--text); border: none; color: #fff; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      transition: all var(--transition);
-    }
-    .add-btn:hover { background: #333; transform: scale(1.08); }
-    .add-btn svg { width: 15px; height: 15px; }
-
-    /* Cart stepper — card footer on mobile/2-col */
-    .card-qty-row {
-      display: inline-flex; align-items: center;
-      background: var(--text); border-radius: 99px; overflow: hidden;
-    }
-    .card-qty-btn {
-      width: 28px; height: 28px;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; transition: background var(--transition);
-    }
-    .card-qty-btn:hover { background: rgba(255,255,255,0.18); }
-    .card-qty-btn svg { width: 12px; height: 12px; }
-    .card-qty-num { font-size: 13px; font-weight: 800; min-width: 22px; text-align: center; color: #fff; }
-
-    /* Qty row — action col on desktop, modals */
-    .qty-row {
-      display: inline-flex; align-items: center;
-      border: 1.5px solid var(--border); border-radius: 99px; overflow: hidden;
-    }
-    .qty-btn {
-      width: 34px; height: 34px;
-      display: flex; align-items: center; justify-content: center;
-      transition: background var(--transition); color: var(--text);
-    }
-    .qty-btn:hover { background: var(--surface2); }
-    .qty-btn svg { width: 14px; height: 14px; }
-    .qty-num { font-size: 14px; font-weight: 700; min-width: 28px; text-align: center; }
-
-    /* Buttons */
-    .btn-primary {
-      background: var(--green); color: #fff;
-      font-size: 15px; font-weight: 700;
-      padding: 14px 24px; border-radius: var(--radius);
-      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
-      display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
-    }
-    .btn-primary:hover { background: var(--green-hover); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(6,193,103,0.35); }
-    .btn-primary:active { transform: none; box-shadow: none; }
-    .btn-primary:disabled { background: var(--border); color: var(--text3); cursor: not-allowed; transform: none; box-shadow: none; }
-
-    .btn-ghost {
-      border: 1.5px solid var(--border); color: var(--text);
-      font-size: 13px; font-weight: 600; padding: 8px 16px;
-      border-radius: var(--radius-sm);
-      transition: all var(--transition);
-      display: inline-flex; align-items: center; gap: 6px;
-      background: var(--surface);
-    }
-    .btn-ghost:hover { border-color: var(--text); background: var(--surface2); }
-
-    /* Inputs */
-    .input-field {
-      width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-      padding: 12px 14px; font-size: 14px; color: var(--text); background: var(--surface);
-      transition: border-color var(--transition), box-shadow var(--transition);
-    }
-    .input-field::placeholder { color: var(--text3); }
-    .input-field:focus { border-color: var(--text); box-shadow: 0 0 0 3px rgba(0,0,0,0.05); }
-
-    .form-label {
-      font-size: 11px; font-weight: 700; letter-spacing: 0.07em;
-      text-transform: uppercase; color: var(--text3); margin-bottom: 6px; display: block;
-    }
-
-    /* Tabs */
-    .tab-btn {
-      font-size: 14px; font-weight: 600; color: var(--text3);
-      padding: 10px 2px; border-bottom: 2.5px solid transparent;
-      transition: all var(--transition); white-space: nowrap;
-    }
-    .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
-    .tab-btn:hover:not(.active) { color: var(--text2); }
-
-    /* Badge */
-    .badge {
-      background: var(--green); color: #fff; font-size: 10px; font-weight: 800;
-      border-radius: 99px; min-width: 18px; height: 18px;
-      display: flex; align-items: center; justify-content: center; padding: 0 5px;
-      animation: pop 0.22s ease;
-    }
-
-    /* Pill */
-    .pill {
-      display: inline-flex; align-items: center; gap: 3px;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
-      text-transform: uppercase; padding: 3px 7px; border-radius: 99px;
-    }
-
-    /* Variant option */
-    .var-opt {
-      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-      padding: 11px 14px; display: flex; align-items: center; justify-content: space-between;
-      cursor: pointer; transition: all var(--transition); font-size: 14px;
-    }
-    .var-opt.sel { border-color: var(--text); background: #f7f7f7; }
-    .var-opt:hover:not(.sel) { border-color: #ccc; }
-
-    /* Address card */
-    .addr-card {
-      border: 1.5px solid var(--border); border-radius: var(--radius);
-      padding: 14px 16px; cursor: pointer; transition: all var(--transition);
-    }
-    .addr-card.sel { border-color: var(--text); background: #fafafa; }
-    .addr-card:hover:not(.sel) { border-color: #bbb; }
-
-    /* Payment option */
-    .pay-opt {
-      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-      padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px;
-      cursor: pointer; flex: 1; transition: all var(--transition);
-      font-size: 12px; font-weight: 600;
-    }
-    .pay-opt.sel { border-color: var(--text); background: #fafafa; }
-    .pay-opt:hover:not(.sel) { border-color: #bbb; }
-
-    /* Order track */
-    .track-dot {
-      width: 36px; height: 36px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; font-size: 14px; font-weight: 700; transition: all 0.35s ease;
-    }
-    .track-dot.done   { background: var(--green); color: #fff; }
-    .track-dot.active { background: var(--text); color: #fff; animation: pulse 1.6s infinite; }
-    .track-dot.pending{ background: var(--surface3); color: var(--text3); }
-    .track-line { width: 2px; height: 26px; margin-left: 17px; border-radius: 99px; background: var(--border); transition: background 0.4s ease; }
-    .track-line.done  { background: var(--green); }
-
-    /* Toast */
-    .toast {
-      position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%);
-      background: var(--text); color: #fff;
-      padding: 10px 22px; border-radius: 99px;
-      font-size: 13px; font-weight: 600; z-index: 9999; white-space: nowrap;
-      animation: toastIn 0.22s ease; box-shadow: var(--shadow-md);
-    }
-    @media (min-width: 1080px) { .toast { bottom: 28px; } }
-
-    /* Mobile cart bar */
-    .mobile-cart-bar {
-      display: flex; position: fixed; bottom: 0; left: 0; right: 0;
-      background: var(--text); color: #fff;
-      padding: 14px 20px;
-      padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-      align-items: center; justify-content: space-between;
-      z-index: 150; cursor: pointer; transition: background var(--transition);
-      box-shadow: 0 -2px 16px rgba(0,0,0,0.15);
-    }
-    .mobile-cart-bar:hover { background: #222; }
-    @media (min-width: 1080px) { .mobile-cart-bar { display: none; } }
-
-    /* Search */
-    .search-wrap { position: relative; }
-    .search-icon {
-      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-      width: 15px; height: 15px; color: var(--text3); pointer-events: none;
-    }
-    .search-input {
-      width: 100%; background: var(--surface3); border: 1.5px solid transparent;
-      border-radius: 99px; padding: 11px 38px 11px 40px;
-      font-size: 14px; color: var(--text); transition: all var(--transition);
-    }
-    .search-input::placeholder { color: var(--text3); }
-    .search-input:focus { background: var(--surface); border-color: var(--border); outline: none; box-shadow: 0 0 0 3px rgba(0,0,0,0.04); }
-
-    /* Price: tablet-only inline price hidden on mobile, card-footer hidden on tablet */
-    /* Price visibility toggle by breakpoint */
-    .tablet-price { display: none; }
-    /* Mobile list (<480px): footer shows price, tablet-price hidden */
-    /* 2-col cards (480-767px): footer shows price, tablet-price hidden */
-    /* List rows (768px+): tablet-price visible, footer hidden */
-    @media (min-width: 768px) {
-      .tablet-price { display: block; }
-      .menu-card-footer { display: none !important; }
-    }
-
-    .section-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
-
-    .info-chip {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.88);
-      white-space: nowrap;
-    }
-    .info-chip svg { width: 12px; height: 12px; flex-shrink: 0; }
-  `}</style>
-);
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   MINOR COMPONENTS
-───────────────────────────────────────────────────────────────────────────── */
-const Toast = ({ message }) => message ? <div className="toast">{message}</div> : null;
-
-const LoadingScreen = () => (
-  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", gap:16 }}>
-    <div className="spinner" />
-    <p style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Loading menu…</p>
-  </div>
-);
-
-const ErrorScreen = ({ message }) => (
-  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", gap:12, padding:24, textAlign:"center" }}>
-    <div style={{ fontSize:52 }}>🍽️</div>
-    <h2 style={{ fontSize:22, fontWeight:800 }}>Restaurant not found</h2>
-    <p style={{ color:"var(--text2)", fontSize:14, maxWidth:300 }}>{message || "Please check the link and try again."}</p>
-  </div>
-);
-
-const SkeletonRow = () => (
-  <div style={{ display:"flex", alignItems:"center", gap:14, padding:"16px 0", borderBottom:"1px solid var(--border)" }}>
-    <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8 }}>
-      <div className="skeleton" style={{ height:14, width:"50%", borderRadius:4 }} />
-      <div className="skeleton" style={{ height:12, width:"80%", borderRadius:4 }} />
-      <div className="skeleton" style={{ height:13, width:"25%", borderRadius:4 }} />
-    </div>
-    <div className="skeleton" style={{ width:90, height:90, borderRadius:"var(--radius)", flexShrink:0 }} />
-  </div>
-);
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   MENU ITEM MODAL
-───────────────────────────────────────────────────────────────────────────── */
-const MenuItemModal = ({ item, onClose, onAddToCart }) => {
+/* ── ItemDetailSheet ──────────────────────────────────────────────────────── */
+function ItemDetailSheet({ item, onClose, onAdd }) {
   const [qty, setQty] = useState(1);
-  const [selectedVariants, setSelectedVariants] = useState({});
-  const [selectedAddOns, setSelectedAddOns] = useState([]);
-  const [variantGroups, setVariantGroups] = useState([]);
-  const [addOns, setAddOns] = useState([]);
+  const [selVars, setSelVars] = useState({});
+  const [selAddons, setSelAddons] = useState([]);
+  const [varGroups, setVarGroups] = useState([]);
+  const [addons, setAddons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    const fetchExtras = async () => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  useEffect(() => {
+    (async () => {
       try {
         const [vgRes, aoRes] = await Promise.all([
           supabase.from("Variant_Groups").select("*, Variant_Options(*)").eq("menu_id", item.id),
           supabase.from("Add_Ons").select("*").eq("rest_id", item.rest_id),
         ]);
-        setVariantGroups(vgRes.data || []);
-        setAddOns(aoRes.data || []);
+        const vg = vgRes.data || [];
+        setVarGroups(vg);
+        setAddons(aoRes.data || []);
+        // pre-select first option of required single-choice groups
         const defaults = {};
-        (vgRes.data || []).forEach(g => {
-          if (g.is_required && !g.is_multiple && g["Variant_Options"]?.length)
-            defaults[g.id] = g["Variant_Options"][0].id;
+        vg.forEach(g => {
+          if (g.is_required && !g.is_multiple && g.Variant_Options?.length)
+            defaults[g.id] = g.Variant_Options[0].id;
         });
-        setSelectedVariants(defaults);
-      } catch {/* silent */} finally { setLoading(false); }
-    };
-    fetchExtras();
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+        setSelVars(defaults);
+      } catch { } finally { setLoading(false); }
+    })();
   }, [item.id, item.rest_id]);
 
-  const toggleVariant = (groupId, optionId, isMultiple) => {
-    if (isMultiple) {
-      setSelectedVariants(prev => {
-        const cur = Array.isArray(prev[groupId]) ? prev[groupId] : [];
-        return { ...prev, [groupId]: cur.includes(optionId) ? cur.filter(x => x !== optionId) : [...cur, optionId] };
+  const toggleVar = (gid, oid, multi) => {
+    if (multi) {
+      setSelVars(p => {
+        const cur = Array.isArray(p[gid]) ? p[gid] : [];
+        return { ...p, [gid]: cur.includes(oid) ? cur.filter(x => x !== oid) : [...cur, oid] };
       });
     } else {
-      setSelectedVariants(prev => ({ ...prev, [groupId]: optionId }));
+      setSelVars(p => ({ ...p, [gid]: oid }));
     }
   };
 
-  const toggleAddOn = id => setSelectedAddOns(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleAddon = id => setSelAddons(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
-  const calcExtra = () => {
-    let extra = 0;
-    variantGroups.forEach(g => {
-      const allOpts = g["Variant_Options"] || [];
-      const sel = selectedVariants[g.id];
-      if (Array.isArray(sel)) sel.forEach(sid => { const o = allOpts.find(x => x.id === sid); if (o) extra += Number(o.price_adj); });
-      else if (sel) { const o = allOpts.find(x => x.id === sel); if (o) extra += Number(o.price_adj); }
+  const extraCost = (() => {
+    let e = 0;
+    varGroups.forEach(g => {
+      const opts = g.Variant_Options || [], sel = selVars[g.id];
+      if (Array.isArray(sel)) sel.forEach(sid => { const o = opts.find(x => x.id === sid); if (o) e += +o.price_adj; });
+      else if (sel) { const o = opts.find(x => x.id === sel); if (o) e += +o.price_adj; }
     });
-    addOns.forEach(a => { if (selectedAddOns.includes(a.id)) extra += Number(a.price); });
-    return extra;
-  };
+    addons.forEach(a => { if (selAddons.includes(a.id)) e += +a.price; });
+    return e;
+  })();
 
-  const unitPrice = Number(item.price) + calcExtra();
-  const total = unitPrice * qty;
-  const canAdd = () => variantGroups.every(g => {
+  const unitPrice = +item.price + extraCost;
+  const canAdd = varGroups.every(g => {
     if (!g.is_required) return true;
-    const sel = selectedVariants[g.id];
-    return g.is_multiple ? (Array.isArray(sel) && sel.length > 0) : !!sel;
+    const s = selVars[g.id];
+    return g.is_multiple ? Array.isArray(s) && s.length > 0 : !!s;
   });
-  const handleAdd = () => { if (!canAdd()) return; onAddToCart({ item, qty, selectedVariants, selectedAddOns, unitPrice, note }); onClose(); };
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="sheet" onClick={e => e.stopPropagation()}>
-        <div className="sheet-handle" />
-        <div style={{ margin:"12px 16px 0", borderRadius:"var(--radius)", overflow:"hidden", height:210, background:"var(--surface3)", position:"relative" }}>
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="sheet" style={{ paddingBottom: 0 }}>
+        {/* Image */}
+        <div className="item-img-wrap">
           {item.image_path
-            ? <img src={item.image_path} alt={item.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e => { e.target.style.display="none"; }} />
-            : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:60 }}>🍽️</div>
+            ? <img src={item.image_path} alt={item.name} onError={e => e.target.style.display = "none"} />
+            : <div className="item-img-empty">🍽️</div>
           }
-          {item.recommended && <span className="pill" style={{ position:"absolute", top:10, left:10, background:"#fff8e1", color:"#e65100" }}>⭐ Popular</span>}
+          <button onClick={onClose} style={{ position: "absolute", top: 12, left: 12, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,.92)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+            {Ic.back}
+          </button>
+          {item.recommended && (
+            <span style={{ position: "absolute", top: 12, right: 12, background: "rgba(0,0,0,.62)", color: "#fff", borderRadius: 6, fontSize: 11, fontWeight: 700, padding: "4px 9px", backdropFilter: "blur(4px)" }}>⭐ Popular</span>
+          )}
         </div>
 
-        <div style={{ padding:"20px 20px 36px" }}>
-          <h2 style={{ fontSize:22, fontWeight:800, marginBottom:5, letterSpacing:"-0.4px" }}>{item.name}</h2>
-          {item.description && <p style={{ color:"var(--text2)", fontSize:14, lineHeight:1.65, marginBottom:10 }}>{item.description}</p>}
-          <p style={{ fontSize:18, fontWeight:800, marginBottom:20 }}>{fmt(item.price)}</p>
+        <div style={{ padding: "20px 20px 0" }}>
+          <h2 style={{ fontSize: 21, fontWeight: 800, marginBottom: 6, lineHeight: 1.25 }}>{item.name}</h2>
+          {item.description && <p style={{ fontSize: 14, color: "var(--t2)", lineHeight: 1.65, marginBottom: 10 }}>{item.description}</p>}
+          <p style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>{fmt(item.price)}</p>
+        </div>
 
-          {loading
-            ? <div style={{ display:"flex", justifyContent:"center", padding:"28px 0" }}><div className="spinner" /></div>
-            : <>
-                {variantGroups.map(g => (
-                  <div key={g.id} style={{ marginBottom:20 }}>
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-                      <p style={{ fontWeight:700, fontSize:14 }}>{g.name}</p>
-                      {g.is_required && <span className="pill" style={{ background:"#f0f0f0", color:"var(--text2)" }}>Required</span>}
-                    </div>
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                      {(g["Variant_Options"] || []).map(opt => {
-                        const sel = selectedVariants[g.id];
-                        const isSel = g.is_multiple ? (Array.isArray(sel) && sel.includes(opt.id)) : sel === opt.id;
-                        return (
-                          <div key={opt.id} className={`var-opt${isSel ? " sel" : ""}`} onClick={() => toggleVariant(g.id, opt.id, g.is_multiple)}>
-                            <span style={{ fontWeight: isSel ? 600 : 400 }}>{opt.name}</span>
-                            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                              {Number(opt.price_adj) !== 0 && <span style={{ fontSize:13, color:"var(--text2)", fontWeight:600 }}>+{fmt(opt.price_adj)}</span>}
-                              <div style={{ width:20, height:20, borderRadius: g.is_multiple ? 4 : "50%", border:`2px solid ${isSel?"var(--text)":"var(--border)"}`, background:isSel?"var(--text)":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all var(--transition)", flexShrink:0 }}>
-                                {isSel && <span style={{ color:"#fff", width:12, height:12 }}>{Icon.check}</span>}
-                              </div>
-                            </div>
+        {loading
+          ? <div style={{ padding: "20px", display: "flex", justifyContent: "center" }}><Spinner size={28} /></div>
+          : <div style={{ padding: "0 20px" }}>
+              {varGroups.map(g => (
+                <div key={g.id} style={{ marginBottom: 22 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <p style={{ fontWeight: 700, fontSize: 15 }}>{g.name}</p>
+                    {g.is_required && <span style={{ fontSize: 10, fontWeight: 700, background: "#f3f4f6", color: "var(--t2)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>Required</span>}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {(g.Variant_Options || []).map(opt => {
+                      const s = selVars[g.id];
+                      const sel = g.is_multiple ? Array.isArray(s) && s.includes(opt.id) : s === opt.id;
+                      return (
+                        <div key={opt.id} className={`var-opt${sel ? " sel" : ""}`} onClick={() => toggleVar(g.id, opt.id, g.is_multiple)}>
+                          <span style={{ fontSize: 14, fontWeight: sel ? 600 : 400 }}>{opt.name}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            {+opt.price_adj !== 0 && <span style={{ fontSize: 13, color: "var(--t2)", fontWeight: 600 }}>+{fmt(opt.price_adj)}</span>}
+                            <CheckDot sel={sel} multi={g.is_multiple} />
                           </div>
-                        );
-                      })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {addons.length > 0 && (
+                <div style={{ marginBottom: 22 }}>
+                  <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>Add-ons</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {addons.map(a => {
+                      const sel = selAddons.includes(a.id);
+                      return (
+                        <div key={a.id} className={`var-opt${sel ? " sel" : ""}`} onClick={() => toggleAddon(a.id)}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {a.is_required && <span style={{ fontSize: 10, fontWeight: 700, background: "#f3f4f6", color: "var(--t2)", padding: "2px 7px", borderRadius: 5 }}>Required</span>}
+                            <span style={{ fontSize: 14, fontWeight: sel ? 600 : 400 }}>{a.name}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            {+a.price > 0 && <span style={{ fontSize: 13, color: "var(--t2)", fontWeight: 600 }}>+{fmt(a.price)}</span>}
+                            <CheckDot sel={sel} multi />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginBottom: 20 }}>
+                <label className="lbl">Special instructions <span style={{ textTransform: "none", fontWeight: 400 }}>(optional)</span></label>
+                <textarea className="inp" rows={2} placeholder="e.g. no onions, extra sauce…" style={{ resize: "none" }} value={note} onChange={e => setNote(e.target.value)} />
+              </div>
+            </div>
+        }
+
+        {/* Footer: qty + add */}
+        <div style={{ padding: "14px 20px 20px", display: "flex", alignItems: "center", gap: 14, borderTop: "1px solid var(--border)", background: "#fff", position: "sticky", bottom: 0, paddingBottom: "calc(20px + env(safe-area-inset-bottom,0px))" }}>
+          <div className="qty-ctrl" style={{ flexShrink: 0 }}>
+            <button onClick={() => setQty(q => Math.max(1, q - 1))}>{Ic.minus}</button>
+            <span>{qty}</span>
+            <button onClick={() => setQty(q => q + 1)}>{Ic.plus}</button>
+          </div>
+          <button className="btn-primary" style={{ flex: 1, opacity: canAdd ? 1 : .4 }} disabled={!canAdd}
+            onClick={() => { if (!canAdd) return; onAdd({ item, qty, selectedVariants: selVars, selectedAddOns: selAddons, unitPrice, note }); onClose(); }}>
+            Add to cart · {fmt(unitPrice * qty)}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── CartSheet ────────────────────────────────────────────────────────────── */
+function CartSheet({ cart, restaurant, onUpdateQty, onCheckout, onClose }) {
+  const [promo, setPromo] = useState("");
+  const subT = cart.reduce((s, c) => s + c.unitPrice * c.qty, 0);
+  const delivery = subT > 0 ? 0.5 : 0;
+  const vat = subT * 0.05;
+  const total = subT + delivery + vat;
+  const minOk = !restaurant?.min_order || subT >= restaurant.min_order;
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  return (
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="sheet">
+        <div className="drag-pill" />
+        <div className="sheet-hd">
+          <span className="sheet-title">Your cart</span>
+          <button className="close-btn" onClick={onClose}>{Ic.close}</button>
+        </div>
+
+        {cart.length === 0
+          ? <div style={{ padding: "48px 20px", textAlign: "center" }}>
+              <div style={{ fontSize: 56, marginBottom: 12 }}>🛒</div>
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Your cart is empty</p>
+              <p style={{ color: "var(--t2)", fontSize: 14 }}>Add items from the menu to get started</p>
+            </div>
+          : <div style={{ padding: "0 20px 20px" }}>
+              {/* Items */}
+              <div style={{ marginBottom: 20 }}>
+                {cart.map((c, i) => (
+                  <div key={i} className="cart-row">
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{c.item.name}</p>
+                      {c.note && <p style={{ fontSize: 12, color: "var(--t3)", fontStyle: "italic", marginBottom: 3 }}>"{c.note}"</p>}
+                      <p style={{ fontSize: 13, color: "var(--t2)", fontWeight: 700 }}>{fmt(c.unitPrice)}</p>
+                    </div>
+                    <div className="qty-ctrl" style={{ flexShrink: 0 }}>
+                      <button onClick={() => onUpdateQty(i, c.qty - 1)}>
+                        {c.qty === 1 ? Ic.trash : Ic.minus}
+                      </button>
+                      <span>{c.qty}</span>
+                      <button onClick={() => onUpdateQty(i, c.qty + 1)}>{Ic.plus}</button>
                     </div>
                   </div>
                 ))}
+              </div>
 
-                {addOns.length > 0 && (
-                  <div style={{ marginBottom:20 }}>
-                    <p style={{ fontWeight:700, fontSize:14, marginBottom:10 }}>Add-ons</p>
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                      {addOns.map(ao => {
-                        const isSel = selectedAddOns.includes(ao.id);
-                        return (
-                          <div key={ao.id} className={`var-opt${isSel ? " sel" : ""}`} onClick={() => toggleAddOn(ao.id)}>
-                            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                              {ao.is_required && <span className="pill" style={{ background:"#f0f0f0", color:"var(--text2)" }}>Required</span>}
-                              <span style={{ fontWeight: isSel ? 600 : 400 }}>{ao.name}</span>
-                            </div>
-                            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                              {Number(ao.price) > 0 && <span style={{ fontSize:13, color:"var(--text2)", fontWeight:600 }}>+{fmt(ao.price)}</span>}
-                              <div style={{ width:20, height:20, borderRadius:4, border:`2px solid ${isSel?"var(--text)":"var(--border)"}`, background:isSel?"var(--text)":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all var(--transition)", flexShrink:0 }}>
-                                {isSel && <span style={{ color:"#fff", width:12, height:12 }}>{Icon.check}</span>}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+              {/* Promo */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                <input className="inp" style={{ flex: 1 }} placeholder="Promo code" value={promo} onChange={e => setPromo(e.target.value)} />
+                <button className="btn-out" style={{ whiteSpace: "nowrap" }}>Apply</button>
+              </div>
 
-                <div style={{ marginBottom:24 }}>
-                  <label className="form-label">Special instructions (optional)</label>
-                  <textarea className="input-field" placeholder="E.g. no onions, extra sauce…" rows={2} style={{ resize:"none" }} value={note} onChange={e => setNote(e.target.value)} />
+              {/* Bill */}
+              <div style={{ background: "#fafafa", borderRadius: var_r, padding: "16px", marginBottom: 16 }}>
+                <div className="sum-row"><span>Subtotal</span><span>{fmt(subT)}</span></div>
+                <div className="sum-row"><span>Delivery fee</span><span>{fmt(delivery)}</span></div>
+                <div className="sum-row"><span>VAT (5%)</span><span>{fmt(vat)}</span></div>
+                <div style={{ borderTop: "1px solid var(--border)", marginTop: 10, paddingTop: 10 }}>
+                  <div className="sum-row total"><span>Total</span><span>{fmt(total)}</span></div>
                 </div>
-              </>
-          }
+              </div>
 
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div className="qty-row">
-              <button className="qty-btn" onClick={() => setQty(q => Math.max(1, q-1))}>{Icon.minus}</button>
-              <span className="qty-num">{qty}</span>
-              <button className="qty-btn" onClick={() => setQty(q => q+1)}>{Icon.plus}</button>
+              {restaurant?.min_order && subT < restaurant.min_order && (
+                <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: var_r_sm, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#e65100", fontWeight: 500 }}>
+                  ⚠️ Min. order {fmt(restaurant.min_order)} · add {fmt(restaurant.min_order - subT)} more
+                </div>
+              )}
+
+              <button className="btn-primary" disabled={!minOk} onClick={() => onCheckout(total)}>
+                Proceed to checkout · {fmt(total)}
+              </button>
             </div>
-            <button className="btn-primary" style={{ flex:1, opacity:canAdd()?1:0.45 }} onClick={handleAdd} disabled={!canAdd()}>
-              Add to order · {fmt(total)}
-            </button>
-          </div>
-        </div>
+        }
       </div>
-    </div>
+    </>
   );
-};
+}
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   CART PANEL
-───────────────────────────────────────────────────────────────────────────── */
-const CartPanel = ({ cart, restaurant, onUpdateQty, onCheckout, isModal, onClose }) => {
-  const [promoCode, setPromoCode] = useState("");
-  const itemTotal = cart.reduce((s,c) => s + c.unitPrice * c.qty, 0);
-  const deliveryFee = itemTotal > 0 ? 0.500 : 0;
-  const vat = itemTotal * 0.05;
-  const total = itemTotal + deliveryFee + vat;
+// JS vars for inline styles (avoids template literal issues)
+const var_r = "var(--r)";
+const var_r_sm = "var(--r-sm)";
 
-  const content = (
-    <div style={{ padding: isModal ? "20px 20px 36px" : "16px 20px 24px" }}>
-      {isModal && (
-        <>
-          <div className="sheet-handle" style={{ marginBottom:0 }} />
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, marginTop:16 }}>
-            <h2 style={{ fontSize:20, fontWeight:800 }}>Your order</h2>
-            <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <span style={{ width:16, height:16 }}>{Icon.close}</span>
-            </button>
-          </div>
-        </>
-      )}
-      {!isModal && (
-        <div style={{ paddingBottom:14, borderBottom:"1px solid var(--border)", marginBottom:16 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:2 }}>{restaurant?.name}</p>
-          <h3 style={{ fontSize:18, fontWeight:800 }}>Your order</h3>
-        </div>
-      )}
-
-      {cart.length === 0 ? (
-        <div style={{ textAlign:"center", padding:"44px 0" }}>
-          <div style={{ fontSize:44, marginBottom:12 }}>🛒</div>
-          <p style={{ fontWeight:700, fontSize:15, marginBottom:4 }}>Your cart is empty</p>
-          <p style={{ color:"var(--text3)", fontSize:13 }}>Add items to get started</p>
-        </div>
-      ) : (
-        <>
-          {cart.map((c, i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:12, paddingBottom:14, borderBottom:"1px solid var(--border)", marginBottom:14 }}>
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontWeight:600, fontSize:14, marginBottom:2 }}>{c.item.name}</p>
-                {c.note && <p style={{ fontSize:12, color:"var(--text3)", marginBottom:3, fontStyle:"italic" }}>"{c.note}"</p>}
-                <p style={{ fontSize:13, color:"var(--text2)", fontWeight:700 }}>{fmt(c.unitPrice)}</p>
-              </div>
-              <div className="qty-row" style={{ flexShrink:0 }}>
-                <button className="qty-btn" onClick={() => onUpdateQty(i, c.qty-1)}>
-                  {c.qty === 1 ? <span style={{ width:14, height:14 }}>{Icon.trash}</span> : Icon.minus}
-                </button>
-                <span className="qty-num">{c.qty}</span>
-                <button className="qty-btn" onClick={() => onUpdateQty(i, c.qty+1)}>{Icon.plus}</button>
-              </div>
-            </div>
-          ))}
-
-          <div style={{ display:"flex", gap:8, marginBottom:18 }}>
-            <input className="input-field" placeholder="Promo code" value={promoCode} onChange={e => setPromoCode(e.target.value)} style={{ flex:1, borderRadius:99, padding:"9px 16px", fontSize:13 }} />
-            <button className="btn-ghost" style={{ borderRadius:99, whiteSpace:"nowrap", padding:"9px 18px" }}>Apply</button>
-          </div>
-
-          <div style={{ display:"flex", flexDirection:"column", gap:7, paddingBottom:14, borderBottom:"1px solid var(--border)", marginBottom:14 }}>
-            {[["Subtotal", fmt(itemTotal)],["Delivery fee", fmt(deliveryFee)],["VAT (5%)", fmt(vat)]].map(([label, val]) => (
-              <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"var(--text2)" }}>
-                <span>{label}</span><span style={{ fontWeight:500 }}>{val}</span>
-              </div>
-            ))}
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:15, fontWeight:800, color:"var(--text)", marginTop:4 }}>
-              <span>Total</span><span>{fmt(total)}</span>
-            </div>
-          </div>
-
-          {restaurant?.min_order && itemTotal < restaurant.min_order && (
-            <div style={{ background:"#fff8e1", border:"1px solid #ffe082", borderRadius:"var(--radius-sm)", padding:"10px 14px", marginBottom:14, fontSize:13, color:"#e65100", fontWeight:500 }}>
-              ⚠️ Min. order {fmt(restaurant.min_order)} · add {fmt(restaurant.min_order - itemTotal)} more
-            </div>
-          )}
-
-          <button className="btn-primary" onClick={() => onCheckout(total)} disabled={!!(restaurant?.min_order && itemTotal < restaurant.min_order)}>
-            Go to checkout · {fmt(total)}
-          </button>
-        </>
-      )}
-    </div>
-  );
-
-  if (isModal) return (
-    <div className="overlay" onClick={onClose}>
-      <div className="sheet" onClick={e => e.stopPropagation()}>{content}</div>
-    </div>
-  );
-
-  return (
-    <div style={{ background:"var(--surface)", borderRadius:"var(--radius-lg)", border:"1px solid var(--border)", boxShadow:"var(--shadow)" }}>
-      {content}
-    </div>
-  );
-};
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   CHECKOUT MODAL
-───────────────────────────────────────────────────────────────────────────── */
-const CheckoutModal = ({ total, restaurant, addresses, defaultAddr, onClose, onPlaceOrder, onAddAddress }) => {
-  const [selectedAddr, setSelectedAddr] = useState(defaultAddr?.id || null);
-  const [payMethod, setPayMethod] = useState("Cash");
+/* ── CheckoutSheet ────────────────────────────────────────────────────────── */
+function CheckoutSheet({ total, restaurant, addresses, defaultAddr, onClose, onPlaceOrder, onAddAddress }) {
+  const [selAddr, setSelAddr] = useState(defaultAddr?.id || null);
+  const [pay, setPay] = useState("Cash");
   const [notes, setNotes] = useState("");
   const [placing, setPlacing] = useState(false);
 
-  const addr = addresses.find(a => a.id === selectedAddr);
-  const handlePlace = async () => {
-    if (!addr && restaurant) return alert("Please select a delivery address.");
-    setPlacing(true);
-    await onPlaceOrder({ address:addr, payMethod, notes });
-    setPlacing(false);
-  };
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  const addr = addresses.find(a => a.id === selAddr);
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="sheet" onClick={e => e.stopPropagation()}>
-        <div className="sheet-handle" />
-        <div style={{ padding:"16px 20px 36px" }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
-            <h2 style={{ fontSize:20, fontWeight:800 }}>Checkout</h2>
-            <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <span style={{ width:16, height:16 }}>{Icon.close}</span>
-            </button>
-          </div>
-
-          <div style={{ marginBottom:22 }}>
-            <label className="form-label">Delivery address</label>
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="sheet">
+        <div className="drag-pill" />
+        <div className="sheet-hd">
+          <span className="sheet-title">Checkout</span>
+          <button className="close-btn" onClick={onClose}>{Ic.close}</button>
+        </div>
+        <div style={{ padding: "0 20px 20px" }}>
+          {/* Address */}
+          <div style={{ marginBottom: 22 }}>
+            <label className="lbl">Delivery address</label>
             {addresses.length === 0
-              ? <button className="btn-ghost" style={{ width:"100%", justifyContent:"center" }} onClick={onAddAddress}>
-                  <span style={{ width:16, height:16 }}>{Icon.plus}</span> Add address
+              ? <button className="btn-out" style={{ width: "100%", justifyContent: "center" }} onClick={onAddAddress}>
+                  {Ic.plus} Add address
                 </button>
-              : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              : <>
                   {addresses.map(a => (
-                    <div key={a.id} className={`addr-card${selectedAddr===a.id?" sel":""}`} onClick={() => setSelectedAddr(a.id)}>
-                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                        <span style={{ width:14, height:14, color:"var(--text2)" }}>{a.label==="Work"?Icon.work:Icon.home}</span>
-                        <span style={{ fontWeight:700, fontSize:14 }}>{a.label}</span>
-                        {selectedAddr===a.id && <span style={{ marginLeft:"auto", width:18, height:18, color:"var(--green)" }}>{Icon.check}</span>}
+                    <div key={a.id} className={`addr-card${selAddr === a.id ? " sel" : ""}`} onClick={() => setSelAddr(a.id)}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <span style={{ color: "var(--t2)" }}>{a.label === "Work" ? Ic.work : Ic.homeaddr}</span>
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>{a.label}</span>
+                        {selAddr === a.id && <span style={{ marginLeft: "auto", color: "var(--orange)" }}>{Ic.check}</span>}
                       </div>
-                      <p style={{ fontSize:13, color:"var(--text2)", paddingLeft:22 }}>
-                        {[a.apartment_no&&`Apt ${a.apartment_no}`,a.floor&&`Floor ${a.floor}`,a.bldg_name,a.street,a.block].filter(Boolean).join(", ")}
+                      <p style={{ fontSize: 13, color: "var(--t2)", paddingLeft: 22 }}>
+                        {[a.apartment_no && `Apt ${a.apartment_no}`, a.floor && `Floor ${a.floor}`, a.bldg_name, a.street, a.block].filter(Boolean).join(", ")}
                       </p>
                     </div>
                   ))}
-                  <button className="btn-ghost" style={{ justifyContent:"center" }} onClick={onAddAddress}>
-                    <span style={{ width:14, height:14 }}>{Icon.plus}</span> Add new address
+                  <button className="btn-out" style={{ justifyContent: "center", width: "100%", marginTop: 4 }} onClick={onAddAddress}>
+                    {Ic.plus} Add new address
                   </button>
-                </div>
+                </>
             }
           </div>
 
-          <div style={{ marginBottom:22 }}>
-            <label className="form-label">Payment method</label>
-            <div style={{ display:"flex", gap:8 }}>
-              {[["Cash","💵"],["Card","💳"],["Online","📱"]].map(([m,emoji]) => (
-                <div key={m} className={`pay-opt${payMethod===m?" sel":""}`} onClick={() => setPayMethod(m)}>
-                  <span style={{ fontSize:22 }}>{emoji}</span>
-                  <span>{m}</span>
+          {/* Payment */}
+          <div style={{ marginBottom: 22 }}>
+            <label className="lbl">Payment method</label>
+            <div style={{ display: "flex", gap: 10 }}>
+              {[["Cash", "💵"], ["Card", "💳"], ["Online", "📱"]].map(([m, em]) => (
+                <div key={m} className={`pay-opt${pay === m ? " sel" : ""}`} onClick={() => setPay(m)}>
+                  <span style={{ fontSize: 24 }}>{em}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{m}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{ marginBottom:22 }}>
-            <label className="form-label">Order notes (optional)</label>
-            <textarea className="input-field" placeholder="Any requests for the restaurant?" rows={2} style={{ resize:"none" }} value={notes} onChange={e => setNotes(e.target.value)} />
+          {/* Notes */}
+          <div style={{ marginBottom: 22 }}>
+            <label className="lbl">Order notes <span style={{ textTransform: "none", fontWeight: 400 }}>(optional)</span></label>
+            <textarea className="inp" rows={2} placeholder="Any requests for the restaurant?" style={{ resize: "none" }} value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
 
-          <div style={{ background:"var(--surface2)", borderRadius:"var(--radius-sm)", padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-            <span style={{ fontWeight:600, fontSize:14 }}>Total to pay</span>
-            <span style={{ fontWeight:800, fontSize:18 }}>{fmt(total)}</span>
+          {/* Total */}
+          <div style={{ background: "#fafafa", borderRadius: var_r_sm, padding: "13px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <span style={{ fontWeight: 600 }}>Total to pay</span>
+            <span style={{ fontSize: 18, fontWeight: 800 }}>{fmt(total)}</span>
           </div>
 
-          <button className="btn-primary" style={{ height:52 }} onClick={handlePlace} disabled={placing || !selectedAddr}>
-            {placing ? <div className="spinner" style={{ width:22, height:22, borderWidth:2, borderTopColor:"#fff" }} /> : `Place order · ${fmt(total)}`}
+          <button className="btn-primary" disabled={placing || !selAddr} onClick={async () => {
+            if (!addr) { alert("Please select a delivery address."); return; }
+            setPlacing(true);
+            await onPlaceOrder({ address: addr, payMethod: pay, notes });
+            setPlacing(false);
+          }}>
+            {placing ? <Spinner size={20} /> : `Place order · ${fmt(total)}`}
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
-};
+}
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   ORDER TRACK MODAL
-───────────────────────────────────────────────────────────────────────────── */
-const OrderTrackModal = ({ order, restaurant, address, onClose }) => {
+/* ── TrackSheet ───────────────────────────────────────────────────────────── */
+function TrackSheet({ order, restaurant, address, onClose }) {
   const steps = [
-    { label:"Order placed!", emoji:"✅" },
-    { label:"Waiting for restaurant to accept", emoji:"🍽️" },
-    { label:"Your food is being prepared", emoji:"👨‍🍳" },
-    { label:"On the way to you!", emoji:"🛵" },
+    { l: "Order placed!", e: "✅" },
+    { l: "Waiting for restaurant", e: "🍽️" },
+    { l: "Food being prepared", e: "👨‍🍳" },
+    { l: "On the way!", e: "🛵" },
   ];
-  const currentStep = order?.status==="accepted"?2:order?.status==="preparing"?3:order?.status==="on_the_way"?4:1;
+  const cur = order?.status === "accepted" ? 2 : order?.status === "preparing" ? 3 : order?.status === "on_the_way" ? 4 : 1;
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="sheet" onClick={e => e.stopPropagation()}>
-        <div className="sheet-handle" />
-        <div style={{ padding:"16px 20px 36px" }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-            <h2 style={{ fontSize:20, fontWeight:800 }}>Track order</h2>
-            <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <span style={{ width:16, height:16 }}>{Icon.close}</span>
-            </button>
-          </div>
-          <p style={{ fontSize:13, color:"var(--text3)", fontWeight:500, marginBottom:24 }}>Order #{order?.id}</p>
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="sheet">
+        <div className="drag-pill" />
+        <div className="sheet-hd">
+          <span className="sheet-title">Track order</span>
+          <button className="close-btn" onClick={onClose}>{Ic.close}</button>
+        </div>
+        <div style={{ padding: "0 20px 28px" }}>
+          <p style={{ fontSize: 13, color: "var(--t3)", fontWeight: 500, marginBottom: 24 }}>Order #{order?.id}</p>
 
-          <div style={{ marginBottom:24 }}>
-            {steps.map((s,i) => {
-              const n=i+1, isDone=n<currentStep, isActive=n===currentStep;
+          {/* Steps */}
+          <div style={{ marginBottom: 24 }}>
+            {steps.map((s, i) => {
+              const n = i + 1, done = n < cur, active = n === cur;
               return (
-                <div key={i}>
-                  <div style={{ display:"flex", alignItems:"center", gap:14, padding:"8px 0" }}>
-                    <div className={`track-dot ${isDone?"done":isActive?"active":"pending"}`}>
-                      {isDone ? <span style={{ width:16, height:16 }}>{Icon.check}</span> : <span>{isActive?s.emoji:n}</span>}
+                <div key={i} style={{ position: "relative", marginBottom: i < 3 ? 0 : 0 }}>
+                  <div className="track-step" style={{ paddingBottom: i < 3 ? 8 : 0 }}>
+                    <div className="track-dot" style={{ background: done ? "var(--green)" : active ? "var(--orange)" : "#f0f0f0", color: done || active ? "#fff" : "var(--t3)", fontSize: done ? 16 : 18 }}>
+                      {done ? Ic.check : s.e}
                     </div>
-                    <p style={{ fontWeight:isActive?700:400, color:isDone||isActive?"var(--text)":"var(--text3)", fontSize:14, transition:"all 0.3s" }}>{s.label}</p>
+                    <div style={{ paddingTop: 6 }}>
+                      <p style={{ fontSize: 14, fontWeight: active ? 700 : 400, color: done || active ? "var(--t1)" : "var(--t3)" }}>{s.l}</p>
+                    </div>
                   </div>
-                  {i < steps.length-1 && <div className={`track-line${isDone?" done":""}`} />}
+                  {i < 3 && <div className={`track-line${done ? " done" : ""}`} />}
                 </div>
               );
             })}
           </div>
 
+          {/* WhatsApp */}
           {restaurant?.ph_no && (
-            <a href={`https://wa.me/${restaurant.ph_no.replace(/\D/g,"")}?text=Hi! My order ID is %23${order?.id}. Can you give me an update?`}
+            <a href={`https://wa.me/${restaurant.ph_no.replace(/\D/g, "")}?text=Hi! My order ID is %23${order?.id}`}
               target="_blank" rel="noreferrer"
-              style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, width:"100%", padding:"14px 20px", background:"#25D366", color:"#fff", borderRadius:"var(--radius)", fontWeight:700, fontSize:15, textDecoration:"none", marginBottom:16 }}>
-              <span style={{ width:20, height:20 }}>{Icon.whatsapp}</span>
-              Get updates on WhatsApp
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "13px 20px", background: "#25D366", color: "#fff", borderRadius: var_r, fontWeight: 700, fontSize: 14, marginBottom: 16 }}>
+              {Ic.wa} WhatsApp for updates
             </a>
           )}
 
-          <div style={{ background:"var(--surface2)", borderRadius:"var(--radius)", padding:"14px 16px", display:"flex", flexDirection:"column", gap:10 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontSize:16 }}>🏪</span>
+          {/* Info */}
+          <div style={{ background: "#fafafa", borderRadius: var_r, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <span style={{ fontSize: 16 }}>🏪</span>
               <div>
-                <p style={{ fontWeight:700, fontSize:13 }}>{restaurant?.name}{restaurant?.branch_name?`, ${restaurant.branch_name}`:""}</p>
-                {restaurant?.address && <p style={{ fontSize:12, color:"var(--text3)" }}>{restaurant.address}</p>}
+                <p style={{ fontWeight: 700, fontSize: 13 }}>{restaurant?.name}{restaurant?.branch_name ? `, ${restaurant.branch_name}` : ""}</p>
+                {restaurant?.address && <p style={{ fontSize: 12, color: "var(--t3)" }}>{restaurant.address}</p>}
               </div>
             </div>
             {address && (
-              <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
-                <span style={{ fontSize:16 }}>📍</span>
-                <p style={{ fontSize:12, color:"var(--text2)" }}>{[address.apartment_no&&`Apt ${address.apartment_no}`,address.street,address.block].filter(Boolean).join(", ")}</p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <span style={{ fontSize: 16 }}>📍</span>
+                <p style={{ fontSize: 12, color: "var(--t2)" }}>{[address.apartment_no && `Apt ${address.apartment_no}`, address.street, address.block].filter(Boolean).join(", ")}</p>
               </div>
             )}
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontSize:16 }}>🕒</span>
-              <p style={{ fontSize:12, color:"var(--text2)" }}>Placed {new Date().toLocaleString([],{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"short"})}</p>
-            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
-};
+}
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   PROFILE MODAL
-───────────────────────────────────────────────────────────────────────────── */
-const ProfileModal = ({ customer, addresses, onClose, onSaveProfile, onSaveAddress, onDeleteAddress, onSetDefault, defaultAddrId }) => {
+/* ── ProfileSheet ─────────────────────────────────────────────────────────── */
+function ProfileSheet({ customer, addresses, onClose, onSaveProfile, onSaveAddress, onDeleteAddress, onSetDefault, defaultAddrId }) {
   const [tab, setTab] = useState("info");
-  const [form, setForm] = useState({ cust_name:customer?.cust_name||"", ph_num:customer?.ph_num||"" });
-  const [editAddr, setEditAddr] = useState(null);
+  const [form, setForm] = useState({ cust_name: customer?.cust_name || "", ph_num: customer?.ph_num || "" });
+  const [editAddrId, setEditAddrId] = useState(null);
   const [addingNew, setAddingNew] = useState(false);
-  const [addrForm, setAddrForm] = useState({ label:"Home", street:"", block:"", bldg_name:"", apartment_no:"", floor:"", landmark:"", note:"" });
+  const [af, setAf] = useState({ label: "Home", street: "", block: "", bldg_name: "", apartment_no: "", floor: "", landmark: "", note: "" });
   const [saving, setSaving] = useState(false);
 
-  const handleSaveProfile = async () => { setSaving(true); await onSaveProfile(form); setSaving(false); };
-  const startEditAddr = addr => {
-    setEditAddr(addr?.id||null);
-    setAddrForm({ label:addr?.label||"Home", street:addr?.street||"", block:addr?.block||"", bldg_name:addr?.bldg_name||"", apartment_no:addr?.apartment_no||"", floor:addr?.floor||"", landmark:addr?.landmark||"", note:addr?.note||"" });
-    setAddingNew(!addr);
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  const startEdit = (a) => {
+    setEditAddrId(a?.id || null);
+    setAf({ label: a?.label || "Home", street: a?.street || "", block: a?.block || "", bldg_name: a?.bldg_name || "", apartment_no: a?.apartment_no || "", floor: a?.floor || "", landmark: a?.landmark || "", note: a?.note || "" });
+    setAddingNew(!a);
   };
-  const handleSaveAddr = async () => { setSaving(true); await onSaveAddress({ ...addrForm, id:editAddr }); setEditAddr(null); setAddingNew(false); setSaving(false); };
+
+  const addrFields = [
+    { f: "street", l: "Street" }, { f: "block", l: "Block" },
+    { f: "bldg_name", l: "Building name" }, { f: "apartment_no", l: "Apartment no.", t: "number" },
+    { f: "floor", l: "Floor", t: "number" }, { f: "landmark", l: "Landmark (optional)" },
+    { f: "note", l: "Delivery note (optional)" },
+  ];
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="sheet" onClick={e => e.stopPropagation()}>
-        <div className="sheet-handle" />
-        <div style={{ padding:"16px 20px 0" }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
-            <h2 style={{ fontSize:20, fontWeight:800 }}>My profile</h2>
-            <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <span style={{ width:16, height:16 }}>{Icon.close}</span>
-            </button>
-          </div>
-          <div style={{ display:"flex", gap:24, borderBottom:"1.5px solid var(--border)", marginBottom:20 }}>
-            {[{key:"info",label:"Profile"},{key:"addresses",label:"Addresses"},{key:"orders",label:"Orders"}].map(t => (
-              <button key={t.key} className={`tab-btn${tab===t.key?" active":""}`} onClick={() => setTab(t.key)}>{t.label}</button>
-            ))}
-          </div>
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="sheet">
+        <div className="drag-pill" />
+        <div className="sheet-hd">
+          <span className="sheet-title">My profile</span>
+          <button className="close-btn" onClick={onClose}>{Ic.close}</button>
         </div>
 
-        <div style={{ padding:"0 20px 36px" }}>
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 20, padding: "0 20px", borderBottom: "1.5px solid var(--border)", marginBottom: 20 }}>
+          {[["info", "Profile"], ["addresses", "Addresses"], ["orders", "Orders"]].map(([k, l]) => (
+            <button key={k} className={`ptab${tab === k ? " on" : ""}`} onClick={() => setTab(k)}>{l}</button>
+          ))}
+        </div>
+
+        <div style={{ padding: "0 20px 32px" }}>
           {tab === "info" && (
-            <div className="anim-fade" style={{ display:"flex", flexDirection:"column", gap:16 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:14, paddingBottom:16, borderBottom:"1px solid var(--border)" }}>
-                <div style={{ width:52, height:52, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <span style={{ width:24, height:24, color:"var(--text2)" }}>{Icon.user}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "#fafafa", borderRadius: var_r, marginBottom: 4 }}>
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--orange)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 22, fontWeight: 800, flexShrink: 0 }}>
+                  {(form.cust_name || "?")[0].toUpperCase()}
                 </div>
                 <div>
-                  <p style={{ fontWeight:700, fontSize:16 }}>{form.cust_name||"Your Name"}</p>
-                  <p style={{ fontSize:13, color:"var(--text3)" }}>{form.ph_num||"Add phone number"}</p>
+                  <p style={{ fontWeight: 700, fontSize: 15 }}>{form.cust_name || "Your Name"}</p>
+                  <p style={{ fontSize: 13, color: "var(--t3)" }}>{form.ph_num || "Add phone number"}</p>
                 </div>
               </div>
-              <div>
-                <label className="form-label">Full name</label>
-                <input className="input-field" placeholder="Enter your name" value={form.cust_name} onChange={e => setForm({...form, cust_name:e.target.value})} />
-              </div>
-              <div>
-                <label className="form-label">Phone number</label>
-                <input className="input-field" placeholder="+965 0000 0000" value={form.ph_num} onChange={e => setForm({...form, ph_num:e.target.value})} />
-              </div>
-              <button className="btn-primary" onClick={handleSaveProfile} disabled={saving}>
-                {saving ? <div className="spinner" style={{ width:20, height:20, borderWidth:2, borderTopColor:"#fff" }} /> : "Save profile"}
+              <div><label className="lbl">Full name</label><input className="inp" placeholder="Enter your name" value={form.cust_name} onChange={e => setForm({ ...form, cust_name: e.target.value })} /></div>
+              <div><label className="lbl">Phone number</label><input className="inp" placeholder="+965 0000 0000" value={form.ph_num} onChange={e => setForm({ ...form, ph_num: e.target.value })} /></div>
+              <button className="btn-primary" disabled={saving} onClick={async () => { setSaving(true); await onSaveProfile(form); setSaving(false); }}>
+                {saving ? <Spinner size={20} /> : "Save profile"}
               </button>
             </div>
           )}
 
           {tab === "addresses" && (
-            <div className="anim-fade">
-              {(editAddr !== null || addingNew) ? (
-                <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
-                    <button className="btn-ghost" style={{ padding:"6px 12px", fontSize:12 }} onClick={() => { setEditAddr(null); setAddingNew(false); }}>← Back</button>
-                    <span style={{ fontWeight:700, fontSize:15 }}>{addingNew?"New address":"Edit address"}</span>
+            <div>
+              {editAddrId !== null || addingNew ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <button className="btn-out" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => { setEditAddrId(null); setAddingNew(false); }}>← Back</button>
+                    <span style={{ fontWeight: 700, fontSize: 15 }}>{addingNew ? "New address" : "Edit address"}</span>
                   </div>
                   <div>
-                    <label className="form-label">Label</label>
-                    <div style={{ display:"flex", gap:8 }}>
-                      {["Home","Work","Other"].map(l => (
-                        <button key={l} onClick={() => setAddrForm({...addrForm,label:l})} style={{ flex:1, padding:"9px 0", borderRadius:"var(--radius-sm)", border:`1.5px solid ${addrForm.label===l?"var(--text)":"var(--border)"}`, background:addrForm.label===l?"#fafafa":"var(--surface)", fontWeight:700, fontSize:13, cursor:"pointer", transition:"all var(--transition)" }}>
-                          {l==="Home"?"🏠":l==="Work"?"🏢":"📍"} {l}
+                    <label className="lbl">Label</label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {["Home", "Work", "Other"].map(l => (
+                        <button key={l} onClick={() => setAf({ ...af, label: l })}
+                          style={{ flex: 1, padding: "10px 0", border: `2px solid ${af.label === l ? "var(--orange)" : "var(--border)"}`, borderRadius: var_r_sm, background: af.label === l ? "#fff9f6" : "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "all .15s", fontFamily: "var(--font)" }}>
+                          {l === "Home" ? "🏠" : l === "Work" ? "🏢" : "📍"} {l}
                         </button>
                       ))}
                     </div>
                   </div>
-                  {[{field:"street",label:"Street"},{field:"block",label:"Block"},{field:"bldg_name",label:"Building name"},{field:"apartment_no",label:"Apartment no.",type:"number"},{field:"floor",label:"Floor",type:"number"},{field:"landmark",label:"Landmark (optional)"},{field:"note",label:"Delivery note (optional)"}].map(({field,label,type}) => (
-                    <div key={field}>
-                      <label className="form-label">{label}</label>
-                      <input className="input-field" type={type||"text"} placeholder={label} value={addrForm[field]} onChange={e => setAddrForm({...addrForm,[field]:e.target.value})} />
-                    </div>
-                  ))}
-                  <button className="btn-primary" onClick={handleSaveAddr} disabled={saving||!addrForm.street||!addrForm.block}>
-                    {saving ? <div className="spinner" style={{ width:20, height:20, borderWidth:2, borderTopColor:"#fff" }} /> : "Save address"}
+                  {addrFields.map(({ f, l, t }) => <div key={f}><label className="lbl">{l}</label><input className="inp" type={t || "text"} placeholder={l} value={af[f]} onChange={e => setAf({ ...af, [f]: e.target.value })} /></div>)}
+                  <button className="btn-primary" disabled={saving || !af.street || !af.block} onClick={async () => { setSaving(true); await onSaveAddress({ ...af, id: editAddrId }); setEditAddrId(null); setAddingNew(false); setSaving(false); }}>
+                    {saving ? <Spinner size={20} /> : "Save address"}
                   </button>
                 </div>
               ) : (
-                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {addresses.length === 0
-                    ? <div style={{ textAlign:"center", padding:"32px 0" }}>
-                        <div style={{ fontSize:40, marginBottom:10 }}>📍</div>
-                        <p style={{ color:"var(--text2)", fontSize:14 }}>No addresses saved yet</p>
+                    ? <div style={{ textAlign: "center", padding: "32px 0" }}>
+                        <div style={{ fontSize: 48, marginBottom: 10 }}>📍</div>
+                        <p style={{ color: "var(--t2)", fontSize: 14 }}>No saved addresses</p>
                       </div>
                     : addresses.map(a => (
-                        <div key={a.id} className="addr-card" style={{ borderColor:a.id===defaultAddrId?"var(--text)":"var(--border)", background:a.id===defaultAddrId?"#fafafa":"var(--surface)" }}>
-                          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-                            <span style={{ fontSize:15 }}>{a.label==="Work"?"🏢":a.label==="Home"?"🏠":"📍"}</span>
-                            <span style={{ fontWeight:700, fontSize:14 }}>{a.label}</span>
-                            {a.id===defaultAddrId && <span className="pill" style={{ marginLeft:4, background:"var(--green-light)", color:"var(--green)" }}>Default</span>}
+                        <div key={a.id} className="addr-card" style={{ borderColor: a.id === defaultAddrId ? "var(--orange)" : "var(--border)", background: a.id === defaultAddrId ? "#fff9f6" : "#fff" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <span>{a.label === "Work" ? "🏢" : a.label === "Home" ? "🏠" : "📍"}</span>
+                            <span style={{ fontWeight: 700, fontSize: 14 }}>{a.label}</span>
+                            {a.id === defaultAddrId && <span style={{ marginLeft: 4, fontSize: 10, fontWeight: 700, background: "#fff0e8", color: "var(--orange)", padding: "2px 8px", borderRadius: 99 }}>Default</span>}
                           </div>
-                          <p style={{ fontSize:13, color:"var(--text2)", marginBottom:10, paddingLeft:23 }}>
-                            {[a.apartment_no&&`Apt ${a.apartment_no}`,a.floor&&`Floor ${a.floor}`,a.bldg_name,a.street,a.block].filter(Boolean).join(", ")}
+                          <p style={{ fontSize: 13, color: "var(--t2)", marginBottom: 10, paddingLeft: 22 }}>
+                            {[a.apartment_no && `Apt ${a.apartment_no}`, a.floor && `Floor ${a.floor}`, a.bldg_name, a.street, a.block].filter(Boolean).join(", ")}
                           </p>
-                          <div style={{ display:"flex", gap:8, paddingLeft:23 }}>
-                            <button className="btn-ghost" style={{ fontSize:12, padding:"5px 12px" }} onClick={() => startEditAddr(a)}>
-                              <span style={{ width:12, height:12 }}>{Icon.edit}</span> Edit
-                            </button>
-                            {a.id !== defaultAddrId && (
-                              <button className="btn-ghost" style={{ fontSize:12, padding:"5px 12px" }} onClick={() => onSetDefault(a.id)}>
-                                <span style={{ width:12, height:12 }}>{Icon.star}</span> Default
-                              </button>
-                            )}
-                            <button className="btn-ghost" style={{ fontSize:12, padding:"5px 12px", color:"var(--red)", borderColor:"var(--red)" }} onClick={() => onDeleteAddress(a.id)}>
-                              <span style={{ width:12, height:12 }}>{Icon.trash}</span>
-                            </button>
+                          <div style={{ display: "flex", gap: 8, paddingLeft: 22, flexWrap: "wrap" }}>
+                            <button className="btn-out" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => startEdit(a)}>{Ic.edit} Edit</button>
+                            {a.id !== defaultAddrId && <button className="btn-out" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => onSetDefault(a.id)}>⭐ Default</button>}
+                            <button className="btn-out" style={{ fontSize: 12, padding: "5px 11px", color: "var(--red)", borderColor: "var(--red)" }} onClick={() => onDeleteAddress(a.id)}>{Ic.trash}</button>
                           </div>
                         </div>
                       ))
                   }
-                  <button className="btn-ghost" style={{ justifyContent:"center" }} onClick={() => startEditAddr(null)}>
-                    <span style={{ width:14, height:14 }}>{Icon.plus}</span> Add new address
-                  </button>
+                  <button className="btn-out" style={{ justifyContent: "center", width: "100%" }} onClick={() => startEdit(null)}>{Ic.plus} Add new address</button>
                 </div>
               )}
             </div>
           )}
 
           {tab === "orders" && (
-            <div className="anim-fade" style={{ textAlign:"center", padding:"44px 0" }}>
-              <div style={{ fontSize:44, marginBottom:12 }}>📋</div>
-              <p style={{ fontWeight:700, fontSize:15, marginBottom:4 }}>No orders yet</p>
-              <p style={{ color:"var(--text3)", fontSize:13 }}>Your order history will appear here</p>
+            <div style={{ textAlign: "center", padding: "44px 0" }}>
+              <div style={{ fontSize: 52, marginBottom: 12 }}>📋</div>
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>No orders yet</p>
+              <p style={{ color: "var(--t2)", fontSize: 14 }}>Your order history will appear here</p>
             </div>
           )}
         </div>
       </div>
+    </>
+  );
+}
+
+/* ── Desktop CartPanel (sidebar) ─────────────────────────────────────────── */
+function DesktopCart({ cart, restaurant, onUpdateQty, onCheckout }) {
+  const [promo, setPromo] = useState("");
+  const subT = cart.reduce((s, c) => s + c.unitPrice * c.qty, 0);
+  const delivery = subT > 0 ? 0.5 : 0;
+  const vat = subT * 0.05;
+  const total = subT + delivery + vat;
+  const minOk = !restaurant?.min_order || subT >= restaurant.min_order;
+
+  return (
+    <div style={{ background: "var(--card)", borderRadius: "var(--r)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
+      <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--border)" }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 2 }}>{restaurant?.name}</p>
+        <h3 style={{ fontSize: 18, fontWeight: 800 }}>Your order</h3>
+      </div>
+      <div style={{ padding: "16px 20px 20px" }}>
+        {cart.length === 0
+          ? <div style={{ textAlign: "center", padding: "32px 0" }}>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>🛒</div>
+              <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Cart is empty</p>
+              <p style={{ color: "var(--t3)", fontSize: 13 }}>Add items to get started</p>
+            </div>
+          : <>
+              {cart.map((c, i) => (
+                <div key={i} className="cart-row">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{c.item.name}</p>
+                    {c.note && <p style={{ fontSize: 11, color: "var(--t3)", fontStyle: "italic" }}>"{c.note}"</p>}
+                    <p style={{ fontSize: 13, color: "var(--t2)", fontWeight: 700 }}>{fmt(c.unitPrice)}</p>
+                  </div>
+                  <div className="qty-ctrl" style={{ flexShrink: 0 }}>
+                    <button onClick={() => onUpdateQty(i, c.qty - 1)} style={{ width: 32, height: 32 }}>{c.qty === 1 ? Ic.trash : Ic.minus}</button>
+                    <span style={{ minWidth: 26, fontSize: 13 }}>{c.qty}</span>
+                    <button onClick={() => onUpdateQty(i, c.qty + 1)} style={{ width: 32, height: 32 }}>{Ic.plus}</button>
+                  </div>
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: 8, margin: "16px 0" }}>
+                <input className="inp" style={{ flex: 1, padding: "9px 12px", fontSize: 13 }} placeholder="Promo code" value={promo} onChange={e => setPromo(e.target.value)} />
+                <button className="btn-out" style={{ fontSize: 12, padding: "9px 14px", whiteSpace: "nowrap" }}>Apply</button>
+              </div>
+              <div style={{ background: "#fafafa", borderRadius: var_r_sm, padding: "13px 14px", marginBottom: 14 }}>
+                <div className="sum-row" style={{ fontSize: 13 }}><span>Subtotal</span><span>{fmt(subT)}</span></div>
+                <div className="sum-row" style={{ fontSize: 13 }}><span>Delivery</span><span>{fmt(delivery)}</span></div>
+                <div className="sum-row" style={{ fontSize: 13 }}><span>VAT (5%)</span><span>{fmt(vat)}</span></div>
+                <div style={{ borderTop: "1px solid var(--border)", marginTop: 10, paddingTop: 10 }}>
+                  <div className="sum-row total" style={{ fontSize: 15 }}><span>Total</span><span>{fmt(total)}</span></div>
+                </div>
+              </div>
+              {restaurant?.min_order && subT < restaurant.min_order && (
+                <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: var_r_sm, padding: "9px 12px", marginBottom: 12, fontSize: 12, color: "#e65100", fontWeight: 500 }}>
+                  ⚠️ Min. {fmt(restaurant.min_order)} · add {fmt(restaurant.min_order - subT)} more
+                </div>
+              )}
+              <button className="btn-primary" disabled={!minOk} onClick={() => onCheckout(total)}>
+                Checkout · {fmt(total)}
+              </button>
+            </>
+        }
+      </div>
     </div>
   );
-};
+}
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   MAIN CUSTOMER COMPONENT
-───────────────────────────────────────────────────────────────────────────── */
+/* ── MAIN COMPONENT ───────────────────────────────────────────────────────── */
 export default function Customer() {
-  const restId = getRestIdFromUrl();
+  const restId = getRestId();
 
+  /* data state */
   const [restaurant, setRestaurant] = useState(null);
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  /* customer + addresses */
   const [customer, setCustomer] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [defaultAddrId, setDefaultAddrId] = useState(null);
 
+  /* ui state */
   const [cart, setCart] = useState([]);
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selItem, setSelItem] = useState(null);
+
+  /* panels */
   const [showCart, setShowCart] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showTrack, setShowTrack] = useState(false);
-  const [lastOrder, setLastOrder] = useState(null);
   const [checkoutTotal, setCheckoutTotal] = useState(0);
-  const [toast, setToast] = useState("");
+  const [lastOrder, setLastOrder] = useState(null);
 
-  // Ensure viewport meta is set for proper mobile scaling
-  useEffect(() => {
-    let meta = document.querySelector('meta[name="viewport"]');
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.name = 'viewport';
-      document.head.appendChild(meta);
-    }
-    meta.content = 'width=device-width, initial-scale=1, maximum-scale=1';
+  /* active tab for bottom bar */
+  const [activeTab, setActiveTab] = useState("menu");
+
+  /* toast */
+  const [toast, setToast] = useState("");
+  const toastRef = useRef(null);
+  const showToast = useCallback((msg) => {
+    setToast(msg);
+    if (toastRef.current) clearTimeout(toastRef.current);
+    toastRef.current = setTimeout(() => setToast(""), 2600);
   }, []);
 
-  const CUST_KEY = "food_order_cust_id";
-  const showToast = useCallback(msg => { setToast(msg); setTimeout(() => setToast(""), 2500); }, []);
-
+  /* viewport meta */
   useEffect(() => {
-    if (!restId) { setError("No restaurant ID in URL. Expected: /customer?rest_id=<id>"); setLoading(false); return; }
-    const load = async () => {
+    let m = document.querySelector('meta[name="viewport"]');
+    if (!m) { m = document.createElement("meta"); m.name = "viewport"; document.head.appendChild(m); }
+    m.content = "width=device-width,initial-scale=1,maximum-scale=1";
+  }, []);
+
+  /* inject CSS once */
+  useEffect(() => {
+    const id = "frt-cust-css";
+    if (!document.getElementById(id)) {
+      const s = document.createElement("style");
+      s.id = id; s.textContent = CSS;
+      document.head.appendChild(s);
+    }
+  }, []);
+
+  /* load restaurant + menu */
+  useEffect(() => {
+    if (!restId) { setError("No restaurant ID in URL. Use ?rest_id=<id>"); setLoading(false); return; }
+    (async () => {
       try {
-        const [restRes, catRes, menuRes] = await Promise.all([
+        const [rR, cR, mR] = await Promise.all([
           supabase.from("Restaurants").select("*").eq("id", restId).single(),
           supabase.from("Categories").select("*").eq("rest_id", restId).eq("visible", true).order("sort_order"),
           supabase.from("Menu").select("*").eq("rest_id", restId).eq("visible", true).order("sort_order"),
         ]);
-        if (restRes.error || !restRes.data) throw new Error("Restaurant not found");
-        setRestaurant(restRes.data);
-        setCategories(catRes.data || []);
-        setMenuItems((menuRes.data || []).filter(m => m.is_available));
+        if (rR.error || !rR.data) throw new Error("Restaurant not found");
+        setRestaurant(rR.data);
+        setCategories(cR.data || []);
+        setMenuItems((mR.data || []).filter(m => m.is_available));
       } catch (e) { setError(e.message); } finally { setLoading(false); }
-    };
-    load();
+    })();
   }, [restId]);
 
+  /* load/create customer */
   useEffect(() => {
-    const loadCustomer = async () => {
+    (async () => {
       try {
-        const storedId = localStorage.getItem(CUST_KEY);
-        if (storedId) {
-          const { data } = await supabase.from("Customer").select("*").eq("id", storedId).single();
+        const sid = localStorage.getItem(CUST_KEY);
+        if (sid) {
+          const { data } = await supabase.from("Customer").select("*").eq("id", sid).single();
           if (data) { setCustomer(data); loadAddresses(data.id); return; }
         }
-        const { data: newCust } = await supabase.from("Customer").insert({ cust_name:"", broadcast:false }).select().single();
-        if (newCust) { localStorage.setItem(CUST_KEY, newCust.id); setCustomer(newCust); }
-      } catch {/* silent */}
-    };
-    loadCustomer();
+        const { data: nc } = await supabase.from("Customer").insert({ cust_name: "", broadcast: false }).select().single();
+        if (nc) { localStorage.setItem(CUST_KEY, nc.id); setCustomer(nc); }
+      } catch { }
+    })();
   }, []);
 
-  const loadAddresses = async custId => {
-    const { data } = await supabase.from("Customer_Address").select("*").eq("cust_id", custId);
+  const loadAddresses = async (cid) => {
+    const { data } = await supabase.from("Customer_Address").select("*").eq("cust_id", cid);
     if (data) {
       setAddresses(data);
-      const stored = localStorage.getItem(`default_addr_${custId}`);
-      setDefaultAddrId(stored ? Number(stored) : data[0]?.id || null);
+      const s = localStorage.getItem(`frt_def_addr_${cid}`);
+      setDefaultAddrId(s ? Number(s) : data[0]?.id || null);
     }
   };
 
-  const filteredMenu = menuItems.filter(m => {
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || (m.description||"").toLowerCase().includes(search.toLowerCase());
-    const matchCat = activeCategory === "all" ? true : activeCategory === "recommended" ? m.recommended : m.categ_id === activeCategory;
-    return matchSearch && matchCat;
+  /* filtered menu */
+  const filtered = menuItems.filter(m => {
+    const q = search.toLowerCase();
+    const ms = m.name.toLowerCase().includes(q) || (m.description || "").toLowerCase().includes(q);
+    const mc = activeCat === "all" ? true : activeCat === "recommended" ? m.recommended : m.categ_id === activeCat;
+    return ms && mc;
   });
 
+  /* cart helpers */
   const addToCart = useCallback(({ item, qty, selectedVariants, selectedAddOns, unitPrice, note }) => {
     setCart(prev => {
-      const existing = prev.findIndex(c => c.item.id===item.id && JSON.stringify(c.selectedVariants)===JSON.stringify(selectedVariants) && JSON.stringify(c.selectedAddOns)===JSON.stringify(selectedAddOns));
-      if (existing >= 0) { const u=[...prev]; u[existing]={...u[existing],qty:u[existing].qty+qty}; return u; }
+      const idx = prev.findIndex(c =>
+        c.item.id === item.id &&
+        JSON.stringify(c.selectedVariants) === JSON.stringify(selectedVariants) &&
+        JSON.stringify(c.selectedAddOns) === JSON.stringify(selectedAddOns)
+      );
+      if (idx >= 0) { const u = [...prev]; u[idx] = { ...u[idx], qty: u[idx].qty + qty }; return u; }
       return [...prev, { item, qty, selectedVariants, selectedAddOns, unitPrice, note }];
     });
-    showToast(`${item.name} added`);
+    showToast(`${item.name} added to cart 🛒`);
   }, [showToast]);
 
-  const updateQty = (index, newQty) => {
-    if (newQty <= 0) setCart(prev => prev.filter((_,i) => i !== index));
-    else setCart(prev => prev.map((c,i) => i===index ? {...c,qty:newQty} : c));
+  const updateQty = (i, q) => {
+    if (q <= 0) setCart(p => p.filter((_, j) => j !== i));
+    else setCart(p => p.map((c, j) => j === i ? { ...c, qty: q } : c));
   };
 
-  const cartCount = cart.reduce((s,c) => s+c.qty, 0);
+  const cartCount = cart.reduce((s, c) => s + c.qty, 0);
+  const cartTotal = cart.reduce((s, c) => s + c.unitPrice * c.qty, 0);
 
+  /* place order */
   const placeOrder = async ({ address, payMethod, notes }) => {
     if (!customer || !restaurant) return;
-    const itemTotal = cart.reduce((s,c) => s+c.unitPrice*c.qty, 0);
-    const total = itemTotal + 0.5 + itemTotal*0.05;
+    const it = cart.reduce((s, c) => s + c.unitPrice * c.qty, 0);
+    const total = it + 0.5 + it * 0.05;
     try {
-      const { data: order, error: orderErr } = await supabase.from("Orders").insert({
-        rest_id:restaurant.id, cust_id:customer.id,
-        status:"pending", total_amount:total,
-        payment_status:"pending", payment_method:payMethod, notes:notes||"",
+      const { data: order, error: oe } = await supabase.from("Orders").insert({
+        rest_id: restaurant.id, cust_id: customer.id,
+        status: "pending", total_amount: total,
+        payment_status: "pending", payment_method: payMethod, notes: notes || "",
       }).select().single();
-      if (orderErr) throw orderErr;
-      setLastOrder({ ...order, deliveryAddress:address });
+      if (oe) throw oe;
+      setLastOrder({ ...order, deliveryAddress: address });
       setCart([]); setShowCheckout(false); setShowTrack(true);
       showToast("Order placed! 🎉");
-      await supabase.from("Customer").update({ total_orders:(customer.total_orders||0)+1, total_amount:Number(customer.total_amount||0)+total }).eq("id", customer.id);
-    } catch { showToast("Failed to place order. Please try again."); }
+      await supabase.from("Customer").update({ total_orders: (customer.total_orders || 0) + 1, total_amount: Number(customer.total_amount || 0) + total }).eq("id", customer.id);
+    } catch { showToast("Failed to place order. Try again."); }
   };
 
-  const saveProfile = async form => {
+  const saveProfile = async (form) => {
     if (!customer) return;
-    const { data } = await supabase.from("Customer").update({ cust_name:form.cust_name, ph_num:form.ph_num }).eq("id",customer.id).select().single();
+    const { data } = await supabase.from("Customer").update({ cust_name: form.cust_name, ph_num: form.ph_num }).eq("id", customer.id).select().single();
     if (data) { setCustomer(data); showToast("Profile saved!"); }
   };
 
-  const saveAddress = async form => {
+  const saveAddress = async (form) => {
     if (!customer) return;
-    const payload = { cust_id:customer.id, label:form.label, street:form.street, block:form.block, bldg_name:form.bldg_name||"", apartment_no:Number(form.apartment_no)||0, floor:Number(form.floor)||0, landmark:form.landmark||null, note:form.note||null, longitude:0, latitude:0 };
+    const payload = { cust_id: customer.id, label: form.label, street: form.street, block: form.block, bldg_name: form.bldg_name || "", apartment_no: Number(form.apartment_no) || 0, floor: Number(form.floor) || 0, landmark: form.landmark || null, note: form.note || null, longitude: 0, latitude: 0 };
     if (form.id) {
-      const { data } = await supabase.from("Customer_Address").update(payload).eq("id",form.id).select().single();
-      if (data) { setAddresses(prev => prev.map(a => a.id===form.id?data:a)); showToast("Address updated!"); }
+      const { data } = await supabase.from("Customer_Address").update(payload).eq("id", form.id).select().single();
+      if (data) { setAddresses(p => p.map(a => a.id === form.id ? data : a)); showToast("Address updated!"); }
     } else {
       const { data } = await supabase.from("Customer_Address").insert(payload).select().single();
-      if (data) { setAddresses(prev=>[...prev,data]); if (!defaultAddrId) { setDefaultAddrId(data.id); localStorage.setItem(`default_addr_${customer.id}`,data.id); } showToast("Address added!"); }
+      if (data) { setAddresses(p => [...p, data]); if (!defaultAddrId) { setDefaultAddrId(data.id); localStorage.setItem(`frt_def_addr_${customer.id}`, data.id); } showToast("Address added!"); }
     }
   };
 
-  const deleteAddress = async id => {
-    await supabase.from("Customer_Address").delete().eq("id",id);
-    setAddresses(prev=>prev.filter(a=>a.id!==id));
-    if (defaultAddrId===id) { const rem=addresses.filter(a=>a.id!==id); setDefaultAddrId(rem[0]?.id||null); }
+  const deleteAddress = async (id) => {
+    await supabase.from("Customer_Address").delete().eq("id", id);
+    setAddresses(p => p.filter(a => a.id !== id));
+    if (defaultAddrId === id) { const r = addresses.filter(a => a.id !== id); setDefaultAddrId(r[0]?.id || null); }
     showToast("Address removed");
   };
 
-  const setDefaultAddress = id => {
+  const setDefaultAddress = (id) => {
     setDefaultAddrId(id);
-    if (customer) localStorage.setItem(`default_addr_${customer.id}`,id);
+    if (customer) localStorage.setItem(`frt_def_addr_${customer.id}`, id);
     showToast("Default address updated");
   };
 
-  if (loading) return (<><GlobalStyle /><LoadingScreen /></>);
-  if (error)   return (<><GlobalStyle /><ErrorScreen message={error} /></>);
+  /* handle bottom tab */
+  const handleTab = (t) => {
+    setActiveTab(t);
+    if (t === "cart") setShowCart(true);
+    if (t === "profile") setShowProfile(true);
+  };
+
+  if (loading) return <LoadScreen />;
+  if (error) return <ErrScreen msg={error} />;
 
   const defaultAddr = addresses.find(a => a.id === defaultAddrId);
+  const catLabel = activeCat === "all" ? "All dishes" : activeCat === "recommended" ? "Popular picks" : categories.find(c => c.id === activeCat)?.name || "Menu";
+
+  /* group items by category for section headers */
+  const grouped = activeCat === "all"
+    ? categories
+        .map(cat => ({ cat, items: filtered.filter(m => m.categ_id === cat.id) }))
+        .filter(g => g.items.length > 0)
+    : [{ cat: null, items: filtered }];
 
   return (
     <>
-      <GlobalStyle />
-      <Toast message={toast} />
+      {toast && <Toast msg={toast} />}
 
-      {/* ── NAVBAR ── */}
-      <nav className="navbar">
-        <div className="navbar-inner">
-          <div style={{ minWidth:0, flexShrink:0 }}>
-            <p style={{ fontSize:15, fontWeight:800, letterSpacing:"-0.3px", lineHeight:1.1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:160 }}>
-              {restaurant?.name}
-            </p>
-            {restaurant?.branch_name && <p style={{ fontSize:11, color:"var(--text3)" }}>{restaurant.branch_name}</p>}
+      {/* ── TOP NAV ── */}
+      <nav className="topnav">
+        <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ color: "var(--orange)" }}>{Ic.pin}</span>
+            <button onClick={() => setShowProfile(true)} style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
+                {defaultAddr ? `${defaultAddr.label} · ${defaultAddr.street}` : "Add delivery address"}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ color: "var(--t2)", flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
           </div>
+          <p style={{ fontSize: 11, color: "var(--t3)", paddingLeft: 18 }}>{restaurant?.name}</p>
+        </div>
 
-          <button style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:5, minWidth:0 }} onClick={() => setShowProfile(true)}>
-            <span style={{ width:13, height:13, color:"var(--green)", flexShrink:0 }}>{Icon.pin}</span>
-            <span style={{ fontSize:12, fontWeight:600, color:"var(--text2)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-              {defaultAddr ? `${defaultAddr.label} · ${defaultAddr.street}` : "Add address"}
-            </span>
+        {/* desktop: profile + cart icons */}
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <button onClick={() => setShowProfile(true)} style={{ width: 40, height: 40, borderRadius: "50%", background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--t2)", transition: "background .15s" }}>
+            {Ic.user}
           </button>
-
-          <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-            <button
-              style={{ width:36, height:36, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center" }}
-              onClick={() => setShowProfile(true)}
-            >
-              <span style={{ width:17, height:17 }}>{Icon.user}</span>
-            </button>
-            <button
-              style={{ width:36, height:36, borderRadius:"50%", background:"var(--surface3)", display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}
-              onClick={() => setShowCart(true)}
-            >
-              <span style={{ width:17, height:17 }}>{Icon.cart}</span>
-              {cartCount > 0 && <span className="badge" style={{ position:"absolute", top:-3, right:-3 }}>{cartCount}</span>}
-            </button>
-          </div>
+          <button onClick={() => setShowCart(true)} style={{ position: "relative", width: 40, height: 40, borderRadius: "50%", background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--t2)", transition: "background .15s" }}>
+            {Ic.cart}
+            {cartCount > 0 && (
+              <span className="tab-badge" style={{ position: "absolute", top: -3, right: -3, animation: "popBadge .25s ease" }}>{cartCount}</span>
+            )}
+          </button>
         </div>
       </nav>
 
-      {/* ── PAGE ── */}
+      {/* ── PAGE BODY ── */}
       <div className="page-wrap">
-        <main style={{ paddingBottom:100 }}>
+        {/* MAIN COLUMN */}
+        <div className="main-col">
 
-          {/* ── HERO ── */}
-          <div className="hero">
+          {/* HERO */}
+          <div className="hero" style={{ height: "clamp(180px, 38vw, 280px)" }}>
             {restaurant?.image1_path
-              ? <img className="hero-img" src={restaurant.image1_path} alt={restaurant.name} onError={e => { e.target.style.display="none"; }} />
-              : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg,#111 0%,#2a2a2a 100%)" }} />
+              ? <img src={restaurant.image1_path} alt={restaurant.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.target.style.display = "none"} />
+              : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg,#1a1a1a,#333)" }} />
             }
-            <div className="hero-gradient" />
+            <div className="hero-grad" />
             <div className="hero-content">
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(255,255,255,0.55)", marginBottom:5 }}>Now serving</p>
-              <h1 style={{ fontSize:20, fontWeight:800, color:"#fff", lineHeight:1.2, marginBottom:10, letterSpacing:"-0.3px" }}>
-                {restaurant?.name}
-              </h1>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:"8px 14px" }}>
-                {restaurant?.working_hours && <span className="info-chip">{Icon.clock} {restaurant.working_hours}</span>}
-                {restaurant?.min_order && <span className="info-chip">🔥 Min. {fmt(restaurant.min_order)}</span>}
-                <span className="info-chip">{Icon.truck} ~25 min</span>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "rgba(255,255,255,.55)", marginBottom: 4 }}>Now open</p>
+              <h1 style={{ fontSize: "clamp(18px,4vw,26px)", fontWeight: 800, lineHeight: 1.2, marginBottom: 10 }}>{restaurant?.name}</h1>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
+                {restaurant?.working_hours && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "rgba(255,255,255,.8)", fontWeight: 500 }}>{Ic.clock} {restaurant.working_hours}</span>}
+                {restaurant?.min_order && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "rgba(255,255,255,.8)", fontWeight: 500 }}>🔥 Min. {fmt(restaurant.min_order)}</span>}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "rgba(255,255,255,.8)", fontWeight: 500 }}>{Ic.truck} ~25 min</span>
               </div>
             </div>
           </div>
 
-          {/* ── SEARCH + CATS — sticky ── */}
-          <div style={{ background:"var(--surface)", borderBottom:"1px solid var(--border)", position:"sticky", top:"var(--navbar-h)", zIndex:50, padding:"14px 16px 0" }}>
-            <div className="search-wrap" style={{ marginBottom:12 }}>
-              <span className="search-icon">{Icon.search}</span>
-              <input
-                className="search-input"
-                placeholder="Search dishes…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-              {search && (
-                <button onClick={() => setSearch("")} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", width:20, height:20, color:"var(--text3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <span style={{ width:14, height:14 }}>{Icon.close}</span>
-                </button>
-              )}
+          {/* SEARCH */}
+          <div style={{ padding: "14px 16px 0", background: "var(--card)" }}>
+            <div className="search-bar">
+              <span style={{ color: "var(--t3)", flexShrink: 0 }}>{Ic.search}</span>
+              <input placeholder="Search dishes…" value={search} onChange={e => setSearch(e.target.value)} />
+              {search && <button onClick={() => setSearch("")} style={{ color: "var(--t3)", flexShrink: 0 }}>{Ic.close}</button>}
             </div>
-            <div className="cat-row" style={{ paddingBottom:13 }}>
-              <button className={`cat-chip${activeCategory==="all"?" active":""}`} onClick={() => setActiveCategory("all")}>All</button>
-              <button className={`cat-chip${activeCategory==="recommended"?" active":""}`} onClick={() => setActiveCategory("recommended")}>⭐ Popular</button>
+          </div>
+
+          {/* CATEGORY CHIPS */}
+          <div style={{ background: "var(--card)", borderBottom: "1px solid var(--border)", position: "sticky", top: "var(--nav-h)", zIndex: 50 }}>
+            <div className="cat-strip">
+              <button className={`cat-chip${activeCat === "all" ? " on" : ""}`} onClick={() => setActiveCat("all")}>All</button>
+              <button className={`cat-chip${activeCat === "recommended" ? " on" : ""}`} onClick={() => setActiveCat("recommended")}>⭐ Popular</button>
               {categories.map(c => (
-                <button key={c.id} className={`cat-chip${activeCategory===c.id?" active":""}`} onClick={() => setActiveCategory(c.id)}>{c.name}</button>
+                <button key={c.id} className={`cat-chip${activeCat === c.id ? " on" : ""}`} onClick={() => setActiveCat(c.id)}>{c.name}</button>
               ))}
             </div>
           </div>
 
-          {/* ── MENU LIST ── */}
-          <div style={{ background:"var(--surface)", padding:"0 16px 24px" }}>
-            {loading ? (
-              [1,2,3,4,5].map(k => <SkeletonRow key={k} />)
-            ) : filteredMenu.length === 0 ? (
-              <div style={{ textAlign:"center", padding:"60px 20px" }}>
-                <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>
-                <p style={{ fontWeight:700, fontSize:15, marginBottom:4 }}>Nothing found</p>
-                <p style={{ fontSize:13, color:"var(--text3)" }}>Try a different search or category</p>
-              </div>
-            ) : (
-              <>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 0 10px" }}>
-                  <h2 className="section-title">
-                    {activeCategory==="all"?"All dishes":activeCategory==="recommended"?"Popular":categories.find(c=>c.id===activeCategory)?.name||"Menu"}
-                  </h2>
-                  <span style={{ fontSize:12, color:"var(--text3)", fontWeight:600 }}>{filteredMenu.length} items</span>
-                </div>
-                <div className="menu-grid">
-                {filteredMenu.map(item => {
-                  const inCart = cart.filter(c => c.item.id===item.id).reduce((s,c) => s+c.qty, 0);
-                  return (
-                    <div key={item.id} className="menu-row anim-fade" onClick={() => setSelectedItem(item)}>
-
-                      {/* Image thumbnail */}
-                      <div className="menu-thumb-card">
-                        {item.image_path
-                          ? <img src={item.image_path} alt={item.name} onError={e => { e.target.style.display="none"; }} />
-                          : null
-                        }
-                        {!item.image_path && <span style={{ fontSize:36 }}>🍽️</span>}
-                        {item.recommended && (
-                          <span className="pill" style={{ position:"absolute", top:6, left:6, background:"rgba(0,0,0,0.55)", color:"#fff", backdropFilter:"blur(4px)" }}>⭐ Popular</span>
-                        )}
+          {/* MENU ITEMS */}
+          <div>
+            {loading
+              ? <div style={{ background: "var(--card)", padding: "16px" }}>
+                  {[1,2,3].map(k => (
+                    <div key={k} style={{ display: "flex", gap: 14, padding: "16px 0", borderBottom: "1px solid var(--border)" }}>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+                        <Skeleton h={14} style={{ width: "60%" }} />
+                        <Skeleton h={12} style={{ width: "90%" }} />
+                        <Skeleton h={12} style={{ width: "30%" }} />
                       </div>
-
-                      {/* Text body */}
-                      <div className="menu-card-body">
-                        <h3 style={{ fontSize:13, fontWeight:700, lineHeight:1.35, color:"var(--text)" }}>{item.name}</h3>
-                        {item.description && (
-                          <p style={{ fontSize:12, color:"var(--text3)", lineHeight:1.45, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
-                            {item.description}
-                          </p>
-                        )}
-                        {/* Card footer — mobile only */}
-                        <div className="menu-card-footer">
-                          <span style={{ fontSize:14, fontWeight:800 }}>{fmt(item.price)}</span>
-                          {inCart > 0 ? (
-                            <div className="card-qty-row" onClick={e => e.stopPropagation()}>
-                              <button className="card-qty-btn" onClick={e => { e.stopPropagation(); const idx=cart.findIndex(c=>c.item.id===item.id); if(idx>=0) updateQty(idx, cart[idx].qty-1); }}>{Icon.minus}</button>
-                              <span className="card-qty-num">{inCart}</span>
-                              <button className="card-qty-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>{Icon.plus}</button>
-                            </div>
-                          ) : (
-                            <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>
-                              {Icon.plus}
-                            </button>
-                          )}
-                        </div>
-                        {/* Price — tablet list view only */}
-                        <p className="tablet-price" style={{ fontSize:14, fontWeight:800, marginTop:4 }}>{fmt(item.price)}</p>
-                      </div>
-
-                      {/* Action column — tablet only */}
-                      <div className="menu-row-action" onClick={e => e.stopPropagation()}>
-                        {inCart > 0 ? (
-                          <div className="qty-row">
-                            <button className="qty-btn" onClick={e => { e.stopPropagation(); const idx=cart.findIndex(c=>c.item.id===item.id); if(idx>=0) updateQty(idx, cart[idx].qty-1); }}>{Icon.minus}</button>
-                            <span className="qty-num">{inCart}</span>
-                            <button className="qty-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>{Icon.plus}</button>
-                          </div>
-                        ) : (
-                          <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>
-                            {Icon.plus}
-                          </button>
-                        )}
-                      </div>
-
+                      <Skeleton h={96} style={{ width: 96, borderRadius: 10 }} />
                     </div>
-                  );
-                })}
+                  ))}
                 </div>
-              </>
-            )}
+              : filtered.length === 0
+                ? <div style={{ background: "var(--card)", padding: "60px 20px", textAlign: "center" }}>
+                    <div style={{ fontSize: 56, marginBottom: 12 }}>🔍</div>
+                    <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Nothing found</p>
+                    <p style={{ color: "var(--t2)", fontSize: 14 }}>Try a different category or search term</p>
+                  </div>
+                : activeCat === "all"
+                  ? /* grouped by category */
+                    grouped.map(({ cat, items }) => (
+                      <div key={cat?.id || "all"} style={{ background: "var(--card)", marginBottom: 8, borderRadius: 0 }}>
+                        {cat && (
+                          <div style={{ padding: "18px 16px 4px" }}>
+                            <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--t1)" }}>{cat.name}</h2>
+                          </div>
+                        )}
+                        {items.map(item => <MenuItem key={item.id} item={item} cart={cart} onOpen={setSelItem} onUpdate={updateQty} />)}
+                      </div>
+                    ))
+                  : /* single section */
+                    <div style={{ background: "var(--card)" }}>
+                      <div style={{ padding: "18px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <h2 style={{ fontSize: 18, fontWeight: 800 }}>{catLabel}</h2>
+                        <span style={{ fontSize: 12, color: "var(--t3)", fontWeight: 600 }}>{filtered.length} items</span>
+                      </div>
+                      {filtered.map(item => <MenuItem key={item.id} item={item} cart={cart} onOpen={setSelItem} onUpdate={updateQty} />)}
+                    </div>
+            }
           </div>
-        </main>
+        </div>
 
-        {/* ── DESKTOP CART ── */}
-        <aside className="cart-sidebar">
-          <CartPanel
-            cart={cart}
-            restaurant={restaurant}
-            onUpdateQty={updateQty}
-            onRemove={i => updateQty(i, 0)}
-            onCheckout={total => { setCheckoutTotal(total); setShowCheckout(true); }}
-          />
-        </aside>
+        {/* DESKTOP CART SIDEBAR */}
+        <div className="cart-col" style={{ display: "none" }}>
+          <DesktopCart cart={cart} restaurant={restaurant} onUpdateQty={updateQty} onCheckout={t => { setCheckoutTotal(t); setShowCheckout(true); }} />
+        </div>
       </div>
 
-      {/* ── MOBILE CART BAR ── */}
-      {cartCount > 0 && (
-        <div className="mobile-cart-bar" onClick={() => setShowCart(true)}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <span style={{ background:"rgba(255,255,255,0.12)", borderRadius:"50%", width:28, height:28, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800 }}>{cartCount}</span>
-            <span style={{ fontWeight:700, fontSize:15 }}>View cart</span>
-          </div>
-          <span style={{ fontWeight:800, fontSize:15 }}>{fmt(cart.reduce((s,c)=>s+c.unitPrice*c.qty,0))}</span>
-        </div>
-      )}
+      {/* Desktop cart col visibility via CSS */}
+      <style>{`@media(min-width:1024px){.cart-col{display:block!important}}`}</style>
 
-      {/* ── MODALS ── */}
-      {selectedItem && <MenuItemModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={addToCart} />}
+      {/* ── BOTTOM TAB BAR (mobile only) ── */}
+      <nav className="tabbar">
+        <button className={`tab-item${activeTab === "menu" ? " on" : ""}`} onClick={() => { setActiveTab("menu"); }}>
+          {Ic.home}
+          <span>Menu</span>
+        </button>
+        <button className={`tab-item${activeTab === "cart" ? " on" : ""}`} style={{ position: "relative" }} onClick={() => setShowCart(true)}>
+          <span style={{ position: "relative", display: "inline-flex" }}>
+            {Ic.cart}
+            {cartCount > 0 && <span className="tab-badge">{cartCount}</span>}
+          </span>
+          <span>Cart{cartCount > 0 ? ` (${cartCount})` : ""}</span>
+        </button>
+        <button className={`tab-item${activeTab === "profile" ? " on" : ""}`} onClick={() => setShowProfile(true)}>
+          {Ic.user}
+          <span>Profile</span>
+        </button>
+      </nav>
+
+      {/* ── SHEETS / MODALS ── */}
+      {selItem && (
+        <ItemDetailSheet item={selItem} onClose={() => setSelItem(null)} onAdd={addToCart} />
+      )}
       {showCart && (
-        <CartPanel cart={cart} restaurant={restaurant} onUpdateQty={updateQty} onRemove={i=>updateQty(i,0)}
-          onCheckout={total => { setCheckoutTotal(total); setShowCart(false); setShowCheckout(true); }}
-          isModal onClose={() => setShowCart(false)}
-        />
+        <CartSheet cart={cart} restaurant={restaurant} onUpdateQty={updateQty}
+          onCheckout={t => { setCheckoutTotal(t); setShowCart(false); setShowCheckout(true); }}
+          onClose={() => setShowCart(false)} />
       )}
       {showCheckout && (
-        <CheckoutModal total={checkoutTotal} restaurant={restaurant} customer={customer}
+        <CheckoutSheet total={checkoutTotal} restaurant={restaurant}
           addresses={addresses} defaultAddr={defaultAddr}
-          onClose={() => setShowCheckout(false)} onPlaceOrder={placeOrder}
-          onAddAddress={() => { setShowCheckout(false); setShowProfile(true); }}
-        />
+          onClose={() => setShowCheckout(false)}
+          onPlaceOrder={placeOrder}
+          onAddAddress={() => { setShowCheckout(false); setShowProfile(true); }} />
       )}
       {showTrack && lastOrder && (
-        <OrderTrackModal order={lastOrder} restaurant={restaurant} address={lastOrder.deliveryAddress} onClose={() => setShowTrack(false)} />
+        <TrackSheet order={lastOrder} restaurant={restaurant} address={lastOrder.deliveryAddress} onClose={() => setShowTrack(false)} />
       )}
       {showProfile && (
-        <ProfileModal customer={customer} addresses={addresses}
-          onClose={() => setShowProfile(false)} onSaveProfile={saveProfile}
-          onSaveAddress={saveAddress} onDeleteAddress={deleteAddress}
-          onSetDefault={setDefaultAddress} defaultAddrId={defaultAddrId}
-        />
+        <ProfileSheet customer={customer} addresses={addresses}
+          onClose={() => setShowProfile(false)}
+          onSaveProfile={saveProfile} onSaveAddress={saveAddress}
+          onDeleteAddress={deleteAddress} onSetDefault={setDefaultAddress}
+          defaultAddrId={defaultAddrId} />
       )}
     </>
+  );
+}
+
+/* ── MenuItem card ────────────────────────────────────────────────────────── */
+function MenuItem({ item, cart, onOpen, onUpdate }) {
+  const inCart = cart.filter(c => c.item.id === item.id).reduce((s, c) => s + c.qty, 0);
+  const firstIdx = cart.findIndex(c => c.item.id === item.id);
+
+  return (
+    <div className="menu-card" onClick={() => onOpen(item)}>
+      {/* Text side */}
+      <div className="menu-info">
+        {item.recommended && <div className="menu-popular">{Ic.star} Popular</div>}
+        <p className="menu-name">{item.name}</p>
+        {item.description && <p className="menu-desc">{item.description}</p>}
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+          <span className="menu-price">{fmt(item.price)}</span>
+        </div>
+      </div>
+
+      {/* Thumb side */}
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        <div className="menu-thumb">
+          {item.image_path
+            ? <img src={item.image_path} alt={item.name} onError={e => e.target.style.display = "none"} />
+            : <div className="menu-thumb-empty">🍽️</div>
+          }
+        </div>
+
+        {/* Add / qty control overlaid on thumb */}
+        {inCart > 0
+          ? <div className="qty-pill" onClick={e => e.stopPropagation()}>
+              <button onClick={() => onUpdate(firstIdx, cart[firstIdx].qty - 1)}>{Ic.minus}</button>
+              <span>{inCart}</span>
+              <button onClick={() => onOpen(item)}>{Ic.plus}</button>
+            </div>
+          : <button className="add-btn" onClick={e => { e.stopPropagation(); onOpen(item); }}>
+              {Ic.plus}
+            </button>
+        }
+      </div>
+    </div>
   );
 }
