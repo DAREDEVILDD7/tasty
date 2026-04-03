@@ -258,54 +258,6 @@ const SAMPLE_ORDERS = [
   },
 ];
 
-const INITIAL_ADDONS = [
-  {
-    id: "ao-1",
-    name: "Extra Sauce",
-    price: 2.0,
-    group: "Sauces",
-    enabled: true,
-  },
-  {
-    id: "ao-2",
-    name: "Cheese Cubes",
-    price: 5.0,
-    group: "Extras",
-    enabled: true,
-  },
-  { id: "ao-3", name: "Olives", price: 3.0, group: "Extras", enabled: true },
-  {
-    id: "ao-4",
-    name: "Extra Pita",
-    price: 4.0,
-    group: "Breads",
-    enabled: true,
-  },
-  {
-    id: "ao-5",
-    name: "Red Chutney",
-    price: 1.5,
-    group: "Sauces",
-    enabled: true,
-  },
-  {
-    id: "ao-6",
-    name: "White Chutney",
-    price: 1.5,
-    group: "Sauces",
-    enabled: false,
-  },
-  {
-    id: "ao-7",
-    name: "Onion Raita",
-    price: 3.0,
-    group: "Sides",
-    enabled: true,
-  },
-];
-
-const uid = () => Math.random().toString(36).slice(2, 9);
-
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 function Toggle({ value, onChange, t }) {
   return (
@@ -1941,12 +1893,74 @@ function OrdersPage({ t }) {
   );
 }
 
+// ─── Add-On Item Row ──────────────────────────────────────────────────────────
+function AddonItemRow({ addon, t, onEdit, onDelete }) {
+  const imgSrc =
+    addon.image_path && addon.image_path.trim() !== ""
+      ? addon.image_path
+      : "/sides.jpg";
+
+  return (
+    <div
+      style={{ background: t.surface, border: `1px solid ${t.border}` }}
+      className="flex items-center gap-3 rounded-xl px-4 py-3"
+    >
+      <div
+        style={{ background: t.surface2, border: `1px solid ${t.border}` }}
+        className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden"
+      >
+        <img
+          src={imgSrc}
+          alt={addon.name}
+          className="w-full h-full object-cover rounded-lg"
+          onError={(e) => {
+            e.currentTarget.src = "/sides.jpg";
+          }}
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p
+          style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm font-semibold"
+        >
+          {addon.name}
+        </p>
+        <p
+          style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-bold mt-0.5"
+        >
+          KD {Number(addon.price ?? 0).toFixed(3)}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onEdit}
+          style={{ color: t.subtle }}
+          className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm"
+        >
+          ✏️
+        </button>
+        <button
+          onClick={onDelete}
+          style={{ color: t.subtle }}
+          className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm"
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Menu Page ────────────────────────────────────────────────────────────────
 function MenuPage({ t, user }) {
   // categories shape: { id, name, visible, sort_order, items: [...] }
   // items shape: { id, name, price, is_available, visible, description, image_path, sort_order, categ_id, rest_id }
   const [categories, setCategories] = useState([]);
-  const [addons, setAddons] = useState(INITIAL_ADDONS);
+  // ── Add-Ons DB state ──────────────────────────────────────────────────────
+  const [addonTypes, setAddonTypes] = useState([]); // Add_Ons_Type rows
+  const [addonItems, setAddonItems] = useState([]); // Add_Ons rows
+  const [loadingAddons, setLoadingAddons] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [orderDirty, setOrderDirty] = useState(false);
@@ -1980,10 +1994,22 @@ function MenuPage({ t, user }) {
     avail_to: "", // "HH:MM" Kuwait time, "" = no limit
   });
   const [addonForm, setAddonForm] = useState({
+    // shared
     name: "",
     price: "",
-    group: "",
+    imageFile: null,
+    imagePreview: null,
+    imageError: "",
+    // for item: which type (null = uncategorized)
+    typeId: null,
+    // for type modal
+    minQty: "",
   });
+  const [showAddonTypeModal, setShowAddonTypeModal] = useState(false);
+  const [editingAddonType, setEditingAddonType] = useState(null);
+  const [addonTypeForm, setAddonTypeForm] = useState({ name: "", minQty: "" });
+  const [confirmDeleteAddon, setConfirmDeleteAddon] = useState(null); // { kind: "type"|"item", id, name }
+  const [savingAddon, setSavingAddon] = useState(false);
   const [savingItem, setSavingItem] = useState(false);
   // Confirm-delete dialog: { type: "cat"|"item", catId, itemId, name }
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -2720,50 +2746,271 @@ function MenuPage({ t, user }) {
     }
   };
 
-  // ── Add-ons (still local — not in current scope) ───────────────────────────
-  const toggleAddon = (id) =>
-    setAddons((p) =>
-      p.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)),
-    );
-  const deleteAddon = (id) => setAddons((p) => p.filter((a) => a.id !== id));
-  const openAddAddon = () => {
-    setEditingAddon(null);
-    setAddonForm({ name: "", price: "", group: "" });
-    setShowAddonModal(true);
-  };
-  const openEditAddon = (a) => {
-    setEditingAddon(a);
-    setAddonForm({ name: a.name, price: String(a.price), group: a.group });
-    setShowAddonModal(true);
-  };
-  const saveAddon = () => {
-    const p = parseFloat(addonForm.price);
-    if (!addonForm.name.trim() || isNaN(p)) return;
-    if (editingAddon)
-      setAddons((prev) =>
-        prev.map((a) =>
-          a.id === editingAddon.id
-            ? {
-                ...a,
-                name: addonForm.name.trim(),
-                price: p,
-                group: addonForm.group || "General",
-              }
-            : a,
-        ),
+  // ── Fetch Add-Ons types + items from DB ────────────────────────────────────
+  const fetchAddons = useCallback(async () => {
+    if (!restId) return;
+    setLoadingAddons(true);
+    try {
+      const { data: types, error: tErr } = await supabase
+        .from("Add_Ons_Type")
+        .select("id, name, min_qty, rest_id")
+        .eq("rest_id", restId)
+        .order("id", { ascending: true });
+      if (tErr) throw tErr;
+
+      const { data: items, error: iErr } = await supabase
+        .from("Add_Ons")
+        .select("id, type_id, name, price, image_path");
+      // Filter client-side: items that belong to one of this restaurant's types OR have no type
+      // We'll only show items whose type_id is in this restaurant's types, or type_id IS NULL
+      // But we need to scope uncategorised ones to this restaurant — the schema has no rest_id on Add_Ons.
+      // So we filter: type_id in types[], or type_id is null (shown as uncategorized — all restaurants share these).
+      // Best practice: show only items whose type_id is in this restaurant's type ids.
+      // Uncategorized: items whose type_id IS NULL — these are considered "restaurant-generic" by the schema.
+      if (iErr) throw iErr;
+
+      const typeIds = new Set((types || []).map((t) => t.id));
+      const filtered = (items || []).filter(
+        (a) => a.type_id === null || typeIds.has(a.type_id),
       );
-    else
-      setAddons((prev) => [
-        ...prev,
-        {
-          id: `ao-${uid()}`,
-          name: addonForm.name.trim(),
-          price: p,
-          group: addonForm.group || "General",
-          enabled: true,
-        },
-      ]);
-    setShowAddonModal(false);
+
+      setAddonTypes(types || []);
+      setAddonItems(filtered);
+    } catch (err) {
+      console.error("[fetchAddons] error:", err);
+    } finally {
+      setLoadingAddons(false);
+    }
+  }, [restId]);
+
+  useEffect(() => {
+    if (section === "addons") fetchAddons();
+  }, [section, fetchAddons]);
+
+  // ── Open Add-On TYPE modal ─────────────────────────────────────────────────
+  const openAddType = () => {
+    setEditingAddonType(null);
+    setAddonTypeForm({ name: "", minQty: "" });
+    setShowAddonTypeModal(true);
+  };
+  const openEditType = (type) => {
+    setEditingAddonType(type);
+    setAddonTypeForm({ name: type.name, minQty: String(type.min_qty ?? "") });
+    setShowAddonTypeModal(true);
+  };
+
+  const saveAddonType = async () => {
+    if (!addonTypeForm.name.trim()) {
+      return;
+    }
+    setSavingAddon(true);
+    try {
+      if (editingAddonType) {
+        const { error } = await supabase
+          .from("Add_Ons_Type")
+          .update({
+            name: addonTypeForm.name.trim(),
+            min_qty: parseInt(addonTypeForm.minQty) || 0,
+          })
+          .eq("id", editingAddonType.id);
+        if (error) throw error;
+        setAddonTypes((prev) =>
+          prev.map((t) =>
+            t.id === editingAddonType.id
+              ? {
+                  ...t,
+                  name: addonTypeForm.name.trim(),
+                  min_qty: parseInt(addonTypeForm.minQty) || 0,
+                }
+              : t,
+          ),
+        );
+      } else {
+        const { data, error } = await supabase
+          .from("Add_Ons_Type")
+          .insert({
+            rest_id: restId,
+            name: addonTypeForm.name.trim(),
+            min_qty: parseInt(addonTypeForm.minQty) || 0,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        setAddonTypes((prev) => [...prev, data]);
+      }
+      setShowAddonTypeModal(false);
+    } catch (err) {
+      console.error("[saveAddonType] error:", err);
+      alert("Failed to save type: " + (err.message || "Unknown error"));
+    } finally {
+      setSavingAddon(false);
+    }
+  };
+
+  const executeDeleteAddonType = async () => {
+    if (!confirmDeleteAddon || confirmDeleteAddon.kind !== "type") return;
+    const { id } = confirmDeleteAddon;
+    setConfirmDeleteAddon(null);
+    try {
+      // Nullify type_id for items belonging to this type (they become uncategorized)
+      await supabase
+        .from("Add_Ons")
+        .update({ type_id: null })
+        .eq("type_id", id);
+      const { error } = await supabase
+        .from("Add_Ons_Type")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      setAddonTypes((prev) => prev.filter((t) => t.id !== id));
+      setAddonItems((prev) =>
+        prev.map((a) => (a.type_id === id ? { ...a, type_id: null } : a)),
+      );
+    } catch (err) {
+      console.error("[deleteAddonType] error:", err);
+      alert("Failed to delete type: " + (err.message || "Unknown error"));
+    }
+  };
+
+  // ── Open Add-On ITEM modal ─────────────────────────────────────────────────
+  const openAddAddonItem = (typeId) => {
+    setEditingAddon(null);
+    setAddonForm({
+      name: "",
+      price: "",
+      imageFile: null,
+      imagePreview: null,
+      imageError: "",
+      typeId: typeId || null,
+      minQty: "",
+    });
+    setShowAddonModal(true);
+  };
+  const openAddAddon = () => openAddAddonItem(null);
+
+  const openEditAddonItem = (addon) => {
+    setEditingAddon(addon);
+    setAddonForm({
+      name: addon.name,
+      price: String(addon.price ?? ""),
+      imageFile: null,
+      imagePreview:
+        addon.image_path && addon.image_path.trim() !== ""
+          ? addon.image_path
+          : null,
+      imageError: "",
+      typeId: addon.type_id ?? null,
+      minQty: "",
+    });
+    setShowAddonModal(true);
+  };
+
+  const saveAddon = async () => {
+    if (!addonForm.name.trim()) {
+      setAddonForm((f) => ({ ...f, imageError: "Name is required." }));
+      return;
+    }
+    const p = parseFloat(addonForm.price);
+    if (isNaN(p) || p < 0) {
+      setAddonForm((f) => ({
+        ...f,
+        imageError: "Price must be a valid positive number.",
+      }));
+      return;
+    }
+
+    setSavingAddon(true);
+    setAddonForm((f) => ({ ...f, imageError: "" }));
+
+    try {
+      // ── Upload image if provided ────────────────────────────────────────────
+      let imagePath = editingAddon?.image_path || null;
+
+      if (addonForm.imageFile) {
+        const bucketName = "feastrush-menu";
+        const ext = addonForm.imageFile.name.split(".").pop().toLowerCase();
+        const folderPath = `${restId}/add_ons`;
+        const filePath = `${folderPath}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+        // Ensure folder exists by checking a dummy list (storage auto-creates folders on upload)
+        const { error: uploadErr } = await supabase.storage
+          .from(bucketName)
+          .upload(filePath, addonForm.imageFile, { upsert: false });
+
+        if (uploadErr) {
+          throw new Error("Image upload failed: " + uploadErr.message);
+        }
+
+        const { data: urlData } = supabase.storage
+          .from(bucketName)
+          .getPublicUrl(filePath);
+        imagePath = urlData?.publicUrl || null;
+      }
+
+      const payload = {
+        name: addonForm.name.trim(),
+        price: p,
+        type_id: addonForm.typeId || null,
+        image_path: imagePath,
+      };
+
+      if (editingAddon) {
+        if (!addonForm.imageFile) {
+          // Keep existing image, don't overwrite
+          delete payload.image_path;
+        }
+        const { error } = await supabase
+          .from("Add_Ons")
+          .update(payload)
+          .eq("id", editingAddon.id);
+        if (error) throw error;
+        setAddonItems((prev) =>
+          prev.map((a) =>
+            a.id === editingAddon.id
+              ? {
+                  ...a,
+                  name: payload.name,
+                  price: payload.price,
+                  type_id: payload.type_id,
+                  image_path: addonForm.imageFile ? imagePath : a.image_path,
+                }
+              : a,
+          ),
+        );
+      } else {
+        const { data, error } = await supabase
+          .from("Add_Ons")
+          .insert(payload)
+          .select()
+          .single();
+        if (error) throw error;
+        setAddonItems((prev) => [...prev, data]);
+      }
+
+      setShowAddonModal(false);
+    } catch (err) {
+      console.error("[saveAddon] error:", err);
+      setAddonForm((f) => ({
+        ...f,
+        imageError: err.message || "Something went wrong.",
+      }));
+    } finally {
+      setSavingAddon(false);
+    }
+  };
+
+  const executeDeleteAddonItem = async () => {
+    if (!confirmDeleteAddon || confirmDeleteAddon.kind !== "item") return;
+    const { id } = confirmDeleteAddon;
+    setConfirmDeleteAddon(null);
+    try {
+      const { error } = await supabase.from("Add_Ons").delete().eq("id", id);
+      if (error) throw error;
+      setAddonItems((prev) => prev.filter((a) => a.id !== id));
+    } catch (err) {
+      console.error("[deleteAddonItem] error:", err);
+      alert("Failed to delete add-on: " + (err.message || "Unknown error"));
+    }
   };
 
   // ── Add category → INSERT DB ───────────────────────────────────────────────
@@ -2793,7 +3040,7 @@ function MenuPage({ t, user }) {
     }
   };
 
-  const addonGroups = [...new Set(addons.map((a) => a.group))];
+  // addonTypes and addonItems are fetched from DB (see fetchAddons above)
 
   const CategoryList = () => (
     <div className="flex flex-col gap-0.5">
@@ -3425,84 +3672,214 @@ function MenuPage({ t, user }) {
             </>
           ) : (
             <div className="flex-1 overflow-y-auto p-4 md:p-8">
-              {addonGroups.length === 0 && (
+              {/* ── Top action bar ── */}
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+                <div />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={openAddType}
+                    style={{
+                      background: t.surface2,
+                      border: `1px solid ${t.border2}`,
+                      color: t.subtle,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wide hover:opacity-80 transition-all active:scale-95"
+                  >
+                    + New Type
+                  </button>
+                  <button
+                    onClick={() => openAddAddonItem(null)}
+                    style={{
+                      background: t.accent,
+                      color: "#fff",
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wide hover:opacity-90 transition-all active:scale-95"
+                  >
+                    + Add Add-On
+                  </button>
+                </div>
+              </div>
+
+              {loadingAddons ? (
                 <p
                   style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm italic"
+                  className="text-sm"
                 >
-                  No add-ons yet.
+                  Loading add-ons…
                 </p>
-              )}
-              {addonGroups.map((group) => (
-                <div key={group} className="mb-8">
-                  <p
-                    style={{
-                      fontFamily: "'Cormorant Garamond', serif",
-                      color: t.text,
-                      borderBottom: `1px solid ${t.border}`,
-                    }}
-                    className="text-xl font-bold pb-3 mb-3"
-                  >
-                    {group}
-                  </p>
-                  <div className="space-y-2">
-                    {addons
-                      .filter((a) => a.group === group)
-                      .map((addon) => (
+              ) : (
+                <>
+                  {/* ── Typed sections ── */}
+                  {addonTypes.map((type) => {
+                    const items = addonItems.filter(
+                      (a) => a.type_id === type.id,
+                    );
+                    return (
+                      <div key={type.id} className="mb-8">
                         <div
-                          key={addon.id}
-                          style={{
-                            background: t.surface,
-                            border: `1px solid ${t.border}`,
-                          }}
-                          className="flex items-center gap-3 rounded-xl px-4 py-3"
+                          style={{ borderBottom: `1px solid ${t.border}` }}
+                          className="flex items-center justify-between pb-3 mb-3 flex-wrap gap-2"
                         >
-                          <div className="flex-1 min-w-0">
+                          <div>
                             <p
                               style={{
+                                fontFamily: "'Cormorant Garamond', serif",
                                 color: t.text,
-                                fontFamily: "'Lato', sans-serif",
                               }}
-                              className="text-sm font-semibold"
+                              className="text-xl font-bold"
                             >
-                              {addon.name}
+                              {type.name}
                             </p>
-                            <p
-                              style={{
-                                color: t.accent,
-                                fontFamily: "'Lato', sans-serif",
-                              }}
-                              className="text-xs font-bold mt-0.5"
-                            >
-                              KD {addon.price.toFixed(3)}
-                            </p>
+                            {type.min_qty > 0 && (
+                              <p
+                                style={{
+                                  color: t.muted,
+                                  fontFamily: "'Lato', sans-serif",
+                                }}
+                                className="text-xs mt-0.5"
+                              >
+                                Min. required: {type.min_qty}
+                              </p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => openEditAddon(addon)}
+                              onClick={() => openAddAddonItem(type.id)}
+                              style={{
+                                background: t.accentBg,
+                                border: `1px solid ${t.accentBorder}`,
+                                color: t.accent,
+                                fontFamily: "'Lato', sans-serif",
+                              }}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                            >
+                              + Add Item
+                            </button>
+                            <button
+                              onClick={() => openEditType(type)}
                               style={{ color: t.subtle }}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm"
                             >
                               ✏️
                             </button>
                             <button
-                              onClick={() => deleteAddon(addon.id)}
+                              onClick={() =>
+                                setConfirmDeleteAddon({
+                                  kind: "type",
+                                  id: type.id,
+                                  name: type.name,
+                                })
+                              }
                               style={{ color: t.subtle }}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors text-sm"
                             >
                               🗑️
                             </button>
-                            <Toggle
-                              value={addon.enabled}
-                              onChange={() => toggleAddon(addon.id)}
-                              t={t}
-                            />
                           </div>
                         </div>
-                      ))}
-                  </div>
-                </div>
-              ))}
+                        {items.length === 0 ? (
+                          <p
+                            style={{
+                              color: t.muted,
+                              fontFamily: "'Lato', sans-serif",
+                            }}
+                            className="text-sm italic"
+                          >
+                            No items in this type yet.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {items.map((addon) => (
+                              <AddonItemRow
+                                key={addon.id}
+                                addon={addon}
+                                t={t}
+                                onEdit={() => openEditAddonItem(addon)}
+                                onDelete={() =>
+                                  setConfirmDeleteAddon({
+                                    kind: "item",
+                                    id: addon.id,
+                                    name: addon.name,
+                                  })
+                                }
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* ── Uncategorized section ── */}
+                  {(() => {
+                    const uncat = addonItems.filter((a) => !a.type_id);
+                    if (uncat.length === 0 && addonTypes.length > 0)
+                      return null;
+                    return (
+                      <div className="mb-8">
+                        <div
+                          style={{ borderBottom: `1px solid ${t.border}` }}
+                          className="flex items-center justify-between pb-3 mb-3 flex-wrap gap-2"
+                        >
+                          <p
+                            style={{
+                              fontFamily: "'Cormorant Garamond', serif",
+                              color: t.text,
+                            }}
+                            className="text-xl font-bold"
+                          >
+                            Uncategorized
+                          </p>
+                          <button
+                            onClick={() => openAddAddonItem(null)}
+                            style={{
+                              background: t.accentBg,
+                              border: `1px solid ${t.accentBorder}`,
+                              color: t.accent,
+                              fontFamily: "'Lato', sans-serif",
+                            }}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                          >
+                            + Add Item
+                          </button>
+                        </div>
+                        {uncat.length === 0 ? (
+                          <p
+                            style={{
+                              color: t.muted,
+                              fontFamily: "'Lato', sans-serif",
+                            }}
+                            className="text-sm italic"
+                          >
+                            No add-ons yet. Click "+ Add Add-On" or "+ New Type"
+                            to get started.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {uncat.map((addon) => (
+                              <AddonItemRow
+                                key={addon.id}
+                                addon={addon}
+                                t={t}
+                                onEdit={() => openEditAddonItem(addon)}
+                                onDelete={() =>
+                                  setConfirmDeleteAddon({
+                                    kind: "item",
+                                    id: addon.id,
+                                    name: addon.name,
+                                  })
+                                }
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
             </div>
           )}
 
@@ -3917,19 +4294,185 @@ function MenuPage({ t, user }) {
               </button>
             </Modal>
           )}
+
+          {/* ── Add-On Type Modal ─────────────────────────────────────────── */}
+          {showAddonTypeModal && (
+            <Modal
+              title={editingAddonType ? "Edit Add-On Type" : "New Add-On Type"}
+              onClose={() => setShowAddonTypeModal(false)}
+              t={t}
+            >
+              <Field
+                label="Type Name"
+                value={addonTypeForm.name}
+                onChange={(v) => setAddonTypeForm((f) => ({ ...f, name: v }))}
+                placeholder="e.g. Sauces, Toppings, Extras"
+                t={t}
+              />
+              <Field
+                label="Minimum Required (optional)"
+                value={addonTypeForm.minQty}
+                onChange={(v) => setAddonTypeForm((f) => ({ ...f, minQty: v }))}
+                type="number"
+                placeholder="0"
+                t={t}
+              />
+              <button
+                onClick={saveAddonType}
+                disabled={savingAddon}
+                style={{
+                  background: t.accent,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                  opacity: savingAddon ? 0.7 : 1,
+                }}
+                className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
+              >
+                {savingAddon
+                  ? "Saving…"
+                  : editingAddonType
+                    ? "Save Changes"
+                    : "Create Type"}
+              </button>
+            </Modal>
+          )}
+
+          {/* ── Add/Edit Add-On Item Modal ────────────────────────────────── */}
           {showAddonModal && (
             <Modal
-              title={editingAddon ? "Edit Add-On" : "New Add-On"}
+              title={editingAddon ? "Edit Add-On" : "Add Add-On"}
               onClose={() => setShowAddonModal(false)}
               t={t}
             >
+              {/* Error banner */}
+              {addonForm.imageError && (
+                <div
+                  style={{
+                    background: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="rounded-xl px-4 py-3 mb-5 flex items-start gap-2"
+                >
+                  <span className="text-base flex-shrink-0">⚠️</span>
+                  <p
+                    style={{ color: "#B83232" }}
+                    className="text-sm leading-snug"
+                  >
+                    {addonForm.imageError}
+                  </p>
+                </div>
+              )}
+
+              {/* Image upload */}
+              <div className="mb-5">
+                <label
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs font-bold tracking-widest uppercase block mb-2"
+                >
+                  Image{" "}
+                  <span
+                    style={{ color: t.muted }}
+                    className="normal-case font-normal"
+                  >
+                    (optional)
+                  </span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="addon-image-upload"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                      setAddonForm((f) => ({
+                        ...f,
+                        imageError: "Image must be under 5 MB.",
+                      }));
+                      return;
+                    }
+                    const preview = URL.createObjectURL(file);
+                    setAddonForm((f) => ({
+                      ...f,
+                      imageFile: file,
+                      imagePreview: preview,
+                      imageError: "",
+                    }));
+                  }}
+                />
+                <label
+                  htmlFor="addon-image-upload"
+                  className="flex flex-col items-center justify-center rounded-xl overflow-hidden transition-all hover:opacity-80 active:scale-[0.98]"
+                  style={{
+                    background: t.surface2,
+                    border: `2px dashed ${addonForm.imagePreview ? t.accent : t.border2}`,
+                    cursor: "pointer",
+                    minHeight: 120,
+                  }}
+                >
+                  {addonForm.imagePreview ? (
+                    <img
+                      src={addonForm.imagePreview}
+                      alt="Preview"
+                      className="w-full object-cover"
+                      style={{ maxHeight: 160 }}
+                      onError={(e) => {
+                        e.currentTarget.src = "/sides.jpg";
+                      }}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-6 px-4 text-center">
+                      <span className="text-3xl">🖼️</span>
+                      <p
+                        style={{
+                          color: t.subtle,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="text-sm font-medium"
+                      >
+                        Tap to upload image
+                      </p>
+                      <p
+                        style={{
+                          color: t.muted,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="text-xs"
+                      >
+                        PNG, JPG, WEBP · max 5 MB
+                      </p>
+                    </div>
+                  )}
+                </label>
+                {addonForm.imagePreview && (
+                  <button
+                    onClick={() =>
+                      setAddonForm((f) => ({
+                        ...f,
+                        imageFile: null,
+                        imagePreview: null,
+                      }))
+                    }
+                    style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                    className="text-xs mt-2 hover:opacity-60 transition-opacity"
+                  >
+                    ✕ Remove image
+                  </button>
+                )}
+              </div>
+
+              {/* Name */}
               <Field
                 label="Add-On Name"
                 value={addonForm.name}
                 onChange={(v) => setAddonForm((f) => ({ ...f, name: v }))}
-                placeholder="e.g. Extra Sauce"
+                placeholder="e.g. Ketchup, Mayo, Extra Cheese"
                 t={t}
               />
+
+              {/* Price */}
               <Field
                 label="Price (KD)"
                 value={addonForm.price}
@@ -3938,25 +4481,150 @@ function MenuPage({ t, user }) {
                 placeholder="0.000"
                 t={t}
               />
-              <Field
-                label="Group"
-                value={addonForm.group}
-                onChange={(v) => setAddonForm((f) => ({ ...f, group: v }))}
-                placeholder="e.g. Sauces"
-                t={t}
-              />
+
+              {/* Type selector */}
+              <div className="mb-5">
+                <label
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs font-bold tracking-widest uppercase block mb-2"
+                >
+                  Add-On Type{" "}
+                  <span
+                    style={{ color: t.muted }}
+                    className="normal-case font-normal"
+                  >
+                    (optional — leave empty for Uncategorized)
+                  </span>
+                </label>
+                <select
+                  value={addonForm.typeId ?? ""}
+                  onChange={(e) =>
+                    setAddonForm((f) => ({
+                      ...f,
+                      typeId: e.target.value ? Number(e.target.value) : null,
+                    }))
+                  }
+                  style={{
+                    background: t.surface2,
+                    border: `1px solid ${t.border2}`,
+                    color: t.text,
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+                >
+                  <option value="">Uncategorized</option>
+                  {addonTypes.map((type) => (
+                    <option
+                      key={type.id}
+                      value={type.id}
+                      style={{ background: t.surface2 }}
+                    >
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 onClick={saveAddon}
+                disabled={savingAddon}
                 style={{
                   background: t.accent,
                   color: "#fff",
                   fontFamily: "'Lato', sans-serif",
+                  opacity: savingAddon ? 0.7 : 1,
                 }}
                 className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
               >
-                {editingAddon ? "Save Changes" : "Add Add-On"}
+                {savingAddon
+                  ? "Saving…"
+                  : editingAddon
+                    ? "Save Changes"
+                    : "Add Add-On"}
               </button>
             </Modal>
+          )}
+
+          {/* ── Confirm Delete Addon ──────────────────────────────────────── */}
+          {confirmDeleteAddon && (
+            <div
+              className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
+              style={{
+                background: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(4px)",
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setConfirmDeleteAddon(null);
+              }}
+            >
+              <div
+                style={{
+                  background: t.surface,
+                  border: `1px solid ${t.border}`,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              >
+                <div className="px-6 pt-6 pb-2 text-center">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"
+                    style={{
+                      background: "#FEF2F2",
+                      border: "1px solid #FECACA",
+                    }}
+                  >
+                    🗑️
+                  </div>
+                  <p
+                    style={{
+                      color: t.text,
+                      fontFamily: "'Cormorant Garamond', serif",
+                    }}
+                    className="text-xl font-bold mb-2"
+                  >
+                    {confirmDeleteAddon.kind === "type"
+                      ? "Delete Add-On Type?"
+                      : "Delete Add-On?"}
+                  </p>
+                  <p
+                    style={{ color: t.subtle }}
+                    className="text-sm leading-relaxed"
+                  >
+                    <span style={{ color: t.text }} className="font-semibold">
+                      "{confirmDeleteAddon.name}"
+                    </span>{" "}
+                    will be permanently deleted.
+                    {confirmDeleteAddon.kind === "type" &&
+                      " All items in this type will become Uncategorized."}{" "}
+                    This cannot be undone.
+                  </p>
+                </div>
+                <div className="p-6 flex gap-3">
+                  <button
+                    onClick={() => setConfirmDeleteAddon(null)}
+                    style={{
+                      background: t.surface2,
+                      border: `1px solid ${t.border2}`,
+                      color: t.text,
+                    }}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() =>
+                      confirmDeleteAddon.kind === "type"
+                        ? executeDeleteAddonType()
+                        : executeDeleteAddonItem()
+                    }
+                    style={{ background: "#B83232", color: "#fff" }}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ── Confirm Delete Modal ─────────────────────────────────────── */}
