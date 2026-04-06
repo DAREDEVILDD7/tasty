@@ -2016,6 +2016,14 @@ function MenuPage({ t, user }) {
   // Time-limit override warning: item that user tried to toggle against its window
   const [timeBlockedItem, setTimeBlockedItem] = useState(null);
 
+  // ── Variant Groups modal state ─────────────────────────────────────────────
+  // variantItem: the menu item whose variants we are editing
+  const [variantItem, setVariantItem] = useState(null);
+  // variantGroups: [{ id?, name, is_required, is_multiple, options: [{ id?, name, price_adj }] }]
+  const [variantGroups, setVariantGroups] = useState([]);
+  const [loadingVariants, setLoadingVariants] = useState(false);
+  const [savingVariants, setSavingVariants] = useState(false);
+
   // Derive rest_id from user role
   const restId = user?.role === "owner" ? user?.main_rest : user?.rest_id;
 
@@ -2136,7 +2144,7 @@ function MenuPage({ t, user }) {
         const { data: items, error: itemErr } = await supabase
           .from("Menu")
           .select(
-            "id, name, price, is_available, visible, description, image_path, sort_order, categ_id, recommended, avail_from, avail_to",
+            "id, name, price, is_available, visible, description, image_path, sort_order, categ_id, recommended, avail_from, avail_to, is_customizable",
           )
           .eq("rest_id", restId)
           .order("sort_order", { ascending: true });
@@ -2743,6 +2751,250 @@ function MenuPage({ t, user }) {
       }));
     } finally {
       setSavingItem(false);
+    }
+  };
+
+  // ── Open Variant Groups modal for a menu item ──────────────────────────────
+  const openVariants = async (item) => {
+    setVariantItem(item);
+    setLoadingVariants(true);
+    try {
+      const { data: groups, error: gErr } = await supabase
+        .from("Variant_Groups")
+        .select("id, name, is_required, is_multiple")
+        .eq("menu_id", item.id)
+        .order("id", { ascending: true });
+      if (gErr) throw gErr;
+
+      const groupIds = (groups || []).map((g) => g.id);
+      let options = [];
+      if (groupIds.length > 0) {
+        const { data: opts, error: oErr } = await supabase
+          .from("Variant Options")
+          .select("id, var_group_id, name, price_adj")
+          .in("var_group_id", groupIds)
+          .order("id", { ascending: true });
+        if (oErr) throw oErr;
+        options = opts || [];
+      }
+
+      setVariantGroups(
+        (groups || []).map((g) => ({
+          ...g,
+          options: options.filter((o) => o.var_group_id === g.id),
+        })),
+      );
+    } catch (err) {
+      console.error("[openVariants] error:", err);
+      alert("Failed to load variants: " + (err.message || "Unknown error"));
+    } finally {
+      setLoadingVariants(false);
+    }
+  };
+
+  const closeVariants = () => {
+    setVariantItem(null);
+    setVariantGroups([]);
+  };
+
+  const addVariantGroup = () => {
+    setVariantGroups((prev) => [
+      ...prev,
+      {
+        _localId: Date.now(),
+        name: "",
+        is_required: false,
+        is_multiple: false,
+        options: [],
+      },
+    ]);
+  };
+
+  const updateVariantGroup = (idx, key, val) => {
+    setVariantGroups((prev) =>
+      prev.map((g, i) => (i === idx ? { ...g, [key]: val } : g)),
+    );
+  };
+
+  const removeVariantGroup = (idx) => {
+    setVariantGroups((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const addVariantOption = (groupIdx) => {
+    setVariantGroups((prev) =>
+      prev.map((g, i) =>
+        i !== groupIdx
+          ? g
+          : {
+              ...g,
+              options: [
+                ...g.options,
+                { _localId: Date.now(), name: "", price_adj: 0 },
+              ],
+            },
+      ),
+    );
+  };
+
+  const updateVariantOption = (groupIdx, optIdx, key, val) => {
+    setVariantGroups((prev) =>
+      prev.map((g, i) =>
+        i !== groupIdx
+          ? g
+          : {
+              ...g,
+              options: g.options.map((o, j) =>
+                j !== optIdx ? o : { ...o, [key]: val },
+              ),
+            },
+      ),
+    );
+  };
+
+  const removeVariantOption = (groupIdx, optIdx) => {
+    setVariantGroups((prev) =>
+      prev.map((g, i) =>
+        i !== groupIdx
+          ? g
+          : { ...g, options: g.options.filter((_, j) => j !== optIdx) },
+      ),
+    );
+  };
+
+  const saveVariants = async () => {
+    if (!variantItem) return;
+    // Basic validation
+    for (const g of variantGroups) {
+      if (!g.name.trim()) {
+        alert("Each variant group must have a name.");
+        return;
+      }
+      for (const o of g.options) {
+        if (!o.name.trim()) {
+          alert(`All options in "${g.name}" must have a name.`);
+          return;
+        }
+      }
+    }
+
+    setSavingVariants(true);
+    try {
+      // 1. Fetch existing groups from DB to know what to delete
+      const { data: existingGroups } = await supabase
+        .from("Variant_Groups")
+        .select("id")
+        .eq("menu_id", variantItem.id);
+
+      const existingGroupIds = (existingGroups || []).map((g) => g.id);
+      const newGroupIds = variantGroups.filter((g) => g.id).map((g) => g.id);
+      const groupsToDelete = existingGroupIds.filter(
+        (id) => !newGroupIds.includes(id),
+      );
+
+      // Delete removed groups (cascade deletes their options via FK)
+      if (groupsToDelete.length > 0) {
+        // First delete options for these groups
+        await supabase
+          .from("Variant Options")
+          .delete()
+          .in("var_group_id", groupsToDelete);
+        await supabase.from("Variant_Groups").delete().in("id", groupsToDelete);
+      }
+
+      // 2. Upsert each group + its options
+      for (const group of variantGroups) {
+        if (group.id) {
+          // UPDATE existing group
+          await supabase
+            .from("Variant_Groups")
+            .update({
+              name: group.name.trim(),
+              is_required: group.is_required,
+              is_multiple: group.is_multiple,
+            })
+            .eq("id", group.id);
+
+          // Fetch existing options for this group
+          const { data: existingOpts } = await supabase
+            .from("Variant Options")
+            .select("id")
+            .eq("var_group_id", group.id);
+          const existingOptIds = (existingOpts || []).map((o) => o.id);
+          const newOptIds = group.options.filter((o) => o.id).map((o) => o.id);
+          const optsToDelete = existingOptIds.filter(
+            (id) => !newOptIds.includes(id),
+          );
+          if (optsToDelete.length > 0) {
+            await supabase
+              .from("Variant Options")
+              .delete()
+              .in("id", optsToDelete);
+          }
+          for (const opt of group.options) {
+            if (opt.id) {
+              await supabase
+                .from("Variant Options")
+                .update({
+                  name: opt.name.trim(),
+                  price_adj: parseFloat(opt.price_adj) || 0,
+                })
+                .eq("id", opt.id);
+            } else {
+              await supabase.from("Variant Options").insert({
+                var_group_id: group.id,
+                name: opt.name.trim(),
+                price_adj: parseFloat(opt.price_adj) || 0,
+              });
+            }
+          }
+        } else {
+          // INSERT new group
+          const { data: newGroup, error: ngErr } = await supabase
+            .from("Variant_Groups")
+            .insert({
+              menu_id: variantItem.id,
+              name: group.name.trim(),
+              is_required: group.is_required,
+              is_multiple: group.is_multiple,
+            })
+            .select()
+            .single();
+          if (ngErr) throw ngErr;
+          for (const opt of group.options) {
+            await supabase.from("Variant Options").insert({
+              var_group_id: newGroup.id,
+              name: opt.name.trim(),
+              price_adj: parseFloat(opt.price_adj) || 0,
+            });
+          }
+        }
+      }
+
+      // 3. Update is_customizable on the Menu item
+      const isCustomizable = variantGroups.length > 0;
+      await supabase
+        .from("Menu")
+        .update({ is_customizable: isCustomizable })
+        .eq("id", variantItem.id);
+
+      // 4. Update local state
+      setCategories((prev) =>
+        prev.map((c) => ({
+          ...c,
+          items: c.items.map((i) =>
+            i.id === variantItem.id
+              ? { ...i, is_customizable: isCustomizable }
+              : i,
+          ),
+        })),
+      );
+
+      closeVariants();
+    } catch (err) {
+      console.error("[saveVariants] error:", err);
+      alert("Failed to save variants: " + (err.message || "Unknown error"));
+    } finally {
+      setSavingVariants(false);
     }
   };
 
@@ -3355,6 +3607,18 @@ function MenuPage({ t, user }) {
               >
                 {item.is_available ? "In Stock" : "Out of Stock"}
               </span>
+              {item.is_customizable && (
+                <span
+                  style={{
+                    background: t.accentBg,
+                    color: t.accent,
+                    border: `1px solid ${t.accentBorder}`,
+                  }}
+                  className="text-xs px-2 py-0.5 rounded-full select-none flex-shrink-0 font-semibold"
+                >
+                  ⚙️ Customizable
+                </span>
+              )}
             </div>
             <p
               style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
@@ -3382,6 +3646,18 @@ function MenuPage({ t, user }) {
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => openVariants(item)}
+              style={{
+                color: item.is_customizable ? t.accent : t.subtle,
+                background: item.is_customizable ? t.accentBg : "transparent",
+                border: `1px solid ${item.is_customizable ? t.accentBorder : "transparent"}`,
+              }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-60 transition-opacity text-sm"
+              title="Manage Variants"
+            >
+              ⚙️
+            </button>
             <button
               onClick={() => openEditItem(item)}
               style={{ color: t.subtle }}
@@ -4293,6 +4569,310 @@ function MenuPage({ t, user }) {
                     : "Add Item"}
               </button>
             </Modal>
+          )}
+
+          {/* ── Variant Groups Modal ──────────────────────────────────────── */}
+          {variantItem && (
+            <div
+              className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
+              style={{
+                background: "rgba(0,0,0,0.5)",
+                backdropFilter: "blur(4px)",
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeVariants();
+              }}
+            >
+              <div
+                style={{
+                  background: t.surface,
+                  border: `1px solid ${t.border}`,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+              >
+                {/* Header */}
+                <div
+                  style={{ borderBottom: `1px solid ${t.border}` }}
+                  className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+                >
+                  <div className="min-w-0 flex-1 pr-3">
+                    <p
+                      style={{
+                        color: t.text,
+                        fontFamily: "'Cormorant Garamond', serif",
+                      }}
+                      className="text-xl font-bold tracking-wide truncate"
+                    >
+                      Variants — {variantItem.name}
+                    </p>
+                    <p
+                      style={{
+                        color: t.muted,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-xs mt-0.5"
+                    >
+                      Add groups (e.g. Size, Spice Level) and their options
+                    </p>
+                  </div>
+                  <button
+                    onClick={closeVariants}
+                    style={{ color: t.subtle }}
+                    className="text-lg leading-none hover:opacity-60 transition-opacity w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                  {loadingVariants ? (
+                    <p
+                      style={{ color: t.muted }}
+                      className="text-sm text-center py-6"
+                    >
+                      Loading variants…
+                    </p>
+                  ) : (
+                    <>
+                      {variantGroups.length === 0 && (
+                        <div
+                          style={{
+                            border: `2px dashed ${t.border2}`,
+                            color: t.muted,
+                          }}
+                          className="rounded-xl p-6 text-center text-sm italic"
+                        >
+                          No variant groups yet. Add one below to make this item
+                          customizable.
+                        </div>
+                      )}
+
+                      {variantGroups.map((group, gIdx) => (
+                        <div
+                          key={group.id || group._localId}
+                          style={{
+                            background: t.surface2,
+                            border: `1px solid ${t.border}`,
+                          }}
+                          className="rounded-xl p-4"
+                        >
+                          {/* Group header row */}
+                          <div className="flex items-start gap-2 mb-3">
+                            <div className="flex-1 min-w-0">
+                              <input
+                                value={group.name}
+                                onChange={(e) =>
+                                  updateVariantGroup(
+                                    gIdx,
+                                    "name",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Group name (e.g. Size, Spice Level)"
+                                style={{
+                                  background: t.surface,
+                                  border: `1px solid ${t.border2}`,
+                                  color: t.text,
+                                  fontFamily: "'Lato', sans-serif",
+                                }}
+                                className="w-full rounded-lg px-3 py-2 text-sm font-semibold outline-none"
+                              />
+                            </div>
+                            <button
+                              onClick={() => removeVariantGroup(gIdx)}
+                              style={{ color: t.muted }}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors flex-shrink-0 mt-0.5 text-sm"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+
+                          {/* Toggles */}
+                          <div className="flex items-center gap-4 mb-3">
+                            <button
+                              onClick={() =>
+                                updateVariantGroup(
+                                  gIdx,
+                                  "is_required",
+                                  !group.is_required,
+                                )
+                              }
+                              style={{
+                                background: group.is_required
+                                  ? t.accentBg
+                                  : t.surface,
+                                border: `1px solid ${group.is_required ? t.accentBorder : t.border2}`,
+                                color: group.is_required ? t.accent : t.subtle,
+                                fontFamily: "'Lato', sans-serif",
+                              }}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                            >
+                              <span>{group.is_required ? "✓" : "○"}</span>{" "}
+                              Required
+                            </button>
+                            <button
+                              onClick={() =>
+                                updateVariantGroup(
+                                  gIdx,
+                                  "is_multiple",
+                                  !group.is_multiple,
+                                )
+                              }
+                              style={{
+                                background: group.is_multiple
+                                  ? t.accentBg
+                                  : t.surface,
+                                border: `1px solid ${group.is_multiple ? t.accentBorder : t.border2}`,
+                                color: group.is_multiple ? t.accent : t.subtle,
+                                fontFamily: "'Lato', sans-serif",
+                              }}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                            >
+                              <span>{group.is_multiple ? "✓" : "○"}</span>{" "}
+                              Multi-select
+                            </button>
+                          </div>
+
+                          {/* Options */}
+                          <div className="space-y-2 mb-2">
+                            {group.options.map((opt, oIdx) => (
+                              <div
+                                key={opt.id || opt._localId}
+                                className="flex items-center gap-2"
+                              >
+                                <input
+                                  value={opt.name}
+                                  onChange={(e) =>
+                                    updateVariantOption(
+                                      gIdx,
+                                      oIdx,
+                                      "name",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="Option name (e.g. Large, Extra Spicy)"
+                                  style={{
+                                    background: t.surface,
+                                    border: `1px solid ${t.border2}`,
+                                    color: t.text,
+                                    fontFamily: "'Lato', sans-serif",
+                                  }}
+                                  className="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm outline-none"
+                                />
+                                <div
+                                  className="flex items-center flex-shrink-0"
+                                  style={{ width: 100 }}
+                                >
+                                  <span
+                                    style={{
+                                      color: t.muted,
+                                      fontFamily: "'Lato', sans-serif",
+                                    }}
+                                    className="text-xs mr-1 flex-shrink-0"
+                                  >
+                                    KD
+                                  </span>
+                                  <input
+                                    type="number"
+                                    value={opt.price_adj}
+                                    onChange={(e) =>
+                                      updateVariantOption(
+                                        gIdx,
+                                        oIdx,
+                                        "price_adj",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="0.000"
+                                    step="0.001"
+                                    style={{
+                                      background: t.surface,
+                                      border: `1px solid ${t.border2}`,
+                                      color: t.text,
+                                      fontFamily: "'Lato', sans-serif",
+                                    }}
+                                    className="w-full rounded-lg px-2 py-2 text-sm outline-none"
+                                  />
+                                </div>
+                                <button
+                                  onClick={() =>
+                                    removeVariantOption(gIdx, oIdx)
+                                  }
+                                  style={{ color: t.muted }}
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:text-red-500 transition-colors flex-shrink-0 text-xs"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+
+                          <button
+                            onClick={() => addVariantOption(gIdx)}
+                            style={{
+                              color: t.accent,
+                              background: t.accentBg,
+                              border: `1px solid ${t.accentBorder}`,
+                              fontFamily: "'Lato', sans-serif",
+                            }}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-80 transition-opacity mt-1"
+                          >
+                            + Add Option
+                          </button>
+                        </div>
+                      ))}
+
+                      <button
+                        onClick={addVariantGroup}
+                        style={{
+                          background: t.surface2,
+                          border: `2px dashed ${t.border2}`,
+                          color: t.subtle,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="w-full py-3 rounded-xl text-xs font-semibold tracking-wider hover:opacity-80 transition-opacity"
+                      >
+                        + Add Variant Group
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div
+                  style={{ borderTop: `1px solid ${t.border}` }}
+                  className="px-5 py-4 flex items-center gap-3 flex-shrink-0"
+                >
+                  <button
+                    onClick={closeVariants}
+                    style={{
+                      background: t.surface2,
+                      border: `1px solid ${t.border2}`,
+                      color: t.subtle,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-80 transition-opacity"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveVariants}
+                    disabled={savingVariants || loadingVariants}
+                    style={{
+                      background: t.accent,
+                      color: "#fff",
+                      fontFamily: "'Lato', sans-serif",
+                      opacity: savingVariants || loadingVariants ? 0.7 : 1,
+                    }}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-95"
+                  >
+                    {savingVariants ? "Saving…" : "Save Variants"}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ── Add-On Type Modal ─────────────────────────────────────────── */}
