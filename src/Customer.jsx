@@ -492,6 +492,53 @@ a{text-decoration:none}
 
 /* ── empty + error ── */
 .center-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;gap:12px;padding:24px;text-align:center}
+
+/* ── add-on section ── */
+.addon-section{background:var(--card);margin-bottom:8px}
+.addon-type-hd{padding:18px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+.addon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;padding:0 16px 20px}
+@media(min-width:480px){.addon-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
+.addon-card{
+  border:1.5px solid var(--border);border-radius:var(--r-sm);
+  overflow:hidden;background:#fff;cursor:pointer;
+  transition:border-color .15s,box-shadow .15s;
+  display:flex;flex-direction:column;
+}
+.addon-card:hover{border-color:#bbb;box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.addon-card.in-cart{border-color:var(--orange);box-shadow:0 2px 10px rgba(255,82,0,.15)}
+.addon-img{width:100%;aspect-ratio:4/3;object-fit:cover;background:#f5f5f5;display:block}
+.addon-img-empty{width:100%;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;font-size:32px;background:#f5f5f5;color:var(--t3)}
+.addon-info{padding:8px 10px 10px;flex:1;display:flex;flex-direction:column;gap:3px}
+.addon-name{font-size:13px;font-weight:700;color:var(--t1);line-height:1.3}
+.addon-price{font-size:12.5px;font-weight:800;color:var(--orange)}
+.addon-qty-row{display:flex;align-items:center;justify-content:space-between;padding:0 10px 10px;gap:6px}
+.addon-qty-ctrl{display:inline-flex;align-items:center;border:1.5px solid var(--orange);border-radius:var(--r-pill);overflow:hidden}
+.addon-qty-ctrl button{width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--orange);transition:background .12s}
+.addon-qty-ctrl button:hover{background:#fff7f3}
+.addon-qty-ctrl span{min-width:22px;text-align:center;font-size:12px;font-weight:800;color:var(--t1)}
+
+/* ── cart customization detail lines ── */
+.cart-detail{font-size:11.5px;color:var(--t3);line-height:1.55;margin-top:2px}
+.cart-detail span{display:inline-block}
+.cart-note{font-size:11px;color:var(--t3);font-style:italic;margin-top:3px}
+
+/* ── customizable badge ── */
+.cust-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;letter-spacing:.02em;
+  color:#c2410c;background:#fff7ed;border:1px solid #fed7aa;
+  padding:2px 7px;border-radius:99px;margin-top:5px;width:fit-content;
+}
+
+/* ── customize sheet (variants popup) ── */
+.csheet-group-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+.csheet-required-pill{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:#fff3e0;color:#c2410c;border:1px solid #fed7aa;padding:3px 9px;border-radius:99px;flex-shrink:0}
+.csheet-opt-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);cursor:pointer;transition:border-color .14s,background .14s}
+.csheet-opt-row:hover{border-color:#bbb}
+.csheet-opt-row.sel{border-color:var(--t1);background:#fafafa}
+.csheet-dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .14s,background .14s}
+.csheet-dot.sq{border-radius:5px}
+.csheet-dot.on{border-color:var(--t1);background:var(--t1)}
 `;
 
 /* ── misc atoms ───────────────────────────────────────────────────────────── */
@@ -929,13 +976,22 @@ function ItemDetailSheet({ item, onClose, onAdd }) {
 }
 
 /* ── CartSheet ────────────────────────────────────────────────────────────── */
-function CartSheet({ cart, restaurant, onUpdateQty, onCheckout, onClose }) {
-  const [promo, setPromo] = useState("");
-  const subT = cart.reduce((s, c) => s + c.unitPrice * c.qty, 0);
-  const delivery = subT > 0 ? 0.5 : 0;
-  const vat = subT * 0.05;
-  const total = subT + delivery + vat;
+function CartSheet({
+  cart,
+  addonCart,
+  restaurant,
+  onUpdateQty,
+  onUpdateAddonQty,
+  calcTotals,
+  onCheckout,
+  onClose,
+}) {
+  const [note, setNote] = useState("");
+  const { subT, delivery, total } = calcTotals(cart, addonCart);
   const minOk = !restaurant?.min_order || subT >= restaurant.min_order;
+  const totalItems =
+    cart.reduce((s, c) => s + c.qty, 0) +
+    addonCart.reduce((s, a) => s + a.qty, 0);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -950,13 +1006,15 @@ function CartSheet({ cart, restaurant, onUpdateQty, onCheckout, onClose }) {
       <div className="sheet">
         <div className="drag-pill" />
         <div className="sheet-hd">
-          <span className="sheet-title">Your cart</span>
+          <span className="sheet-title">
+            Your cart {totalItems > 0 ? `(${totalItems})` : ""}
+          </span>
           <button className="close-btn" onClick={onClose}>
             {Ic.close}
           </button>
         </div>
 
-        {cart.length === 0 ? (
+        {totalItems === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 56, marginBottom: 12 }}>🛒</div>
             <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
@@ -967,73 +1025,163 @@ function CartSheet({ cart, restaurant, onUpdateQty, onCheckout, onClose }) {
             </p>
           </div>
         ) : (
-          <div style={{ padding: "0 20px 20px" }}>
-            {/* Items */}
-            <div style={{ marginBottom: 20 }}>
-              {cart.map((c, i) => (
-                <div key={i} className="cart-row">
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p
-                      style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}
-                    >
-                      {c.item.name}
-                    </p>
-                    {c.note && (
+          <div style={{ padding: "0 20px 24px" }}>
+            {/* ── Menu items ── */}
+            {cart.length > 0 && (
+              <div style={{ marginBottom: 4 }}>
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--t3)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    padding: "10px 0 6px",
+                  }}
+                >
+                  Menu items
+                </p>
+                {cart.map((c, i) => {
+                  const varLines = Object.entries(c.selectedVariants || {})
+                    .map(([, val]) => {
+                      if (Array.isArray(val))
+                        return val.length ? val.join(", ") : null;
+                      return val || null;
+                    })
+                    .filter(Boolean);
+                  return (
+                    <div key={i} className="cart-row">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 14,
+                            marginBottom: 2,
+                          }}
+                        >
+                          {c.item.name}
+                        </p>
+                        {/* Variant customizations */}
+                        {varLines.length > 0 && (
+                          <p className="cart-detail">
+                            {varLines.map((v, vi) => (
+                              <span key={vi} style={{ display: "block" }}>
+                                · {v}
+                              </span>
+                            ))}
+                          </p>
+                        )}
+                        {/* Special note per item (from ItemDetailSheet) */}
+                        {c.note && <p className="cart-note">📝 "{c.note}"</p>}
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--t2)",
+                            fontWeight: 700,
+                            marginTop: 3,
+                          }}
+                        >
+                          {fmt(c.unitPrice)}
+                        </p>
+                      </div>
+                      <div className="qty-ctrl" style={{ flexShrink: 0 }}>
+                        <button onClick={() => onUpdateQty(i, c.qty - 1)}>
+                          {c.qty === 1 ? Ic.trash : Ic.minus}
+                        </button>
+                        <span>{c.qty}</span>
+                        <button onClick={() => onUpdateQty(i, c.qty + 1)}>
+                          {Ic.plus}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Add-on cart rows ── */}
+            {addonCart.length > 0 && (
+              <div style={{ marginBottom: 4 }}>
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--t3)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    padding: "10px 0 6px",
+                  }}
+                >
+                  Add-ons
+                </p>
+                {addonCart.map((a, i) => (
+                  <div key={i} className="cart-row">
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <p
                         style={{
-                          fontSize: 12,
-                          color: "var(--t3)",
-                          fontStyle: "italic",
-                          marginBottom: 3,
+                          fontWeight: 700,
+                          fontSize: 14,
+                          marginBottom: 2,
                         }}
                       >
-                        "{c.note}"
+                        {a.addon.name}
                       </p>
-                    )}
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: "var(--t2)",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {fmt(c.unitPrice)}
-                    </p>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          color: "var(--t2)",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {fmt(a.addon.price)}
+                      </p>
+                    </div>
+                    <div className="qty-ctrl" style={{ flexShrink: 0 }}>
+                      <button onClick={() => onUpdateAddonQty(a.addon.id, -1)}>
+                        {a.qty === 1 ? Ic.trash : Ic.minus}
+                      </button>
+                      <span>{a.qty}</span>
+                      <button onClick={() => onUpdateAddonQty(a.addon.id, 1)}>
+                        {Ic.plus}
+                      </button>
+                    </div>
                   </div>
-                  <div className="qty-ctrl" style={{ flexShrink: 0 }}>
-                    <button onClick={() => onUpdateQty(i, c.qty - 1)}>
-                      {c.qty === 1 ? Ic.trash : Ic.minus}
-                    </button>
-                    <span>{c.qty}</span>
-                    <button onClick={() => onUpdateQty(i, c.qty + 1)}>
-                      {Ic.plus}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            {/* Promo */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              <input
+            {/* ── Special instructions ── */}
+            <div style={{ margin: "16px 0" }}>
+              <label className="lbl">
+                Special instructions{" "}
+                <span
+                  style={{
+                    textTransform: "none",
+                    fontWeight: 400,
+                    color: "var(--t3)",
+                  }}
+                >
+                  (optional)
+                </span>
+              </label>
+              <textarea
                 className="inp"
-                style={{ flex: 1 }}
-                placeholder="Promo code"
-                value={promo}
-                onChange={(e) => setPromo(e.target.value)}
+                rows={2}
+                placeholder="Any requests, allergies, special prep notes…"
+                style={{ resize: "none", fontSize: 13.5 }}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={300}
               />
-              <button className="btn-out" style={{ whiteSpace: "nowrap" }}>
-                Apply
-              </button>
             </div>
 
-            {/* Bill */}
+            {/* ── Bill summary ── */}
             <div
               style={{
                 background: "#fafafa",
                 borderRadius: var_r,
-                padding: "16px",
-                marginBottom: 16,
+                padding: "14px 16px",
+                marginBottom: 14,
               }}
             >
               <div className="sum-row">
@@ -1043,10 +1191,6 @@ function CartSheet({ cart, restaurant, onUpdateQty, onCheckout, onClose }) {
               <div className="sum-row">
                 <span>Delivery fee</span>
                 <span>{fmt(delivery)}</span>
-              </div>
-              <div className="sum-row">
-                <span>VAT (5%)</span>
-                <span>{fmt(vat)}</span>
               </div>
               <div
                 style={{
@@ -1083,7 +1227,7 @@ function CartSheet({ cart, restaurant, onUpdateQty, onCheckout, onClose }) {
             <button
               className="btn-primary"
               disabled={!minOk}
-              onClick={() => onCheckout(total)}
+              onClick={() => onCheckout(total, note)}
             >
               Proceed to checkout · {fmt(total)}
             </button>
@@ -1101,6 +1245,7 @@ const var_r_sm = "var(--r-sm)";
 /* ── CheckoutSheet ────────────────────────────────────────────────────────── */
 function CheckoutSheet({
   total,
+  cartNote,
   restaurant,
   addresses,
   defaultAddr,
@@ -1110,7 +1255,6 @@ function CheckoutSheet({
 }) {
   const [selAddr, setSelAddr] = useState(defaultAddr?.id || null);
   const [pay, setPay] = useState("Cash");
-  const [notes, setNotes] = useState("");
   const [placing, setPlacing] = useState(false);
 
   useEffect(() => {
@@ -1230,23 +1374,25 @@ function CheckoutSheet({
             </div>
           </div>
 
-          {/* Notes */}
-          <div style={{ marginBottom: 22 }}>
-            <label className="lbl">
-              Order notes{" "}
-              <span style={{ textTransform: "none", fontWeight: 400 }}>
-                (optional)
-              </span>
-            </label>
-            <textarea
-              className="inp"
-              rows={2}
-              placeholder="Any requests for the restaurant?"
-              style={{ resize: "none" }}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
+          {/* Notes — show the special instructions from cart if any */}
+          {cartNote ? (
+            <div style={{ marginBottom: 22 }}>
+              <label className="lbl">Special instructions</label>
+              <div
+                style={{
+                  background: "#fafafa",
+                  border: "1px solid var(--border)",
+                  borderRadius: var_r_sm,
+                  padding: "10px 14px",
+                  fontSize: 13.5,
+                  color: "var(--t2)",
+                  lineHeight: 1.5,
+                }}
+              >
+                {cartNote}
+              </div>
+            </div>
+          ) : null}
 
           {/* Total */}
           <div
@@ -1273,7 +1419,11 @@ function CheckoutSheet({
                 return;
               }
               setPlacing(true);
-              await onPlaceOrder({ address: addr, payMethod: pay, notes });
+              await onPlaceOrder({
+                address: addr,
+                payMethod: pay,
+                notes: cartNote || "",
+              });
               setPlacing(false);
             }}
           >
@@ -1850,13 +2000,21 @@ function ProfileSheet({
 }
 
 /* ── Desktop CartPanel (sidebar) ─────────────────────────────────────────── */
-function DesktopCart({ cart, restaurant, onUpdateQty, onCheckout }) {
-  const [promo, setPromo] = useState("");
-  const subT = cart.reduce((s, c) => s + c.unitPrice * c.qty, 0);
-  const delivery = subT > 0 ? 0.5 : 0;
-  const vat = subT * 0.05;
-  const total = subT + delivery + vat;
+function DesktopCart({
+  cart,
+  addonCart,
+  restaurant,
+  onUpdateQty,
+  onUpdateAddonQty,
+  calcTotals,
+  onCheckout,
+}) {
+  const [note, setNote] = useState("");
+  const { subT, delivery, total } = calcTotals(cart, addonCart);
   const minOk = !restaurant?.min_order || subT >= restaurant.min_order;
+  const totalItems =
+    cart.reduce((s, c) => s + c.qty, 0) +
+    (addonCart || []).reduce((s, a) => s + a.qty, 0);
 
   return (
     <div
@@ -1885,10 +2043,12 @@ function DesktopCart({ cart, restaurant, onUpdateQty, onCheckout }) {
         >
           {restaurant?.name}
         </p>
-        <h3 style={{ fontSize: 18, fontWeight: 800 }}>Your order</h3>
+        <h3 style={{ fontSize: 18, fontWeight: 800 }}>
+          Your order {totalItems > 0 ? `(${totalItems})` : ""}
+        </h3>
       </div>
       <div style={{ padding: "16px 20px 20px" }}>
-        {cart.length === 0 ? (
+        {totalItems === 0 ? (
           <div style={{ textAlign: "center", padding: "32px 0" }}>
             <div style={{ fontSize: 44, marginBottom: 10 }}>🛒</div>
             <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
@@ -1900,69 +2060,161 @@ function DesktopCart({ cart, restaurant, onUpdateQty, onCheckout }) {
           </div>
         ) : (
           <>
-            {cart.map((c, i) => (
-              <div key={i} className="cart-row">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>
-                    {c.item.name}
-                  </p>
-                  {c.note && (
-                    <p
-                      style={{
-                        fontSize: 11,
-                        color: "var(--t3)",
-                        fontStyle: "italic",
-                      }}
-                    >
-                      "{c.note}"
-                    </p>
-                  )}
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: "var(--t2)",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {fmt(c.unitPrice)}
-                  </p>
-                </div>
-                <div className="qty-ctrl" style={{ flexShrink: 0 }}>
-                  <button
-                    onClick={() => onUpdateQty(i, c.qty - 1)}
-                    style={{ width: 32, height: 32 }}
-                  >
-                    {c.qty === 1 ? Ic.trash : Ic.minus}
-                  </button>
-                  <span style={{ minWidth: 26, fontSize: 13 }}>{c.qty}</span>
-                  <button
-                    onClick={() => onUpdateQty(i, c.qty + 1)}
-                    style={{ width: 32, height: 32 }}
-                  >
-                    {Ic.plus}
-                  </button>
-                </div>
+            {/* Menu items */}
+            {cart.length > 0 && (
+              <div>
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: "var(--t3)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    marginBottom: 6,
+                  }}
+                >
+                  Menu items
+                </p>
+                {cart.map((c, i) => {
+                  const varLines = Object.entries(c.selectedVariants || {})
+                    .map(([, val]) =>
+                      Array.isArray(val) ? val.join(", ") : val,
+                    )
+                    .filter(Boolean);
+                  return (
+                    <div key={i} className="cart-row">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 13,
+                            marginBottom: 2,
+                          }}
+                        >
+                          {c.item.name}
+                        </p>
+                        {varLines.length > 0 && (
+                          <p className="cart-detail">
+                            {varLines.map((v, vi) => (
+                              <span key={vi} style={{ display: "block" }}>
+                                · {v}
+                              </span>
+                            ))}
+                          </p>
+                        )}
+                        {c.note && <p className="cart-note">📝 "{c.note}"</p>}
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--t2)",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {fmt(c.unitPrice)}
+                        </p>
+                      </div>
+                      <div className="qty-ctrl" style={{ flexShrink: 0 }}>
+                        <button
+                          onClick={() => onUpdateQty(i, c.qty - 1)}
+                          style={{ width: 32, height: 32 }}
+                        >
+                          {c.qty === 1 ? Ic.trash : Ic.minus}
+                        </button>
+                        <span style={{ minWidth: 26, fontSize: 13 }}>
+                          {c.qty}
+                        </span>
+                        <button
+                          onClick={() => onUpdateQty(i, c.qty + 1)}
+                          style={{ width: 32, height: 32 }}
+                        >
+                          {Ic.plus}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-            <div style={{ display: "flex", gap: 8, margin: "16px 0" }}>
-              <input
+            )}
+
+            {/* Add-on rows */}
+            {addonCart && addonCart.length > 0 && (
+              <div style={{ marginTop: cart.length > 0 ? 8 : 0 }}>
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: "var(--t3)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    marginBottom: 6,
+                  }}
+                >
+                  Add-ons
+                </p>
+                {addonCart.map((a, i) => (
+                  <div key={i} className="cart-row">
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 13,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {a.addon.name}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          color: "var(--t2)",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {fmt(a.addon.price)}
+                      </p>
+                    </div>
+                    <div className="qty-ctrl" style={{ flexShrink: 0 }}>
+                      <button
+                        onClick={() => onUpdateAddonQty(a.addon.id, -1)}
+                        style={{ width: 32, height: 32 }}
+                      >
+                        {a.qty === 1 ? Ic.trash : Ic.minus}
+                      </button>
+                      <span style={{ minWidth: 26, fontSize: 13 }}>
+                        {a.qty}
+                      </span>
+                      <button
+                        onClick={() => onUpdateAddonQty(a.addon.id, 1)}
+                        style={{ width: 32, height: 32 }}
+                      >
+                        {Ic.plus}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Special instructions */}
+            <div style={{ margin: "14px 0 12px" }}>
+              <label className="lbl" style={{ fontSize: 10 }}>
+                Special instructions{" "}
+                <span style={{ textTransform: "none", fontWeight: 400 }}>
+                  (optional)
+                </span>
+              </label>
+              <textarea
                 className="inp"
-                style={{ flex: 1, padding: "9px 12px", fontSize: 13 }}
-                placeholder="Promo code"
-                value={promo}
-                onChange={(e) => setPromo(e.target.value)}
+                rows={2}
+                placeholder="Allergies, prep notes…"
+                style={{ resize: "none", fontSize: 13, padding: "9px 12px" }}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={300}
               />
-              <button
-                className="btn-out"
-                style={{
-                  fontSize: 12,
-                  padding: "9px 14px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Apply
-              </button>
             </div>
+
+            {/* Bill */}
             <div
               style={{
                 background: "#fafafa",
@@ -1979,10 +2231,6 @@ function DesktopCart({ cart, restaurant, onUpdateQty, onCheckout }) {
                 <span>Delivery</span>
                 <span>{fmt(delivery)}</span>
               </div>
-              <div className="sum-row" style={{ fontSize: 13 }}>
-                <span>VAT (5%)</span>
-                <span>{fmt(vat)}</span>
-              </div>
               <div
                 style={{
                   borderTop: "1px solid var(--border)",
@@ -1996,6 +2244,7 @@ function DesktopCart({ cart, restaurant, onUpdateQty, onCheckout }) {
                 </div>
               </div>
             </div>
+
             {restaurant?.min_order && subT < restaurant.min_order && (
               <div
                 style={{
@@ -2016,7 +2265,7 @@ function DesktopCart({ cart, restaurant, onUpdateQty, onCheckout }) {
             <button
               className="btn-primary"
               disabled={!minOk}
-              onClick={() => onCheckout(total)}
+              onClick={() => onCheckout(total, note)}
             >
               Checkout · {fmt(total)}
             </button>
@@ -2035,6 +2284,9 @@ export default function Customer() {
   const [restaurant, setRestaurant] = useState(null);
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [addonTypes, setAddonTypes] = useState([]); // Add_Ons_Type rows
+  const [addonItems, setAddonItems] = useState([]); // Add_Ons rows
+  const [addonCart, setAddonCart] = useState([]); // [{addon, qty}]
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -2055,7 +2307,9 @@ export default function Customer() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showTrack, setShowTrack] = useState(false);
   const [checkoutTotal, setCheckoutTotal] = useState(0);
+  const [cartNote, setCartNote] = useState("");
   const [lastOrder, setLastOrder] = useState(null);
+  const [customizeItem, setCustomizeItem] = useState(null);
 
   /* active tab for bottom bar */
   const [activeTab, setActiveTab] = useState("menu");
@@ -2100,7 +2354,7 @@ export default function Customer() {
     }
     (async () => {
       try {
-        const [rR, cR, mR] = await Promise.all([
+        const [rR, cR, mR, atR] = await Promise.all([
           supabase.from("Restaurants").select("*").eq("id", restId).single(),
           supabase
             .from("Categories")
@@ -2114,11 +2368,27 @@ export default function Customer() {
             .eq("rest_id", restId)
             .eq("visible", true)
             .order("sort_order"),
+          supabase
+            .from("Add_Ons_Type")
+            .select("id, name, min_qty")
+            .eq("rest_id", restId)
+            .order("id"),
         ]);
         if (rR.error || !rR.data) throw new Error("Restaurant not found");
         setRestaurant(rR.data);
         setCategories(cR.data || []);
         setMenuItems((mR.data || []).filter((m) => m.is_available));
+
+        const types = atR.data || [];
+        if (types.length > 0) {
+          const typeIds = types.map((t) => t.id);
+          const { data: aiData } = await supabase
+            .from("Add_Ons")
+            .select("id, type_id, name, price, image_path")
+            .in("type_id", typeIds);
+          setAddonItems(aiData || []);
+        }
+        setAddonTypes(types);
       } catch (e) {
         setError(e.message);
       } finally {
@@ -2215,13 +2485,61 @@ export default function Customer() {
     else setCart((p) => p.map((c, j) => (j === i ? { ...c, qty: q } : c)));
   };
 
-  const cartCount = cart.reduce((s, c) => s + c.qty, 0);
+  /* add-on cart helpers */
+  const updateAddonQty = useCallback(
+    (addonId, delta) => {
+      setAddonCart((prev) => {
+        const idx = prev.findIndex((a) => a.addon.id === addonId);
+        if (idx >= 0) {
+          const newQty = prev[idx].qty + delta;
+          if (newQty <= 0) return prev.filter((_, i) => i !== idx);
+          const u = [...prev];
+          u[idx] = { ...u[idx], qty: newQty };
+          return u;
+        }
+        if (delta <= 0) return prev;
+        const addon = addonItems.find((a) => a.id === addonId);
+        if (!addon) return prev;
+        return [...prev, { addon, qty: 1 }];
+      });
+    },
+    [addonItems],
+  );
+
+  /* Direct add for non-customizable items — no popup */
+  const directAdd = useCallback(
+    (item) => {
+      addToCart({
+        item,
+        qty: 1,
+        selectedVariants: {},
+        selectedAddOns: [],
+        unitPrice: +item.price,
+        note: "",
+      });
+    },
+    [addToCart],
+  );
+
+  const addonCartCount = addonCart.reduce((s, a) => s + a.qty, 0);
+  const cartCount = cart.reduce((s, c) => s + c.qty, 0) + addonCartCount;
+
+  /* total = menu items + add-ons + delivery (no VAT) */
+  const calcTotals = (cartItems, addonCartItems) => {
+    const menuSub = cartItems.reduce((s, c) => s + c.unitPrice * c.qty, 0);
+    const addonSub = addonCartItems.reduce(
+      (s, a) => s + +a.addon.price * a.qty,
+      0,
+    );
+    const subT = menuSub + addonSub;
+    const delivery = subT > 0 ? 0.5 : 0;
+    return { menuSub, addonSub, subT, delivery, total: subT + delivery };
+  };
 
   /* place order */
   const placeOrder = async ({ address, payMethod, notes }) => {
     if (!customer || !restaurant) return;
-    const it = cart.reduce((s, c) => s + c.unitPrice * c.qty, 0);
-    const total = it + 0.5 + it * 0.05;
+    const { total } = calcTotals(cart, addonCart);
     try {
       const { data: order, error: oe } = await supabase
         .from("Orders")
@@ -2239,6 +2557,7 @@ export default function Customer() {
       if (oe) throw oe;
       setLastOrder({ ...order, deliveryAddress: address });
       setCart([]);
+      setAddonCart([]);
       setShowCheckout(false);
       setShowTrack(true);
       showToast("Order placed! 🎉");
@@ -2606,10 +2925,18 @@ export default function Customer() {
                   {c.name}
                 </button>
               ))}
+              {addonTypes.length > 0 && (
+                <button
+                  className={`cat-chip${activeCat === "__addons__" ? " on" : ""}`}
+                  onClick={() => setActiveCat("__addons__")}
+                >
+                  🍟 Add-Ons
+                </button>
+              )}
             </div>
           </div>
 
-          {/* MENU ITEMS */}
+          {/* MENU ITEMS or ADD-ONS */}
           <div>
             {loading ? (
               <div style={{ background: "var(--card)", padding: "16px" }}>
@@ -2639,6 +2966,141 @@ export default function Customer() {
                   </div>
                 ))}
               </div>
+            ) : activeCat === "__addons__" ? (
+              /* ── ADD-ONS SECTION ── */
+              addonTypes.length === 0 ? (
+                <div
+                  style={{
+                    background: "var(--card)",
+                    padding: "60px 20px",
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 52, marginBottom: 12 }}>🍟</div>
+                  <p style={{ fontWeight: 700, fontSize: 16 }}>
+                    No add-ons available
+                  </p>
+                </div>
+              ) : (
+                addonTypes.map((type) => {
+                  const items = addonItems.filter((a) => a.type_id === type.id);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={type.id} className="addon-section">
+                      <div className="addon-type-hd">
+                        <div>
+                          <h2
+                            style={{
+                              fontSize: 18,
+                              fontWeight: 800,
+                              color: "var(--t1)",
+                            }}
+                          >
+                            {type.name}
+                          </h2>
+                          {type.min_qty > 0 && (
+                            <p
+                              style={{
+                                fontSize: 12,
+                                color: "var(--t3)",
+                                marginTop: 2,
+                              }}
+                            >
+                              Min. {type.min_qty} required
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: "var(--t3)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {items.length} items
+                        </span>
+                      </div>
+                      <div className="addon-grid">
+                        {items.map((addon) => {
+                          const ac = addonCart.find(
+                            (a) => a.addon.id === addon.id,
+                          );
+                          const qty = ac ? ac.qty : 0;
+                          return (
+                            <div
+                              key={addon.id}
+                              className={`addon-card${qty > 0 ? " in-cart" : ""}`}
+                            >
+                              {addon.image_path ? (
+                                <img
+                                  className="addon-img"
+                                  src={addon.image_path}
+                                  alt={addon.name}
+                                  onError={(e) => {
+                                    e.target.style.display = "none";
+                                    e.target.nextSibling &&
+                                      (e.target.nextSibling.style.display =
+                                        "flex");
+                                  }}
+                                />
+                              ) : (
+                                <div className="addon-img-empty">🍽️</div>
+                              )}
+                              <div className="addon-info">
+                                <p className="addon-name">{addon.name}</p>
+                                <p className="addon-price">
+                                  {fmt(addon.price)}
+                                </p>
+                              </div>
+                              <div className="addon-qty-row">
+                                {qty > 0 ? (
+                                  <div className="addon-qty-ctrl">
+                                    <button
+                                      onClick={() =>
+                                        updateAddonQty(addon.id, -1)
+                                      }
+                                    >
+                                      {Ic.minus}
+                                    </button>
+                                    <span>{qty}</span>
+                                    <button
+                                      onClick={() =>
+                                        updateAddonQty(addon.id, 1)
+                                      }
+                                    >
+                                      {Ic.plus}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => updateAddonQty(addon.id, 1)}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 5,
+                                      background: "var(--orange)",
+                                      color: "#fff",
+                                      borderRadius: "var(--r-pill)",
+                                      padding: "6px 14px",
+                                      fontSize: 13,
+                                      fontWeight: 700,
+                                      border: "none",
+                                      cursor: "pointer",
+                                      transition: "opacity .15s",
+                                    }}
+                                  >
+                                    {Ic.plus} Add
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
+              )
             ) : filtered.length === 0 ? (
               <div
                 style={{
@@ -2685,13 +3147,17 @@ export default function Customer() {
                       item={item}
                       cart={cart}
                       onOpen={setSelItem}
-                      onUpdate={updateQty}
+                      onCustomize={setCustomizeItem}
+                      onUpdate={(i, q, itm) => {
+                        if (i === -1 && itm) directAdd(itm);
+                        else updateQty(i, q);
+                      }}
                     />
                   ))}
                 </div>
               ))
             ) : (
-              /* single section */
+              /* single category */
               <div style={{ background: "var(--card)" }}>
                 <div
                   style={{
@@ -2718,7 +3184,11 @@ export default function Customer() {
                     item={item}
                     cart={cart}
                     onOpen={setSelItem}
-                    onUpdate={updateQty}
+                    onCustomize={setCustomizeItem}
+                    onUpdate={(i, q, itm) => {
+                      if (i === -1 && itm) directAdd(itm);
+                      else updateQty(i, q);
+                    }}
                   />
                 ))}
               </div>
@@ -2730,8 +3200,11 @@ export default function Customer() {
         <div className="cart-col" style={{ display: "none" }}>
           <DesktopCart
             cart={cart}
+            addonCart={addonCart}
             restaurant={restaurant}
             onUpdateQty={updateQty}
+            onUpdateAddonQty={updateAddonQty}
+            calcTotals={calcTotals}
             onCheckout={(t) => {
               setCheckoutTotal(t);
               setShowCheckout(true);
@@ -2775,6 +3248,13 @@ export default function Customer() {
       </nav>
 
       {/* ── SHEETS / MODALS ── */}
+      {customizeItem && (
+        <CustomizeSheet
+          item={customizeItem}
+          onClose={() => setCustomizeItem(null)}
+          onAdd={addToCart}
+        />
+      )}
       {selItem && (
         <ItemDetailSheet
           item={selItem}
@@ -2785,10 +3265,14 @@ export default function Customer() {
       {showCart && (
         <CartSheet
           cart={cart}
+          addonCart={addonCart}
           restaurant={restaurant}
           onUpdateQty={updateQty}
-          onCheckout={(t) => {
+          onUpdateAddonQty={updateAddonQty}
+          calcTotals={calcTotals}
+          onCheckout={(t, n) => {
             setCheckoutTotal(t);
+            setCartNote(n || "");
             setShowCart(false);
             setShowCheckout(true);
           }}
@@ -2798,6 +3282,7 @@ export default function Customer() {
       {showCheckout && (
         <CheckoutSheet
           total={checkoutTotal}
+          cartNote={cartNote}
           restaurant={restaurant}
           addresses={addresses}
           defaultAddr={defaultAddr}
@@ -2833,12 +3318,326 @@ export default function Customer() {
   );
 }
 
+/* ── CustomizeSheet ────────────────────────────────────────────────────────── */
+function CustomizeSheet({ item, onClose, onAdd }) {
+  const [qty, setQty] = useState(1);
+  const [selVars, setSelVars] = useState({});
+  const [varGroups, setVarGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("Variant_Groups")
+          .select(
+            'id, name, is_required, is_multiple, "Variant Options"(id, name, price_adj)',
+          )
+          .eq("menu_id", item.id)
+          .order("id");
+        if (error) throw error;
+        const groups = (data || []).map((g) => ({
+          ...g,
+          Variant_Options: g["Variant Options"] || [],
+        }));
+        setVarGroups(groups);
+        // Pre-select first option for required single-choice groups
+        const defaults = {};
+        groups.forEach((g) => {
+          if (g.is_required && !g.is_multiple && g.Variant_Options?.length)
+            defaults[g.id] = g.Variant_Options[0].id;
+        });
+        setSelVars(defaults);
+      } catch (e) {
+        console.error("[CustomizeSheet]", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [item.id]);
+
+  const toggleVar = (gid, oid, isMulti) => {
+    setErr("");
+    if (isMulti) {
+      setSelVars((p) => {
+        const cur = Array.isArray(p[gid]) ? p[gid] : [];
+        return {
+          ...p,
+          [gid]: cur.includes(oid)
+            ? cur.filter((x) => x !== oid)
+            : [...cur, oid],
+        };
+      });
+    } else {
+      setSelVars((p) => ({ ...p, [gid]: p[gid] === oid ? undefined : oid }));
+    }
+  };
+
+  const extraCost = varGroups.reduce((total, g) => {
+    const sel = selVars[g.id];
+    const opts = g.Variant_Options || [];
+    if (Array.isArray(sel))
+      return (
+        total +
+        sel.reduce((s, sid) => {
+          const o = opts.find((x) => x.id === sid);
+          return s + (o ? +o.price_adj : 0);
+        }, 0)
+      );
+    if (sel) {
+      const o = opts.find((x) => x.id === sel);
+      return total + (o ? +o.price_adj : 0);
+    }
+    return total;
+  }, 0);
+
+  const unitPrice = +item.price + extraCost;
+
+  const validate = () => {
+    for (const g of varGroups) {
+      if (!g.is_required) continue;
+      const s = selVars[g.id];
+      const ok = g.is_multiple ? Array.isArray(s) && s.length > 0 : !!s;
+      if (!ok) {
+        setErr(`Please select an option for "${g.name}"`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleAdd = () => {
+    if (!validate()) return;
+    onAdd({
+      item,
+      qty,
+      selectedVariants: selVars,
+      selectedAddOns: [],
+      unitPrice,
+      note: "",
+    });
+    onClose();
+  };
+
+  return (
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="sheet" style={{ paddingBottom: 0 }}>
+        <div className="drag-pill" />
+        {/* Header */}
+        <div className="sheet-hd" style={{ paddingBottom: 6 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p className="sheet-title" style={{ fontSize: 17 }}>
+              {item.name}
+            </p>
+            <p
+              style={{
+                fontSize: 15,
+                fontWeight: 800,
+                color: "var(--orange)",
+                marginTop: 2,
+              }}
+            >
+              {fmt(unitPrice)}
+            </p>
+          </div>
+          <button className="close-btn" onClick={onClose}>
+            {Ic.close}
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: "4px 20px 0", overflowY: "auto", flex: 1 }}>
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                padding: "28px 0",
+              }}
+            >
+              <Spinner size={28} />
+            </div>
+          ) : varGroups.length === 0 ? (
+            <p
+              style={{
+                color: "var(--t2)",
+                fontSize: 14,
+                padding: "8px 0 20px",
+              }}
+            >
+              No options — item will be added as-is.
+            </p>
+          ) : (
+            varGroups.map((g) => {
+              const opts = g.Variant_Options || [];
+              return (
+                <div key={g.id} style={{ marginBottom: 22 }}>
+                  <div className="csheet-group-hd">
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: 15 }}>{g.name}</p>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "var(--t2)",
+                          marginTop: 2,
+                        }}
+                      >
+                        {g.is_multiple ? "Choose one or more" : "Choose one"}
+                      </p>
+                    </div>
+                    {g.is_required && (
+                      <span className="csheet-required-pill">Required</span>
+                    )}
+                  </div>
+                  {opts.length === 0 ? (
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: "var(--t3)",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No options configured
+                    </p>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                    >
+                      {opts.map((opt) => {
+                        const s = selVars[g.id];
+                        const isSel = g.is_multiple
+                          ? Array.isArray(s) && s.includes(opt.id)
+                          : s === opt.id;
+                        return (
+                          <div
+                            key={opt.id}
+                            className={`csheet-opt-row${isSel ? " sel" : ""}`}
+                            onClick={() =>
+                              toggleVar(g.id, opt.id, g.is_multiple)
+                            }
+                          >
+                            <span
+                              style={{
+                                fontSize: 14,
+                                fontWeight: isSel ? 600 : 400,
+                              }}
+                            >
+                              {opt.name}
+                            </span>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                              }}
+                            >
+                              {+opt.price_adj !== 0 && (
+                                <span
+                                  style={{
+                                    fontSize: 13,
+                                    color: "var(--t2)",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {+opt.price_adj > 0 ? "+" : ""}
+                                  {fmt(opt.price_adj)}
+                                </span>
+                              )}
+                              <div
+                                className={`csheet-dot${g.is_multiple ? " sq" : ""}${isSel ? " on" : ""}`}
+                              >
+                                {isSel && (
+                                  <span style={{ color: "#fff" }}>
+                                    {Ic.check}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+
+          {err && (
+            <div
+              style={{
+                background: "#fdecea",
+                border: "1px solid #fca5a5",
+                borderRadius: "var(--r-sm)",
+                padding: "10px 14px",
+                fontSize: 13,
+                color: "var(--red)",
+                fontWeight: 500,
+                marginBottom: 16,
+              }}
+            >
+              ⚠️ {err}
+            </div>
+          )}
+          <div style={{ height: 8 }} />
+        </div>
+
+        {/* Sticky footer */}
+        <div
+          style={{
+            padding: "14px 20px",
+            borderTop: "1px solid var(--border)",
+            background: "#fff",
+            position: "sticky",
+            bottom: 0,
+            paddingBottom: "calc(14px + env(safe-area-inset-bottom,0px))",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
+          <div className="qty-ctrl" style={{ flexShrink: 0 }}>
+            <button onClick={() => setQty((q) => Math.max(1, q - 1))}>
+              {Ic.minus}
+            </button>
+            <span>{qty}</span>
+            <button onClick={() => setQty((q) => q + 1)}>{Ic.plus}</button>
+          </div>
+          <button
+            className="btn-primary"
+            style={{ flex: 1 }}
+            onClick={handleAdd}
+          >
+            Add to cart · {fmt(unitPrice * qty)}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ── MenuItem card ────────────────────────────────────────────────────────── */
-function MenuItem({ item, cart, onOpen, onUpdate }) {
+function MenuItem({ item, cart, onOpen, onUpdate, onCustomize }) {
   const inCart = cart
     .filter((c) => c.item.id === item.id)
     .reduce((s, c) => s + c.qty, 0);
-  const firstIdx = cart.findIndex((c) => c.item.id === item.id);
+  const lastIdx = cart.reduce(
+    (found, c, i) => (c.item.id === item.id ? i : found),
+    -1,
+  );
 
   return (
     <div className="menu-card" onClick={() => onOpen(item)}>
@@ -2854,9 +3653,26 @@ function MenuItem({ item, cart, onOpen, onUpdate }) {
         >
           <span className="menu-price">{fmt(item.price)}</span>
         </div>
+        {item.is_customizable && (
+          <div className="cust-badge">
+            <svg
+              width="9"
+              height="9"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+            </svg>
+            Customizable
+          </div>
+        )}
       </div>
 
-      {/* Thumb side */}
+      {/* Thumb + add control */}
       <div style={{ position: "relative", flexShrink: 0 }}>
         <div className="menu-thumb">
           {item.image_path ? (
@@ -2870,21 +3686,29 @@ function MenuItem({ item, cart, onOpen, onUpdate }) {
           )}
         </div>
 
-        {/* Add / qty control overlaid on thumb */}
         {inCart > 0 ? (
           <div className="qty-pill" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => onUpdate(firstIdx, cart[firstIdx].qty - 1)}>
+            <button onClick={() => onUpdate(lastIdx, cart[lastIdx].qty - 1)}>
               {Ic.minus}
             </button>
             <span>{inCart}</span>
-            <button onClick={() => onOpen(item)}>{Ic.plus}</button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (item.is_customizable) onCustomize(item);
+                else onUpdate(lastIdx, cart[lastIdx].qty + 1);
+              }}
+            >
+              {Ic.plus}
+            </button>
           </div>
         ) : (
           <button
             className="add-btn"
             onClick={(e) => {
               e.stopPropagation();
-              onOpen(item);
+              if (item.is_customizable) onCustomize(item);
+              else onUpdate(-1, 0, item);
             }}
           >
             {Ic.plus}
