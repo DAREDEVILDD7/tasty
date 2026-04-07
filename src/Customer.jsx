@@ -595,30 +595,61 @@ function ItemDetailSheet({ item, onClose, onAdd }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const [vgRes, aoRes] = await Promise.all([
-          supabase
-            .from("Variant_Groups")
-            .select("*, Variant_Options(*)")
-            .eq("menu_id", item.id),
-          supabase.from("Add_Ons").select("*").eq("rest_id", item.rest_id),
-        ]);
-        const vg = vgRes.data || [];
-        setVarGroups(vg);
+        // Two-step fetch — avoids "Variant Options" space-in-name join issues
+        const { data: gData, error: gErr } = await supabase
+          .from("Variant_Groups")
+          .select("id, name, is_required, is_multiple")
+          .eq("menu_id", item.id)
+          .order("id", { ascending: true });
+        if (gErr) throw gErr;
+        const groups = gData || [];
+
+        let options = [];
+        if (groups.length > 0) {
+          const { data: oData, error: oErr } = await supabase
+            .from("Variant Options")
+            .select("id, var_group_id, name, price_adj")
+            .in(
+              "var_group_id",
+              groups.map((g) => g.id),
+            )
+            .order("id", { ascending: true });
+          if (oErr) throw oErr;
+          options = oData || [];
+        }
+
+        const aoRes = await supabase
+          .from("Add_Ons")
+          .select("*")
+          .eq("rest_id", item.rest_id);
+
+        if (cancelled) return;
+
+        const assembled = groups.map((g) => ({
+          ...g,
+          Variant_Options: options.filter((o) => o.var_group_id === g.id),
+        }));
+        setVarGroups(assembled);
         setAddons(aoRes.data || []);
-        // pre-select first option of required single-choice groups
+
         const defaults = {};
-        vg.forEach((g) => {
+        assembled.forEach((g) => {
           if (g.is_required && !g.is_multiple && g.Variant_Options?.length)
             defaults[g.id] = g.Variant_Options[0].id;
         });
         setSelVars(defaults);
-      } catch {
+      } catch (e) {
+        console.error("[ItemDetailSheet] fetch error:", e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [item.id, item.rest_id]);
 
   const toggleVar = (gid, oid, multi) => {
@@ -703,7 +734,7 @@ function ItemDetailSheet({ item, onClose, onAdd }) {
           >
             {Ic.back}
           </button>
-          {item.recommended && (
+          {(item.is_popular || item.recommended) && (
             <span
               style={{
                 position: "absolute",
@@ -956,10 +987,26 @@ function ItemDetailSheet({ item, onClose, onAdd }) {
             disabled={!canAdd}
             onClick={() => {
               if (!canAdd) return;
+              // Build variantMeta for named display in cart
+              const variantMeta = {};
+              varGroups.forEach((g) => {
+                const sel = selVars[g.id];
+                if (!sel || (Array.isArray(sel) && sel.length === 0)) return;
+                const ids = Array.isArray(sel) ? sel : [sel];
+                const names = ids
+                  .map(
+                    (id) =>
+                      (g.Variant_Options || []).find((o) => o.id === id)?.name,
+                  )
+                  .filter(Boolean);
+                if (names.length > 0)
+                  variantMeta[g.id] = { groupName: g.name, optionNames: names };
+              });
               onAdd({
                 item,
                 qty,
                 selectedVariants: selVars,
+                variantMeta,
                 selectedAddOns: selAddons,
                 unitPrice,
                 note,
@@ -1042,12 +1089,9 @@ function CartSheet({
                   Menu items
                 </p>
                 {cart.map((c, i) => {
-                  const varLines = Object.entries(c.selectedVariants || {})
-                    .map(([, val]) => {
-                      if (Array.isArray(val))
-                        return val.length ? val.join(", ") : null;
-                      return val || null;
-                    })
+                  // Build display lines from variantMeta (human-readable names)
+                  const varLines = Object.values(c.variantMeta || {})
+                    .map((m) => `${m.groupName}: ${m.optionNames.join(", ")}`)
                     .filter(Boolean);
                   return (
                     <div key={i} className="cart-row">
@@ -2076,10 +2120,8 @@ function DesktopCart({
                   Menu items
                 </p>
                 {cart.map((c, i) => {
-                  const varLines = Object.entries(c.selectedVariants || {})
-                    .map(([, val]) =>
-                      Array.isArray(val) ? val.join(", ") : val,
-                    )
+                  const varLines = Object.values(c.variantMeta || {})
+                    .map((m) => `${m.groupName}: ${m.optionNames.join(", ")}`)
                     .filter(Boolean);
                   return (
                     <div key={i} className="cart-row">
@@ -2449,14 +2491,22 @@ export default function Customer() {
       activeCat === "all"
         ? true
         : activeCat === "recommended"
-          ? m.recommended
+          ? m.is_popular || m.recommended // support both fields
           : m.categ_id === activeCat;
     return ms && mc;
   });
 
   /* cart helpers */
   const addToCart = useCallback(
-    ({ item, qty, selectedVariants, selectedAddOns, unitPrice, note }) => {
+    ({
+      item,
+      qty,
+      selectedVariants,
+      variantMeta,
+      selectedAddOns,
+      unitPrice,
+      note,
+    }) => {
       setCart((prev) => {
         const idx = prev.findIndex(
           (c) =>
@@ -2472,7 +2522,15 @@ export default function Customer() {
         }
         return [
           ...prev,
-          { item, qty, selectedVariants, selectedAddOns, unitPrice, note },
+          {
+            item,
+            qty,
+            selectedVariants,
+            variantMeta: variantMeta || {},
+            selectedAddOns,
+            unitPrice,
+            note,
+          },
         ];
       });
       showToast(`${item.name} added to cart 🛒`);
@@ -3321,10 +3379,11 @@ export default function Customer() {
 /* ── CustomizeSheet ────────────────────────────────────────────────────────── */
 function CustomizeSheet({ item, onClose, onAdd }) {
   const [qty, setQty] = useState(1);
-  const [selVars, setSelVars] = useState({});
+  const [selVars, setSelVars] = useState({}); // { groupId: optionId | optionId[] }
   const [varGroups, setVarGroups] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+  const [fetchErr, setFetchErr] = useState(null);
+  const [validationErr, setValidationErr] = useState("");
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -3333,39 +3392,69 @@ function CustomizeSheet({ item, onClose, onAdd }) {
     };
   }, []);
 
+  /* ── Two-step fetch: groups first, then options by var_group_id ──
+     Avoids the "Variant Options" space-in-name join ambiguity entirely. */
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      setLoading(true);
+      setFetchErr(null);
       try {
-        const { data, error } = await supabase
+        const { data: gData, error: gErr } = await supabase
           .from("Variant_Groups")
-          .select(
-            'id, name, is_required, is_multiple, "Variant Options"(id, name, price_adj)',
-          )
+          .select("id, name, is_required, is_multiple")
           .eq("menu_id", item.id)
-          .order("id");
-        if (error) throw error;
-        const groups = (data || []).map((g) => ({
+          .order("id", { ascending: true });
+
+        if (gErr) throw gErr;
+        const groups = gData || [];
+
+        let options = [];
+        if (groups.length > 0) {
+          const { data: oData, error: oErr } = await supabase
+            .from("Variant Options")
+            .select("id, var_group_id, name, price_adj")
+            .in(
+              "var_group_id",
+              groups.map((g) => g.id),
+            )
+            .order("id", { ascending: true });
+          if (oErr) throw oErr;
+          options = oData || [];
+        }
+
+        if (cancelled) return;
+
+        const assembled = groups.map((g) => ({
           ...g,
-          Variant_Options: g["Variant Options"] || [],
+          options: options.filter((o) => o.var_group_id === g.id),
         }));
-        setVarGroups(groups);
+
+        setVarGroups(assembled);
+
         // Pre-select first option for required single-choice groups
         const defaults = {};
-        groups.forEach((g) => {
-          if (g.is_required && !g.is_multiple && g.Variant_Options?.length)
-            defaults[g.id] = g.Variant_Options[0].id;
+        assembled.forEach((g) => {
+          if (g.is_required && !g.is_multiple && g.options.length > 0)
+            defaults[g.id] = g.options[0].id;
         });
         setSelVars(defaults);
       } catch (e) {
-        console.error("[CustomizeSheet]", e);
+        if (!cancelled) {
+          console.error("[CustomizeSheet] fetch error:", e);
+          setFetchErr("Couldn't load options. Tap to retry.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [item.id]);
 
   const toggleVar = (gid, oid, isMulti) => {
-    setErr("");
+    setValidationErr("");
     if (isMulti) {
       setSelVars((p) => {
         const cur = Array.isArray(p[gid]) ? p[gid] : [];
@@ -3377,23 +3466,28 @@ function CustomizeSheet({ item, onClose, onAdd }) {
         };
       });
     } else {
-      setSelVars((p) => ({ ...p, [gid]: p[gid] === oid ? undefined : oid }));
+      // For required single-choice, don't allow deselect
+      setSelVars((p) => {
+        if (varGroups.find((g) => g.id === gid)?.is_required && p[gid] === oid)
+          return p;
+        return { ...p, [gid]: p[gid] === oid ? undefined : oid };
+      });
     }
   };
 
+  // Extra cost from selections
   const extraCost = varGroups.reduce((total, g) => {
     const sel = selVars[g.id];
-    const opts = g.Variant_Options || [];
     if (Array.isArray(sel))
       return (
         total +
         sel.reduce((s, sid) => {
-          const o = opts.find((x) => x.id === sid);
+          const o = g.options.find((x) => x.id === sid);
           return s + (o ? +o.price_adj : 0);
         }, 0)
       );
     if (sel) {
-      const o = opts.find((x) => x.id === sel);
+      const o = g.options.find((x) => x.id === sel);
       return total + (o ? +o.price_adj : 0);
     }
     return total;
@@ -3401,25 +3495,43 @@ function CustomizeSheet({ item, onClose, onAdd }) {
 
   const unitPrice = +item.price + extraCost;
 
-  const validate = () => {
-    for (const g of varGroups) {
-      if (!g.is_required) continue;
-      const s = selVars[g.id];
-      const ok = g.is_multiple ? Array.isArray(s) && s.length > 0 : !!s;
-      if (!ok) {
-        setErr(`Please select an option for "${g.name}"`);
-        return false;
-      }
-    }
-    return true;
-  };
+  // Whether all required groups have a selection
+  const canAdd = varGroups.every((g) => {
+    if (!g.is_required) return true;
+    const s = selVars[g.id];
+    return g.is_multiple ? Array.isArray(s) && s.length > 0 : !!s;
+  });
 
   const handleAdd = () => {
-    if (!validate()) return;
+    if (!canAdd) {
+      const missing = varGroups.find((g) => {
+        if (!g.is_required) return false;
+        const s = selVars[g.id];
+        return g.is_multiple ? !(Array.isArray(s) && s.length > 0) : !s;
+      });
+      setValidationErr(`Please select an option for "${missing?.name}"`);
+      return;
+    }
+
+    // Build human-readable variant meta for cart display
+    // Format: { [groupId]: { groupName, optionNames: string[] } }
+    const variantMeta = {};
+    varGroups.forEach((g) => {
+      const sel = selVars[g.id];
+      if (!sel || (Array.isArray(sel) && sel.length === 0)) return;
+      const ids = Array.isArray(sel) ? sel : [sel];
+      const names = ids
+        .map((id) => g.options.find((o) => o.id === id)?.name)
+        .filter(Boolean);
+      if (names.length > 0)
+        variantMeta[g.id] = { groupName: g.name, optionNames: names };
+    });
+
     onAdd({
       item,
       qty,
       selectedVariants: selVars,
+      variantMeta,
       selectedAddOns: [],
       unitPrice,
       note: "",
@@ -3430,10 +3542,14 @@ function CustomizeSheet({ item, onClose, onAdd }) {
   return (
     <>
       <div className="overlay" onClick={onClose} />
-      <div className="sheet" style={{ paddingBottom: 0 }}>
+      <div
+        className="sheet"
+        style={{ paddingBottom: 0, display: "flex", flexDirection: "column" }}
+      >
         <div className="drag-pill" />
+
         {/* Header */}
-        <div className="sheet-hd" style={{ paddingBottom: 6 }}>
+        <div className="sheet-hd" style={{ paddingBottom: 6, flexShrink: 0 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p className="sheet-title" style={{ fontSize: 17 }}>
               {item.name}
@@ -3454,17 +3570,50 @@ function CustomizeSheet({ item, onClose, onAdd }) {
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: "4px 20px 0", overflowY: "auto", flex: 1 }}>
+        {/* Scrollable body */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "4px 20px 0",
+            minHeight: 0,
+          }}
+        >
           {loading ? (
             <div
               style={{
                 display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
                 justifyContent: "center",
-                padding: "28px 0",
+                padding: "40px 0",
+                gap: 12,
               }}
             >
               <Spinner size={28} />
+              <p style={{ fontSize: 13, color: "var(--t2)" }}>
+                Loading options…
+              </p>
+            </div>
+          ) : fetchErr ? (
+            <div style={{ padding: "24px 0", textAlign: "center" }}>
+              <p
+                style={{ fontSize: 13, color: "var(--red)", marginBottom: 14 }}
+              >
+                ⚠️ {fetchErr}
+              </p>
+              <button
+                onClick={() => {
+                  setFetchErr(null);
+                  setLoading(
+                    true,
+                  ); /* re-trigger by forcing a re-render via dummy state */
+                }}
+                className="btn-out"
+                style={{ fontSize: 13 }}
+              >
+                Retry
+              </button>
             </div>
           ) : varGroups.length === 0 ? (
             <p
@@ -3474,109 +3623,111 @@ function CustomizeSheet({ item, onClose, onAdd }) {
                 padding: "8px 0 20px",
               }}
             >
-              No options — item will be added as-is.
+              No customization options for this item.
             </p>
           ) : (
-            varGroups.map((g) => {
-              const opts = g.Variant_Options || [];
-              return (
-                <div key={g.id} style={{ marginBottom: 22 }}>
-                  <div className="csheet-group-hd">
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: 15 }}>{g.name}</p>
-                      <p
-                        style={{
-                          fontSize: 12,
-                          color: "var(--t2)",
-                          marginTop: 2,
-                        }}
-                      >
-                        {g.is_multiple ? "Choose one or more" : "Choose one"}
-                      </p>
-                    </div>
-                    {g.is_required && (
-                      <span className="csheet-required-pill">Required</span>
-                    )}
-                  </div>
-                  {opts.length === 0 ? (
+            varGroups.map((g) => (
+              <div key={g.id} style={{ marginBottom: 22 }}>
+                {/* Group header */}
+                <div className="csheet-group-hd">
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, fontSize: 15 }}>{g.name}</p>
                     <p
-                      style={{
-                        fontSize: 13,
-                        color: "var(--t3)",
-                        fontStyle: "italic",
-                      }}
+                      style={{ fontSize: 12, color: "var(--t2)", marginTop: 2 }}
                     >
-                      No options configured
+                      {g.is_multiple ? "Choose one or more" : "Choose one"}
                     </p>
+                  </div>
+                  {g.is_required ? (
+                    <span className="csheet-required-pill">Required</span>
                   ) : (
-                    <div
+                    <span
                       style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 8,
+                        fontSize: 10,
+                        color: "var(--t3)",
+                        fontWeight: 600,
+                        letterSpacing: ".04em",
                       }}
                     >
-                      {opts.map((opt) => {
-                        const s = selVars[g.id];
-                        const isSel = g.is_multiple
-                          ? Array.isArray(s) && s.includes(opt.id)
-                          : s === opt.id;
-                        return (
-                          <div
-                            key={opt.id}
-                            className={`csheet-opt-row${isSel ? " sel" : ""}`}
-                            onClick={() =>
-                              toggleVar(g.id, opt.id, g.is_multiple)
-                            }
-                          >
-                            <span
-                              style={{
-                                fontSize: 14,
-                                fontWeight: isSel ? 600 : 400,
-                              }}
-                            >
-                              {opt.name}
-                            </span>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 10,
-                              }}
-                            >
-                              {+opt.price_adj !== 0 && (
-                                <span
-                                  style={{
-                                    fontSize: 13,
-                                    color: "var(--t2)",
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {+opt.price_adj > 0 ? "+" : ""}
-                                  {fmt(opt.price_adj)}
-                                </span>
-                              )}
-                              <div
-                                className={`csheet-dot${g.is_multiple ? " sq" : ""}${isSel ? " on" : ""}`}
-                              >
-                                {isSel && (
-                                  <span style={{ color: "#fff" }}>
-                                    {Ic.check}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                      Optional
+                    </span>
                   )}
                 </div>
-              );
-            })
+
+                {/* Options */}
+                {g.options.length === 0 ? (
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "var(--t3)",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    No options configured
+                  </p>
+                ) : (
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                  >
+                    {g.options.map((opt) => {
+                      const s = selVars[g.id];
+                      const isSel = g.is_multiple
+                        ? Array.isArray(s) && s.includes(opt.id)
+                        : s === opt.id;
+                      return (
+                        <div
+                          key={opt.id}
+                          className={`csheet-opt-row${isSel ? " sel" : ""}`}
+                          onClick={() => toggleVar(g.id, opt.id, g.is_multiple)}
+                        >
+                          <span
+                            style={{
+                              fontSize: 14,
+                              fontWeight: isSel ? 600 : 400,
+                            }}
+                          >
+                            {opt.name}
+                          </span>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                            }}
+                          >
+                            {+opt.price_adj !== 0 && (
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  color: "var(--t2)",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {+opt.price_adj > 0 ? "+" : ""}
+                                {fmt(opt.price_adj)}
+                              </span>
+                            )}
+                            <div
+                              className={`csheet-dot${g.is_multiple ? " sq" : ""}${isSel ? " on" : ""}`}
+                            >
+                              {isSel && (
+                                <span style={{ color: "#fff" }}>
+                                  {Ic.check}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))
           )}
 
-          {err && (
+          {/* Validation error banner */}
+          {validationErr && (
             <div
               style={{
                 background: "#fdecea",
@@ -3589,20 +3740,19 @@ function CustomizeSheet({ item, onClose, onAdd }) {
                 marginBottom: 16,
               }}
             >
-              ⚠️ {err}
+              ⚠️ {validationErr}
             </div>
           )}
           <div style={{ height: 8 }} />
         </div>
 
-        {/* Sticky footer */}
+        {/* Sticky footer — button grays out when required options unmet */}
         <div
           style={{
             padding: "14px 20px",
             borderTop: "1px solid var(--border)",
             background: "#fff",
-            position: "sticky",
-            bottom: 0,
+            flexShrink: 0,
             paddingBottom: "calc(14px + env(safe-area-inset-bottom,0px))",
             display: "flex",
             alignItems: "center",
@@ -3618,10 +3768,17 @@ function CustomizeSheet({ item, onClose, onAdd }) {
           </div>
           <button
             className="btn-primary"
-            style={{ flex: 1 }}
+            style={{
+              flex: 1,
+              opacity: canAdd ? 1 : 0.45,
+              pointerEvents: canAdd ? "auto" : "none",
+            }}
+            disabled={!canAdd || loading}
             onClick={handleAdd}
           >
-            Add to cart · {fmt(unitPrice * qty)}
+            {canAdd
+              ? `Add to cart · ${fmt(unitPrice * qty)}`
+              : "Select required options"}
           </button>
         </div>
       </div>
@@ -3643,7 +3800,7 @@ function MenuItem({ item, cart, onOpen, onUpdate, onCustomize }) {
     <div className="menu-card" onClick={() => onOpen(item)}>
       {/* Text side */}
       <div className="menu-info">
-        {item.recommended && (
+        {(item.is_popular || item.recommended) && (
           <div className="menu-popular">{Ic.star} Popular</div>
         )}
         <p className="menu-name">{item.name}</p>
