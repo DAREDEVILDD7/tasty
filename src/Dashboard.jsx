@@ -172,92 +172,6 @@ const TOP_VIEWED = [
   { rank: 4, name: "Chatti Chor", count: 4, emoji: "🍛" },
 ];
 
-const SAMPLE_ORDERS = [
-  {
-    id: "ORD-875",
-    status: "new",
-    type: "delivery",
-    customer: "Hrishi Uralath",
-    phone: "971585691229",
-    items: 2,
-    time: "less than a minute ago",
-    subtotal: 201.0,
-    deliveryCharge: 5.0,
-    total: 206.0,
-    paymentMethod: "Card",
-    orderItems: [
-      {
-        qty: 3,
-        name: "UAE's Best Karak",
-        price: 81.0,
-        variant: "Combo Test",
-        addons: ["1 x Olives", "1 x Cheese Cubes"],
-        addonLabel: null,
-      },
-      {
-        qty: 4,
-        name: "Hrishi's Chicken Fried Rice",
-        price: 120.0,
-        variant: null,
-        addons: ["Red Chutney", "White Chutney"],
-        addonLabel: "SAUCE",
-      },
-    ],
-    receiver: {
-      name: "Hrishikesh Uralath",
-      phone: "971585691229",
-      address:
-        "Al taawun, 1202, Laffah restaurant building, Al Mamzar Plaza - Al Taawun St - Al Mamzar - Sharjah - UAE",
-    },
-    notes: "No Notes Added",
-  },
-  {
-    id: "ORD-874",
-    status: "accepted",
-    type: "pickup",
-    customer: "Sara Ahmed",
-    phone: "971501234567",
-    items: 3,
-    time: "5 minutes ago",
-    subtotal: 95.0,
-    deliveryCharge: 0.0,
-    total: 95.0,
-    paymentMethod: "Cash",
-    orderItems: [
-      {
-        qty: 2,
-        name: "Chicken Shawarma",
-        price: 50.0,
-        variant: null,
-        addons: ["Extra Sauce"],
-        addonLabel: "EXTRAS",
-      },
-      {
-        qty: 1,
-        name: "Mango Juice",
-        price: 15.0,
-        variant: null,
-        addons: [],
-        addonLabel: null,
-      },
-      {
-        qty: 1,
-        name: "Hummus Platter",
-        price: 30.0,
-        variant: "Large",
-        addons: ["Extra Pita"],
-        addonLabel: "ADD-ONS",
-      },
-    ],
-    receiver: {
-      name: "Sara Ahmed",
-      phone: "971501234567",
-      address: "Pickup - Al Nahda, Dubai",
-    },
-    notes: "Extra napkins please",
-  },
-];
-
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 function Toggle({ value, onChange, t }) {
   return (
@@ -1196,89 +1110,507 @@ function HomePage({ t }) {
 }
 
 // ─── Orders Page ──────────────────────────────────────────────────────────────
-function OrdersPage({ t }) {
-  const [orderTab, setOrderTab] = useState("new");
-  const [selectedOrder, setSelected] = useState(null);
-  const [mobileView, setMobileView] = useState("list");
+// ─── Orders helpers ───────────────────────────────────────────────────────────
+const fmtKD = (n) => `KD ${Number(n || 0).toFixed(3)}`;
+const fmtDate = (ts) => {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return d.toLocaleString("en-KW", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+const STATUS_META = {
+  pending: { label: "New", color: "#C4711A", bg: "rgba(196,113,26,0.1)" },
+  accepted: { label: "Accepted", color: "#2563EB", bg: "rgba(37,99,235,0.08)" },
+  preparing: {
+    label: "Preparing",
+    color: "#7C3AED",
+    bg: "rgba(124,58,237,0.08)",
+  },
+  on_the_way: {
+    label: "Out for Delivery",
+    color: "#2D7A4F",
+    bg: "rgba(45,122,79,0.08)",
+  },
+  delivered: {
+    label: "Delivered",
+    color: "#2D7A4F",
+    bg: "rgba(45,122,79,0.08)",
+  },
+  rejected: { label: "Rejected", color: "#B83232", bg: "rgba(184,50,50,0.08)" },
+};
 
-  const newOrders = SAMPLE_ORDERS.filter((o) => o.status === "new");
-  const acceptedOrders = SAMPLE_ORDERS.filter((o) => o.status === "accepted");
-  const displayed = orderTab === "new" ? newOrders : acceptedOrders;
+// ─── Invoice Generator (opens print dialog with styled HTML) ─────────────────
+function printInvoice(order, items, restaurant) {
+  const rows = (items || [])
+    .map(
+      (it) => `
+    <tr>
+      <td style="padding:8px 12px;color:#555;font-size:13px">${it.quantity}×</td>
+      <td style="padding:8px 12px;font-size:13px">
+        ${it.menu_name || it.menu_id}
+        ${it.item_note ? `<div style="font-size:11px;color:#888;font-style:italic">↳ ${it.item_note}</div>` : ""}
+        ${(it.variants || []).map((v) => `<div style="font-size:11px;color:#C4711A">· ${v}</div>`).join("")}
+      </td>
+      <td style="padding:8px 12px;text-align:right;font-weight:600;font-size:13px">KD ${Number(it.unit_price).toFixed(3)}</td>
+      <td style="padding:8px 12px;text-align:right;font-weight:700;font-size:13px">KD ${Number(it.subtotal).toFixed(3)}</td>
+    </tr>`,
+    )
+    .join("");
 
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Invoice #${order.id}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a1a;padding:40px;max-width:680px;margin:0 auto}
+    .logo{font-size:28px;font-weight:900;color:#C4711A;letter-spacing:-0.5px}
+    .tagline{font-size:11px;color:#999;letter-spacing:.12em;text-transform:uppercase;margin-top:2px}
+    .divider{border:none;border-top:1px solid #eee;margin:20px 0}
+    .header-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
+    .label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#aaa;margin-bottom:4px}
+    .value{font-size:14px;font-weight:600;color:#1a1a1a}
+    .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:#fff3e0;color:#C4711A;border:1px solid #fed7aa}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    thead th{background:#f9f6f2;padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888}
+    thead th:nth-child(3),thead th:nth-child(4){text-align:right}
+    tbody tr:nth-child(even){background:#fafafa}
+    tbody tr:last-child td{border-bottom:1px solid #eee}
+    .total-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:#555}
+    .total-row.grand{font-size:17px;font-weight:800;color:#1a1a1a;border-top:2px solid #1a1a1a;margin-top:8px;padding-top:12px}
+    .footer{text-align:center;font-size:11px;color:#bbb;margin-top:36px;padding-top:20px;border-top:1px solid #eee}
+    @media print{body{padding:20px}.no-print{display:none}}
+  </style></head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+    <div>
+      <div class="logo">${restaurant?.name || "FeastRush"}</div>
+      <div class="tagline">${restaurant?.branch_name || "Restaurant"}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:22px;font-weight:800;color:#1a1a1a">INVOICE</div>
+      <div style="font-size:13px;color:#888;margin-top:2px">#${order.id}</div>
+      <div class="badge" style="margin-top:6px">${STATUS_META[order.status]?.label || order.status}</div>
+    </div>
+  </div>
+  <hr class="divider">
+  <div class="header-grid">
+    <div>
+      <div class="label">Customer</div>
+      <div class="value">${order.cust_name || "—"}</div>
+      <div style="font-size:13px;color:#555;margin-top:2px">${order.cust_phone || ""}</div>
+    </div>
+    <div>
+      <div class="label">Order date</div>
+      <div class="value">${fmtDate(order.created_at)}</div>
+    </div>
+    <div>
+      <div class="label">Payment method</div>
+      <div class="value">${order.payment_method}</div>
+    </div>
+    <div>
+      <div class="label">Payment status</div>
+      <div class="value">${order.payment_status || "Pending"}</div>
+    </div>
+    ${order.delivery_rider_name ? `<div><div class="label">Delivery rider</div><div class="value">${order.delivery_rider_name}</div><div style="font-size:13px;color:#555;margin-top:2px">${order.delivery_rider_phone || ""}</div></div>` : ""}
+    ${order.notes ? `<div style="grid-column:1/-1"><div class="label">Order notes</div><div style="font-size:13px;color:#555;font-style:italic">${order.notes}</div></div>` : ""}
+  </div>
+  <hr class="divider">
+  <table>
+    <thead><tr><th>Qty</th><th>Item</th><th>Unit price</th><th>Total</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div style="margin-top:20px;padding:16px 12px;background:#f9f6f2;border-radius:10px">
+    <div class="total-row"><span>Subtotal</span><span>KD ${Number(order.total_amount).toFixed(3)}</span></div>
+    <div class="total-row grand"><span>Total</span><span>KD ${Number(order.total_amount).toFixed(3)}</span></div>
+  </div>
+  <div class="footer">Thank you for ordering from ${restaurant?.name || "us"}! · Powered by FeastRush</div>
+  <script>window.onload=()=>window.print()</script>
+  </body></html>`;
+
+  const w = window.open("", "_blank");
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+  }
+}
+
+// ─── OrdersPage (full real-data implementation) ───────────────────────────────
+function OrdersPage({ t, user }) {
+  const restId = user?.role === "owner" ? user?.main_rest : user?.rest_id;
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(null);
+  const [orderTab, setOrderTab] = useState("pending"); // pending | accepted | preparing | on_the_way | history
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderItems, setOrderItems] = useState([]); // items for selected order
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [mobileView, setMobileView] = useState("list"); // list | detail
+
+  // Action modals
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectCustom, setRejectCustom] = useState("");
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [riders, setRiders] = useState([]);
+  const [selectedRider, setSelectedRider] = useState(null);
+  const [riderDirect, setRiderDirect] = useState({ name: "", phone: "" });
+  const [orderNote, setOrderNote] = useState("");
+  const [showAddRider, setShowAddRider] = useState(false);
+  const [newRider, setNewRider] = useState({ name: "", phone: "" });
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionErr, setActionErr] = useState("");
+
+  const REJECT_REASONS = [
+    "Item(s) unavailable",
+    "Restaurant is closed",
+    "Outside delivery zone",
+    "Order too large to fulfill",
+    "Customer unreachable",
+    "Other",
+  ];
+
+  // ── Fetch orders ───────────────────────────────────────────────────────────
+  const fetchOrders = useCallback(async () => {
+    if (!restId) {
+      setLoading(false);
+      setLoadErr("No restaurant linked.");
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("Orders")
+        .select(
+          `id, status, total_amount, payment_method, payment_status, notes, created_at,
+                 cust_id, Customer(cust_name, ph_num)`,
+        )
+        .eq("rest_id", restId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (e) {
+      setLoadErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [restId]);
+
+  // ── Fetch riders ───────────────────────────────────────────────────────────
+  const fetchRiders = useCallback(async () => {
+    if (!restId) return;
+    const { data } = await supabase
+      .from("Delivery_Riders")
+      .select("*")
+      .eq("rest_id", restId)
+      .eq("active", true)
+      .order("name");
+    setRiders(data || []);
+  }, [restId]);
+
+  // ── Fetch order items ──────────────────────────────────────────────────────
+  const fetchOrderItems = useCallback(async (orderId) => {
+    setItemsLoading(true);
+    try {
+      const { data: items, error } = await supabase
+        .from("Order_Items")
+        .select(
+          `id, menu_id, quantity, unit_price, subtotal, item_note, Menu(name)`,
+        )
+        .eq("order_id", orderId);
+      if (error) throw error;
+
+      // Fetch variant option names for each item
+      const enriched = await Promise.all(
+        (items || []).map(async (it) => {
+          const { data: vars } = await supabase
+            .from("Order_Item_Variants")
+            .select(`variant_opt_id, price_adj, "Variant Options"(name)`)
+            .eq("order_item_id", it.id);
+          return {
+            ...it,
+            menu_name: it.Menu?.name || "—",
+            variants: (vars || [])
+              .map((v) => v["Variant Options"]?.name)
+              .filter(Boolean),
+          };
+        }),
+      );
+      setOrderItems(enriched);
+    } catch (e) {
+      console.error("[fetchOrderItems]", e);
+      setOrderItems([]);
+    } finally {
+      setItemsLoading(false);
+    }
+  }, []);
+
+  // ── Real-time subscription ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!restId) return;
+    fetchOrders();
+    fetchRiders();
+
+    const channel = supabase
+      .channel(`orders-rest-${restId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "Orders",
+          filter: `rest_id=eq.${restId}`,
+        },
+        async (payload) => {
+          if (payload.eventType === "INSERT") {
+            // Fetch with Customer join
+            const { data } = await supabase
+              .from("Orders")
+              .select(
+                `id, status, total_amount, payment_method, payment_status, notes, created_at, cust_id, Customer(cust_name, ph_num)`,
+              )
+              .eq("id", payload.new.id)
+              .single();
+            if (data) setOrders((prev) => [data, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            setOrders((prev) =>
+              prev.map((o) =>
+                o.id === payload.new.id ? { ...o, ...payload.new } : o,
+              ),
+            );
+            // If this is the selected order, update it too
+            setSelectedOrder((prev) =>
+              prev?.id === payload.new.id ? { ...prev, ...payload.new } : prev,
+            );
+          } else if (payload.eventType === "DELETE") {
+            setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restId, fetchOrders, fetchRiders]);
+
+  // ── Select order ───────────────────────────────────────────────────────────
   const selectOrder = (order) => {
-    setSelected(order);
+    setSelectedOrder(order);
     setMobileView("detail");
+    fetchOrderItems(order.id);
+    setActionErr("");
   };
 
-  const OrderCard = ({ order }) => (
-    <button
-      onClick={() => selectOrder(order)}
-      style={{
-        background: selectedOrder?.id === order.id ? t.accentBg : t.surface,
-        border: `1px solid ${selectedOrder?.id === order.id ? t.accentBorder : t.border}`,
-      }}
-      className="w-full text-left rounded-xl p-4 transition-all duration-200 active:scale-[0.98] hover:shadow-sm"
-    >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-base">
-            {order.type === "delivery" ? "🚴" : "🏪"}
+  // ── Computed order lists ───────────────────────────────────────────────────
+  const byStatus = {
+    pending: orders.filter((o) => o.status === "pending"),
+    accepted: orders.filter((o) => o.status === "accepted"),
+    preparing: orders.filter((o) => o.status === "preparing"),
+    on_the_way: orders.filter((o) => o.status === "on_the_way"),
+    history: orders.filter((o) => ["delivered", "rejected"].includes(o.status)),
+  };
+  const displayed = byStatus[orderTab] || [];
+
+  // Count of active orders for header badge
+  const activeCount =
+    (byStatus.pending?.length || 0) +
+    (byStatus.accepted?.length || 0) +
+    (byStatus.preparing?.length || 0);
+
+  // ── Status update helper ───────────────────────────────────────────────────
+  const updateStatus = async (orderId, newStatus, extraFields = {}) => {
+    setActionLoading(true);
+    setActionErr("");
+    try {
+      const { error } = await supabase
+        .from("Orders")
+        .update({ status: newStatus, ...extraFields })
+        .eq("id", orderId);
+      if (error) throw error;
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId ? { ...o, status: newStatus, ...extraFields } : o,
+        ),
+      );
+      setSelectedOrder((prev) =>
+        prev?.id === orderId
+          ? { ...prev, status: newStatus, ...extraFields }
+          : prev,
+      );
+    } catch (e) {
+      setActionErr(e.message || "Action failed.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ── Accept order ───────────────────────────────────────────────────────────
+  const handleAccept = () => updateStatus(selectedOrder.id, "accepted");
+
+  // ── Mark preparing ─────────────────────────────────────────────────────────
+  const handlePreparing = () => updateStatus(selectedOrder.id, "preparing");
+
+  // ── Reject order ───────────────────────────────────────────────────────────
+  const handleReject = async () => {
+    const reason =
+      rejectReason === "Other" ? rejectCustom.trim() : rejectReason;
+    if (!reason) {
+      setActionErr("Please select or enter a rejection reason.");
+      return;
+    }
+    await updateStatus(selectedOrder.id, "rejected", { notes: reason });
+    setShowRejectModal(false);
+    setRejectReason("");
+    setRejectCustom("");
+  };
+
+  // ── Save new rider ─────────────────────────────────────────────────────────
+  const handleSaveRider = async () => {
+    if (!newRider.name.trim() || !newRider.phone.trim()) {
+      setActionErr("Rider name and phone are required.");
+      return;
+    }
+    setActionLoading(true);
+    setActionErr("");
+    try {
+      const { data, error } = await supabase
+        .from("Delivery_Riders")
+        .insert({
+          rest_id: restId,
+          name: newRider.name.trim(),
+          phone: newRider.phone.trim(),
+          active: true,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setRiders((prev) => [...prev, data]);
+      setSelectedRider(data);
+      setNewRider({ name: "", phone: "" });
+      setShowAddRider(false);
+    } catch (e) {
+      setActionErr(e.message || "Failed to save rider.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ── Send for delivery ──────────────────────────────────────────────────────
+  const handleSendDelivery = async () => {
+    const riderName = selectedRider
+      ? selectedRider.name
+      : riderDirect.name.trim();
+    const riderPhone = selectedRider
+      ? selectedRider.phone
+      : riderDirect.phone.trim();
+    if (!riderName) {
+      setActionErr("Please select or enter a delivery rider.");
+      return;
+    }
+
+    await updateStatus(selectedOrder.id, "on_the_way", {
+      notes: orderNote || selectedOrder.notes || "",
+      delivery_rider_name: riderName,
+      delivery_rider_phone: riderPhone,
+    });
+    setShowDeliveryModal(false);
+    setSelectedRider(null);
+    setRiderDirect({ name: "", phone: "" });
+    setOrderNote("");
+  };
+
+  // ── Mark delivered ─────────────────────────────────────────────────────────
+  const handleDelivered = () => updateStatus(selectedOrder.id, "delivered");
+
+  // ─── OrderCard ─────────────────────────────────────────────────────────────
+  const OrderCard = ({ order }) => {
+    const meta = STATUS_META[order.status] || STATUS_META.pending;
+    const custName = order.Customer?.cust_name || "Customer";
+    const isSelected = selectedOrder?.id === order.id;
+    return (
+      <button
+        onClick={() => selectOrder(order)}
+        style={{
+          background: isSelected ? t.accentBg : t.surface,
+          border: `1px solid ${isSelected ? t.accentBorder : t.border}`,
+          textAlign: "left",
+          width: "100%",
+        }}
+        className="rounded-xl p-3.5 transition-all duration-150 hover:shadow-sm active:scale-[0.98]"
+      >
+        <div className="flex items-center justify-between mb-1.5">
+          <span
+            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs"
+          >
+            #{order.id}
           </span>
           <span
             style={{
-              color: order.type === "delivery" ? t.accent : t.green,
+              background: meta.bg,
+              color: meta.color,
               fontFamily: "'Lato', sans-serif",
             }}
-            className="text-xs font-bold tracking-wider uppercase"
+            className="text-xs font-bold px-2 py-0.5 rounded-full"
           >
-            {order.type}
+            {meta.label}
           </span>
         </div>
-        <span
+        <p
+          style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm font-semibold truncate"
+        >
+          {custName}
+        </p>
+        <div className="flex justify-between mt-1">
+          <p
+            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs"
+          >
+            {fmtDate(order.created_at)}
+          </p>
+          <p
+            style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold"
+          >
+            {fmtKD(order.total_amount)}
+          </p>
+        </div>
+        <p
           style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-          className="text-xs"
+          className="text-xs mt-0.5"
         >
-          {order.time}
-        </span>
-      </div>
-      <p
-        style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-        className="text-sm font-semibold"
-      >
-        {order.customer}
-      </p>
-      <div className="flex justify-between mt-1.5">
-        <p
-          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-          className="text-xs"
-        >
-          {order.id}
+          {order.payment_method}
         </p>
-        <p
-          style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-          className="text-xs font-bold"
-        >
-          AED {order.total.toFixed(2)}
-        </p>
-      </div>
-      <p
-        style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-        className="text-xs mt-1"
-      >
-        {order.items} items · {order.paymentMethod}
-      </p>
-    </button>
-  );
+      </button>
+    );
+  };
 
-  const OrderDetail = () =>
-    !selectedOrder ? null : (
+  // ─── OrderDetail ───────────────────────────────────────────────────────────
+  const OrderDetail = () => {
+    if (!selectedOrder) return null;
+    const meta = STATUS_META[selectedOrder.status] || STATUS_META.pending;
+    const custName = selectedOrder.Customer?.cust_name || "Customer";
+    const custPhone = selectedOrder.Customer?.ph_num || "—";
+    const isPending = selectedOrder.status === "pending";
+    const isAccepted = selectedOrder.status === "accepted";
+    const isPreparing = selectedOrder.status === "preparing";
+    const isOnWay = selectedOrder.status === "on_the_way";
+    const isClosed = ["delivered", "rejected"].includes(selectedOrder.status);
+
+    return (
       <div
         style={{ background: t.surface, border: `1px solid ${t.border}` }}
         className="flex-1 flex flex-col rounded-xl overflow-hidden min-w-0"
       >
+        {/* Header */}
         <div
           style={{ borderBottom: `1px solid ${t.border}` }}
-          className="px-5 pt-5 pb-4 flex items-center gap-3 flex-shrink-0"
+          className="px-5 pt-4 pb-3 flex items-center gap-3 flex-shrink-0"
         >
           <button
             onClick={() => setMobileView("list")}
@@ -1297,63 +1629,121 @@ function OrdersPage({ t }) {
                 fontFamily: "'Cormorant Garamond', serif",
                 color: t.text,
               }}
-              className="text-xl md:text-2xl font-bold"
+              className="text-xl font-bold"
             >
-              {selectedOrder.id}
+              Order #{selectedOrder.id}
             </h2>
             <p
-              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
               className="text-xs"
             >
-              {selectedOrder.items} items · {selectedOrder.customer}
+              {fmtDate(selectedOrder.created_at)}
             </p>
           </div>
           <span
             style={{
-              background: t.accentBg,
-              color: t.accent,
-              border: `1px solid ${t.accentBorder}`,
+              background: meta.bg,
+              color: meta.color,
               fontFamily: "'Lato', sans-serif",
             }}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg tracking-wider uppercase flex-shrink-0"
+            className="text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0"
           >
-            {selectedOrder.paymentMethod}
+            {meta.label}
           </span>
+          {/* Print invoice */}
+          <button
+            onClick={() =>
+              printInvoice(
+                {
+                  ...selectedOrder,
+                  cust_name: custName,
+                  cust_phone: custPhone,
+                },
+                orderItems,
+                null,
+              )
+            }
+            style={{
+              color: t.subtle,
+              background: t.surface2,
+              border: `1px solid ${t.border2}`,
+            }}
+            className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm hover:opacity-70 transition-opacity"
+            title="Download invoice"
+          >
+            🧾
+          </button>
         </div>
 
-        {/* FIX: changed overflow-y-auto to be on this wrapper so the whole detail scrolls */}
-        <div className="flex-1 overflow-y-auto flex flex-col">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Customer info */}
           <div
             style={{ borderBottom: `1px solid ${t.border}` }}
-            className="px-5 py-3 space-y-1.5 flex-shrink-0"
+            className="px-5 py-4 flex items-center gap-3"
           >
-            {[
-              ["Sub-total", `AED ${selectedOrder.subtotal.toFixed(2)}`],
-              ...(selectedOrder.type === "delivery"
-                ? [
-                    [
-                      "Delivery",
-                      `AED ${selectedOrder.deliveryCharge.toFixed(2)}`,
-                    ],
-                  ]
-                : []),
-            ].map(([k, v]) => (
-              <div key={k} className="flex justify-between text-sm">
-                <span
-                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-                >
-                  {k}
-                </span>
-                <span
-                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                >
-                  {v}
-                </span>
-              </div>
-            ))}
             <div
+              style={{
+                background: t.accentBg,
+                border: `1px solid ${t.accentBorder}`,
+                color: t.accent,
+              }}
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+            >
+              {custName[0].toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm font-semibold"
+              >
+                {custName}
+              </p>
+              <p
+                style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs"
+              >
+                {custPhone}
+              </p>
+            </div>
+            {custPhone !== "—" && (
+              <a
+                href={`https://wa.me/${custPhone.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color: "#25D366",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                }}
+                className="ml-auto flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm hover:opacity-70 transition-opacity"
+              >
+                💬
+              </a>
+            )}
+          </div>
+
+          {/* Bill summary */}
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="px-5 py-3 space-y-1"
+          >
+            <div className="flex justify-between text-sm">
+              <span
+                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              >
+                Payment
+              </span>
+              <span
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="font-semibold"
+              >
+                {selectedOrder.payment_method}
+              </span>
+            </div>
+            <div
+              className="flex justify-between text-sm pt-1"
               style={{ borderTop: `1px solid ${t.border}` }}
-              className="flex justify-between text-sm pt-2"
             >
               <span
                 style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
@@ -1365,450 +1755,125 @@ function OrdersPage({ t }) {
                 style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
                 className="font-bold"
               >
-                AED {selectedOrder.total.toFixed(2)}
+                {fmtKD(selectedOrder.total_amount)}
               </span>
             </div>
           </div>
 
-          <div
-            style={{ borderBottom: `1px solid ${t.border}` }}
-            className="grid grid-cols-12 px-5 py-2 flex-shrink-0"
-          >
-            {[
-              ["Qty", "col-span-2"],
-              ["Items", "col-span-7"],
-              ["AED", "col-span-3 text-right"],
-            ].map(([l, c]) => (
-              <span
-                key={l}
-                style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                className={`${c} text-xs font-bold tracking-widest uppercase`}
-              >
-                {l}
-              </span>
-            ))}
-          </div>
-
-          {selectedOrder.orderItems.map((item, i) => (
-            <div
-              key={i}
-              style={{ borderBottom: `1px solid ${t.border}` }}
-              className="grid grid-cols-12 px-5 py-4 flex-shrink-0"
-            >
-              <div className="col-span-2">
+          {/* Items table */}
+          <div style={{ borderBottom: `1px solid ${t.border}` }}>
+            <div className="grid grid-cols-12 px-5 py-2">
+              {[
+                ["Qty", "col-span-2"],
+                ["Items", "col-span-7"],
+                ["KD", "col-span-3 text-right"],
+              ].map(([l, c]) => (
                 <span
-                  style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm font-bold"
+                  key={l}
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className={`${c} text-xs font-bold tracking-widest uppercase`}
                 >
-                  {item.qty}
+                  {l}
                 </span>
-              </div>
-              <div className="col-span-7">
-                <p
-                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm font-semibold"
-                >
-                  {item.name}
-                </p>
-                {item.variant && (
-                  <p
-                    style={{
-                      color: t.accent,
-                      fontFamily: "'Lato', sans-serif",
-                    }}
-                    className="text-xs mt-0.5"
-                  >
-                    {item.variant}
-                  </p>
-                )}
-                {item.addonLabel && (
-                  <p
-                    style={{
-                      color: t.accent,
-                      fontFamily: "'Lato', sans-serif",
-                    }}
-                    className="text-xs font-bold mt-1 tracking-wider"
-                  >
-                    {item.addonLabel}
-                  </p>
-                )}
-                {item.addons.map((a, j) => (
-                  <p
-                    key={j}
-                    style={{
-                      color: t.subtle,
-                      fontFamily: "'Lato', sans-serif",
-                    }}
-                    className="text-xs"
-                  >
-                    · {a}
-                  </p>
-                ))}
-              </div>
-              <div className="col-span-3 text-right">
-                <span
-                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm font-semibold"
-                >
-                  {item.price.toFixed(2)}
-                </span>
-              </div>
+              ))}
             </div>
-          ))}
-
-          <div
-            style={{ borderBottom: `1px solid ${t.border}` }}
-            className="px-5 py-4 space-y-1.5 flex-shrink-0"
-          >
-            <p
-              style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-              className="text-xs font-bold tracking-widest uppercase mb-2"
-            >
-              Receiver
-            </p>
-            {[
-              ["Name", selectedOrder.receiver.name],
-              ["Contact", selectedOrder.receiver.phone],
-              ["Address", selectedOrder.receiver.address],
-            ].map(([k, v]) => (
-              <p
-                key={k}
-                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-                className="text-sm leading-relaxed"
-              >
-                <span style={{ color: t.text }} className="font-semibold">
-                  {k}:{" "}
-                </span>
-                {v}
-              </p>
-            ))}
-          </div>
-
-          <div
-            className="mx-5 my-4 rounded-xl overflow-hidden relative flex-shrink-0"
-            style={{
-              height: 120,
-              background: t.surface2,
-              border: `1px solid ${t.border}`,
-            }}
-          >
-            <svg
-              className="absolute inset-0 w-full h-full opacity-20"
-              viewBox="0 0 300 120"
-              preserveAspectRatio="xMidYMid slice"
-            >
-              {[0, 30, 60, 90, 120].map((y) => (
-                <line
-                  key={y}
-                  x1="0"
-                  y1={y}
-                  x2="300"
-                  y2={y}
-                  stroke={t.accent}
-                  strokeWidth="0.5"
-                />
-              ))}
-              {[0, 50, 100, 150, 200, 250, 300].map((x) => (
-                <line
-                  key={x}
-                  x1={x}
-                  y1="0"
-                  x2={x}
-                  y2="120"
-                  stroke={t.accent}
-                  strokeWidth="0.5"
-                />
-              ))}
-              <path
-                d="M0,60 Q75,40 150,70 T300,50"
-                stroke={t.accent}
-                strokeWidth="2"
-                fill="none"
-                opacity="0.6"
-              />
-              <circle cx="150" cy="70" r="7" fill={t.accent} opacity="0.9" />
-              <circle cx="150" cy="70" r="3" fill={t.bg} />
-            </svg>
-            <div className="absolute bottom-2 left-2 right-2">
-              <div
-                style={{
-                  background: `${t.surface}dd`,
-                  border: `1px solid ${t.border}`,
-                }}
-                className="rounded-lg px-3 py-1.5"
-              >
+            {itemsLoading ? (
+              <div className="px-5 py-4">
                 <p
-                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-                  className="text-xs"
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm"
                 >
-                  📍 {selectedOrder.receiver.address.split(",")[0]}
+                  Loading items…
                 </p>
               </div>
-            </div>
-          </div>
-
-          <div className="px-5 py-3 mb-2 flex-shrink-0">
-            <p
-              style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-              className="text-xs font-bold tracking-widest uppercase mb-1.5"
-            >
-              Notes
-            </p>
-            <p
-              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-              className="text-sm italic"
-            >
-              {selectedOrder.notes}
-            </p>
-          </div>
-
-          {/* Accept/Reject buttons — now inside the scrollable area at the bottom */}
-          <div
-            style={{ borderTop: `1px solid ${t.border}` }}
-            className="px-5 py-4 flex gap-3 flex-shrink-0 mt-auto"
-          >
-            <button
-              style={{
-                border: `1px solid ${t.red}`,
-                color: t.red,
-                fontFamily: "'Lato', sans-serif",
-              }}
-              className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
-            >
-              Reject
-            </button>
-            <button
-              style={{
-                background: t.accent,
-                color: "#fff",
-                fontFamily: "'Lato', sans-serif",
-              }}
-              className="flex-1 py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
-            >
-              Accept Order
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="px-5 md:px-8 pt-6 pb-4 flex-shrink-0">
-        <h1
-          style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
-          className="text-3xl md:text-4xl font-bold tracking-tight"
-        >
-          Active Orders
-        </h1>
-      </div>
-
-      <div className="hidden lg:flex flex-1 overflow-hidden px-5 md:px-6 pb-6 gap-4">
-        <div
-          style={{ background: t.surface, border: `1px solid ${t.border}` }}
-          className="w-64 flex-shrink-0 flex flex-col rounded-xl overflow-hidden"
-        >
-          <div
-            style={{ borderBottom: `1px solid ${t.border}` }}
-            className="flex"
-          >
-            {[
-              ["new", newOrders.length, t.accent],
-              ["accepted", acceptedOrders.length, t.green],
-            ].map(([tab, count, col]) => (
-              <button
-                key={tab}
-                onClick={() => setOrderTab(tab)}
-                style={{
-                  color: orderTab === tab ? col : t.subtle,
-                  borderBottomColor: orderTab === tab ? col : "transparent",
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold tracking-wider uppercase border-b-2 transition-colors"
-              >
-                {tab[0].toUpperCase() + tab.slice(1)}
-                <span
-                  style={{
-                    background: orderTab === tab ? col : t.surface2,
-                    color: orderTab === tab ? "#fff" : t.text,
-                  }}
-                  className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+            ) : orderItems.length === 0 ? (
+              <div className="px-5 py-4">
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm italic"
                 >
-                  {count}
-                </span>
-              </button>
-            ))}
-          </div>
-          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-            {displayed.length === 0 && (
-              <p
-                style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                className="text-sm text-center mt-8"
-              >
-                No orders
-              </p>
-            )}
-            {displayed.map((order) => (
-              <OrderCard key={order.id} order={order} />
-            ))}
-          </div>
-        </div>
-        {selectedOrder ? (
-          <OrderDetail />
-        ) : (
-          <div
-            style={{ background: t.surface, border: `1px solid ${t.border}` }}
-            className="flex-1 flex flex-col items-center justify-center rounded-xl gap-3"
-          >
-            <span className="text-5xl opacity-30">🍽️</span>
-            <p
-              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-              className="text-sm"
-            >
-              Select an order to view details
-            </p>
-          </div>
-        )}
-        {selectedOrder && (
-          <div className="hidden xl:flex w-64 flex-shrink-0 flex-col gap-4">
-            <div
-              style={{ background: t.surface, border: `1px solid ${t.border}` }}
-              className="rounded-xl p-4"
-            >
-              <div className="flex items-center gap-3 mb-4">
+                  No items found
+                </p>
+              </div>
+            ) : (
+              orderItems.map((it, i) => (
                 <div
-                  style={{
-                    background: t.accentBg,
-                    border: `1px solid ${t.accentBorder}`,
-                    color: t.accent,
-                  }}
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm"
+                  key={i}
+                  style={{ borderTop: `1px solid ${t.border}` }}
+                  className="grid grid-cols-12 px-5 py-3"
                 >
-                  {selectedOrder.customer.charAt(0)}
-                </div>
-                <div>
-                  <p
-                    style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                    className="text-sm font-semibold"
-                  >
-                    {selectedOrder.customer}
-                  </p>
-                  <p
-                    style={{
-                      color: t.subtle,
-                      fontFamily: "'Lato', sans-serif",
-                    }}
-                    className="text-xs"
-                  >
-                    {selectedOrder.phone}
-                  </p>
-                </div>
-              </div>
-              <div
-                style={{ borderTop: `1px solid ${t.border}` }}
-                className="pt-3 space-y-1.5"
-              >
-                <p
-                  style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-                  className="text-xs font-bold tracking-widest uppercase mb-2"
-                >
-                  Receiver
-                </p>
-                {[
-                  ["Name", selectedOrder.receiver.name],
-                  ["Contact", selectedOrder.receiver.phone],
-                  ["Address", selectedOrder.receiver.address],
-                ].map(([k, v]) => (
-                  <p
-                    key={k}
-                    style={{
-                      color: t.subtle,
-                      fontFamily: "'Lato', sans-serif",
-                    }}
-                    className="text-xs leading-relaxed"
-                  >
-                    <span style={{ color: t.text }} className="font-semibold">
-                      {k}:{" "}
+                  <div className="col-span-2">
+                    <span
+                      style={{
+                        color: t.accent,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-bold"
+                    >
+                      {it.quantity}×
                     </span>
-                    {v}
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div
-              style={{
-                background: t.surface,
-                border: `1px solid ${t.border}`,
-                height: 160,
-              }}
-              className="rounded-xl overflow-hidden relative"
-            >
-              <svg
-                className="absolute inset-0 w-full h-full opacity-20"
-                viewBox="0 0 300 160"
-                preserveAspectRatio="xMidYMid slice"
-              >
-                {[0, 40, 80, 120, 160].map((y) => (
-                  <line
-                    key={y}
-                    x1="0"
-                    y1={y}
-                    x2="300"
-                    y2={y}
-                    stroke={t.accent}
-                    strokeWidth="0.5"
-                  />
-                ))}
-                {[0, 60, 120, 180, 240, 300].map((x) => (
-                  <line
-                    key={x}
-                    x1={x}
-                    y1="0"
-                    x2={x}
-                    y2="160"
-                    stroke={t.accent}
-                    strokeWidth="0.5"
-                  />
-                ))}
-                <path
-                  d="M0,80 Q75,60 150,90 T300,70"
-                  stroke={t.accent}
-                  strokeWidth="2"
-                  fill="none"
-                  opacity="0.6"
-                />
-                <circle cx="150" cy="90" r="7" fill={t.accent} opacity="0.9" />
-                <circle cx="150" cy="90" r="3" fill={t.bg} />
-              </svg>
-              <div className="absolute bottom-3 left-3 right-3">
-                <div
-                  style={{
-                    background: `${t.surface}dd`,
-                    border: `1px solid ${t.border}`,
-                  }}
-                  className="rounded-lg px-3 py-2"
-                >
-                  <p
-                    style={{
-                      color: t.subtle,
-                      fontFamily: "'Lato', sans-serif",
-                    }}
-                    className="text-xs truncate"
-                  >
-                    📍 {selectedOrder.receiver.address.split(",")[0]}
-                  </p>
+                  </div>
+                  <div className="col-span-7">
+                    <p
+                      style={{
+                        color: t.text,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-semibold"
+                    >
+                      {it.menu_name}
+                    </p>
+                    {it.variants?.map((v, vi) => (
+                      <p
+                        key={vi}
+                        style={{
+                          color: t.accent,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="text-xs mt-0.5"
+                      >
+                        · {v}
+                      </p>
+                    ))}
+                    {it.item_note && (
+                      <p
+                        style={{
+                          color: t.muted,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="text-xs mt-0.5 italic"
+                      >
+                        📝 {it.item_note}
+                      </p>
+                    )}
+                  </div>
+                  <div className="col-span-3 text-right">
+                    <span
+                      style={{
+                        color: t.text,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-semibold"
+                    >
+                      {Number(it.unit_price).toFixed(3)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </div>
+              ))
+            )}
+          </div>
+
+          {/* Notes */}
+          {selectedOrder.notes && (
             <div
-              style={{ background: t.surface, border: `1px solid ${t.border}` }}
-              className="rounded-xl p-4"
+              style={{ borderBottom: `1px solid ${t.border}` }}
+              className="px-5 py-3"
             >
               <p
                 style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-                className="text-xs font-bold tracking-widest uppercase mb-2"
+                className="text-xs font-bold tracking-widest uppercase mb-1"
               >
-                Notes
+                Order Notes
               </p>
               <p
                 style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
@@ -1817,11 +1882,585 @@ function OrdersPage({ t }) {
                 {selectedOrder.notes}
               </p>
             </div>
+          )}
+
+          {/* Delivery rider info if on the way */}
+          {selectedOrder.delivery_rider_name && (
+            <div
+              style={{
+                borderBottom: `1px solid ${t.border}`,
+                background: t.greenBg,
+              }}
+              className="px-5 py-3"
+            >
+              <p
+                style={{ color: t.green, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs font-bold tracking-widest uppercase mb-1"
+              >
+                Delivery Rider
+              </p>
+              <p
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm font-semibold"
+              >
+                {selectedOrder.delivery_rider_name}
+              </p>
+              {selectedOrder.delivery_rider_phone && (
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs"
+                >
+                  {selectedOrder.delivery_rider_phone}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Error */}
+          {actionErr && (
+            <div
+              className="mx-5 my-3 px-4 py-3 rounded-lg"
+              style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}
+            >
+              <p
+                style={{ color: "#B83232", fontFamily: "'Lato', sans-serif" }}
+                className="text-sm"
+              >
+                ⚠️ {actionErr}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Action footer */}
+        {!isClosed && (
+          <div
+            style={{ borderTop: `1px solid ${t.border}` }}
+            className="px-5 py-4 flex gap-2.5 flex-shrink-0 flex-wrap"
+          >
+            {isPending && (
+              <>
+                <button
+                  onClick={() => {
+                    setActionErr("");
+                    setShowRejectModal(true);
+                  }}
+                  style={{
+                    border: `1px solid ${t.red}`,
+                    color: t.red,
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
+                >
+                  ✕ Reject
+                </button>
+                <button
+                  onClick={handleAccept}
+                  disabled={actionLoading}
+                  style={{
+                    background: t.accent,
+                    color: "#fff",
+                    fontFamily: "'Lato', sans-serif",
+                    opacity: actionLoading ? 0.7 : 1,
+                  }}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+                >
+                  {actionLoading ? "…" : "✓ Accept"}
+                </button>
+              </>
+            )}
+            {isAccepted && (
+              <>
+                <button
+                  onClick={() => {
+                    setActionErr("");
+                    setShowRejectModal(true);
+                  }}
+                  style={{
+                    border: `1px solid ${t.red}`,
+                    color: t.red,
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="flex-1 min-w-[80px] py-2.5 rounded-lg text-xs font-semibold hover:opacity-80 active:scale-95 transition-all"
+                >
+                  ✕ Reject
+                </button>
+                <button
+                  onClick={handlePreparing}
+                  disabled={actionLoading}
+                  style={{
+                    background: "#7C3AED",
+                    color: "#fff",
+                    fontFamily: "'Lato', sans-serif",
+                    opacity: actionLoading ? 0.7 : 1,
+                  }}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+                >
+                  {actionLoading ? "…" : "👨‍🍳 Preparing"}
+                </button>
+              </>
+            )}
+            {isPreparing && (
+              <button
+                onClick={() => {
+                  setActionErr("");
+                  setShowDeliveryModal(true);
+                  fetchRiders();
+                }}
+                style={{
+                  background: t.green,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+              >
+                🛵 Send for Delivery
+              </button>
+            )}
+            {isOnWay && (
+              <button
+                onClick={handleDelivered}
+                disabled={actionLoading}
+                style={{
+                  background: t.green,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                  opacity: actionLoading ? 0.7 : 1,
+                }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+              >
+                {actionLoading ? "…" : "✅ Mark Delivered"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ─── Tab strip with counts ──────────────────────────────────────────────────
+  const TABS = [
+    { id: "pending", label: "New", color: t.accent },
+    { id: "accepted", label: "Accepted", color: "#2563EB" },
+    { id: "preparing", label: "Preparing", color: "#7C3AED" },
+    { id: "on_the_way", label: "On Way", color: t.green },
+    { id: "history", label: "History", color: t.muted },
+  ];
+
+  const TabStrip = () => (
+    <div
+      style={{ borderBottom: `1px solid ${t.border}` }}
+      className="flex overflow-x-auto scrollbar-none"
+    >
+      {TABS.map(({ id, label, color }) => (
+        <button
+          key={id}
+          onClick={() => setOrderTab(id)}
+          style={{
+            color: orderTab === id ? color : t.subtle,
+            borderBottomColor: orderTab === id ? color : "transparent",
+            fontFamily: "'Lato', sans-serif",
+            flexShrink: 0,
+          }}
+          className="flex items-center gap-1.5 px-4 py-3 text-xs font-bold tracking-wider uppercase border-b-2 transition-colors whitespace-nowrap"
+        >
+          {label}
+          <span
+            style={{
+              background: orderTab === id ? color : t.surface2,
+              color: orderTab === id ? "#fff" : t.muted,
+            }}
+            className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+          >
+            {byStatus[id]?.length || 0}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+
+  // ─── Reject Modal ──────────────────────────────────────────────────────────
+  const RejectModal = () => (
+    <Modal
+      title="Reject Order"
+      onClose={() => {
+        setShowRejectModal(false);
+        setRejectReason("");
+        setRejectCustom("");
+        setActionErr("");
+      }}
+      t={t}
+    >
+      <p
+        style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+        className="text-sm mb-4"
+      >
+        Please select the reason for rejecting order #{selectedOrder?.id}. This
+        will be shown to the customer.
+      </p>
+      <div className="space-y-2 mb-4">
+        {REJECT_REASONS.map((r) => (
+          <button
+            key={r}
+            onClick={() => setRejectReason(r)}
+            style={{
+              background: rejectReason === r ? t.accentBg : t.surface2,
+              border: `1px solid ${rejectReason === r ? t.accentBorder : t.border2}`,
+              color: rejectReason === r ? t.accent : t.text,
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all"
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+      {rejectReason === "Other" && (
+        <div className="mb-4">
+          <label
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold tracking-widest uppercase block mb-2"
+          >
+            Specify reason
+          </label>
+          <textarea
+            value={rejectCustom}
+            onChange={(e) => setRejectCustom(e.target.value)}
+            placeholder="Enter custom rejection reason…"
+            rows={3}
+            style={{
+              background: t.surface2,
+              border: `1px solid ${t.border2}`,
+              color: t.text,
+              fontFamily: "'Lato', sans-serif",
+              resize: "none",
+            }}
+            className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+          />
+        </div>
+      )}
+      {actionErr && (
+        <p
+          style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm mb-3"
+        >
+          ⚠️ {actionErr}
+        </p>
+      )}
+      <button
+        onClick={handleReject}
+        disabled={actionLoading || !rejectReason}
+        style={{
+          background: t.red,
+          color: "#fff",
+          fontFamily: "'Lato', sans-serif",
+          opacity: !rejectReason ? 0.5 : 1,
+        }}
+        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+      >
+        {actionLoading ? "Rejecting…" : "Confirm Rejection"}
+      </button>
+    </Modal>
+  );
+
+  // ─── Delivery Modal ────────────────────────────────────────────────────────
+  const DeliveryModal = () => (
+    <Modal
+      title="Send for Delivery"
+      onClose={() => {
+        setShowDeliveryModal(false);
+        setSelectedRider(null);
+        setRiderDirect({ name: "", phone: "" });
+        setActionErr("");
+      }}
+      t={t}
+    >
+      <p
+        style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+        className="text-sm mb-4"
+      >
+        Assign a delivery rider for order #{selectedOrder?.id}.
+      </p>
+
+      {/* Saved riders */}
+      {riders.length > 0 && (
+        <div className="mb-4">
+          <p
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold tracking-widest uppercase mb-2"
+          >
+            Saved Riders
+          </p>
+          <div className="space-y-2">
+            {riders.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => {
+                  setSelectedRider(r);
+                  setRiderDirect({ name: "", phone: "" });
+                }}
+                style={{
+                  background:
+                    selectedRider?.id === r.id ? t.accentBg : t.surface2,
+                  border: `1px solid ${selectedRider?.id === r.id ? t.accentBorder : t.border2}`,
+                  color: t.text,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm transition-all"
+              >
+                <span className="font-semibold">{r.name}</span>
+                <span style={{ color: t.muted }} className="text-xs ml-2">
+                  {r.phone}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add new rider */}
+      {!showAddRider ? (
+        <button
+          onClick={() => {
+            setShowAddRider(true);
+            setSelectedRider(null);
+          }}
+          style={{
+            color: t.accent,
+            fontFamily: "'Lato', sans-serif",
+            border: `1px solid ${t.accentBorder}`,
+            background: t.accentBg,
+          }}
+          className="w-full py-2.5 rounded-lg text-sm font-semibold mb-4 hover:opacity-80 transition-opacity"
+        >
+          + Save new rider profile
+        </button>
+      ) : (
+        <div
+          style={{ background: t.surface2, border: `1px solid ${t.border2}` }}
+          className="rounded-xl p-4 mb-4 space-y-3"
+        >
+          <p
+            style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+            className="text-sm font-semibold"
+          >
+            New Rider Profile
+          </p>
+          <Field
+            label="Rider Name"
+            value={newRider.name}
+            onChange={(v) => setNewRider((p) => ({ ...p, name: v }))}
+            placeholder="e.g. Mohammed Ali"
+            t={t}
+          />
+          <Field
+            label="Phone Number"
+            value={newRider.phone}
+            onChange={(v) => setNewRider((p) => ({ ...p, phone: v }))}
+            placeholder="+965 XXXX XXXX"
+            t={t}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAddRider(false)}
+              style={{
+                color: t.subtle,
+                border: `1px solid ${t.border2}`,
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="flex-1 py-2 rounded-lg text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveRider}
+              disabled={actionLoading}
+              style={{
+                background: t.accent,
+                color: "#fff",
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="flex-1 py-2 rounded-lg text-sm font-semibold"
+            >
+              {actionLoading ? "Saving…" : "Save & Select"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Or enter directly */}
+      <div style={{ borderTop: `1px solid ${t.border}` }} className="pt-4 mb-4">
+        <p
+          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-bold tracking-widest uppercase mb-3"
+        >
+          Or Enter Directly (one-time)
+        </p>
+        <Field
+          label="Rider Name"
+          value={riderDirect.name}
+          onChange={(v) => {
+            setRiderDirect((p) => ({ ...p, name: v }));
+            setSelectedRider(null);
+          }}
+          placeholder="Name"
+          t={t}
+        />
+        <Field
+          label="Phone"
+          value={riderDirect.phone}
+          onChange={(v) => {
+            setRiderDirect((p) => ({ ...p, phone: v }));
+            setSelectedRider(null);
+          }}
+          placeholder="Phone"
+          t={t}
+        />
+      </div>
+
+      {/* Order note */}
+      <div className="mb-4">
+        <label
+          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-bold tracking-widest uppercase block mb-2"
+        >
+          Note (optional)
+        </label>
+        <textarea
+          value={orderNote}
+          onChange={(e) => setOrderNote(e.target.value)}
+          placeholder="Any delivery instructions…"
+          rows={2}
+          style={{
+            background: t.surface2,
+            border: `1px solid ${t.border2}`,
+            color: t.text,
+            fontFamily: "'Lato', sans-serif",
+            resize: "none",
+          }}
+          className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+        />
+      </div>
+
+      {actionErr && (
+        <p
+          style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm mb-3"
+        >
+          ⚠️ {actionErr}
+        </p>
+      )}
+      <button
+        onClick={handleSendDelivery}
+        disabled={actionLoading || (!selectedRider && !riderDirect.name.trim())}
+        style={{
+          background: t.green,
+          color: "#fff",
+          fontFamily: "'Lato', sans-serif",
+          opacity: !selectedRider && !riderDirect.name.trim() ? 0.5 : 1,
+        }}
+        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+      >
+        {actionLoading ? "Sending…" : "🛵 Confirm — Send for Delivery"}
+      </button>
+    </Modal>
+  );
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p
+          style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm"
+        >
+          Loading orders…
+        </p>
+      </div>
+    );
+  }
+  if (loadErr) {
+    return (
+      <div className="flex-1 flex items-center justify-center px-6 text-center">
+        <p
+          style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm"
+        >
+          {loadErr}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Page header */}
+      <div className="px-5 md:px-8 pt-6 pb-3 flex-shrink-0 flex items-center justify-between">
+        <h1
+          style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+          className="text-3xl md:text-4xl font-bold tracking-tight"
+        >
+          Orders
+        </h1>
+        {activeCount > 0 && (
+          <span
+            style={{
+              background: t.accentBg,
+              color: t.accent,
+              border: `1px solid ${t.accentBorder}`,
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="text-xs font-bold px-3 py-1.5 rounded-full"
+          >
+            {activeCount} active
+          </span>
+        )}
+      </div>
+
+      {/* ── DESKTOP layout ── */}
+      <div className="hidden lg:flex flex-1 overflow-hidden px-5 md:px-6 pb-6 gap-4">
+        {/* Left: list */}
+        <div
+          style={{ background: t.surface, border: `1px solid ${t.border}` }}
+          className="w-72 flex-shrink-0 flex flex-col rounded-xl overflow-hidden"
+        >
+          <TabStrip />
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {displayed.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 gap-2">
+                <span className="text-3xl opacity-20">🍽️</span>
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs"
+                >
+                  No {orderTab} orders
+                </p>
+              </div>
+            ) : (
+              displayed.map((o) => <OrderCard key={o.id} order={o} />)
+            )}
+          </div>
+        </div>
+        {/* Right: detail */}
+        {selectedOrder ? (
+          <OrderDetail />
+        ) : (
+          <div
+            style={{ background: t.surface, border: `1px solid ${t.border}` }}
+            className="flex-1 flex flex-col items-center justify-center rounded-xl gap-3"
+          >
+            <span className="text-5xl opacity-20">🍽️</span>
+            <p
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+              className="text-sm"
+            >
+              Select an order to view details
+            </p>
           </div>
         )}
       </div>
 
-      {/* ── Mobile order views ── */}
+      {/* ── MOBILE layout ── */}
       <div className="lg:hidden flex-1 overflow-hidden relative">
         {/* List panel */}
         <div
@@ -1829,43 +2468,14 @@ function OrdersPage({ t }) {
           style={{ background: t.bg }}
         >
           <div
-            style={{
-              borderBottom: `1px solid ${t.border}`,
-              background: t.surface,
-            }}
-            className="flex flex-shrink-0"
+            style={{ background: t.surface, border: `1px solid ${t.border}` }}
           >
-            {[
-              ["new", newOrders.length, t.accent],
-              ["accepted", acceptedOrders.length, t.green],
-            ].map(([tab, count, col]) => (
-              <button
-                key={tab}
-                onClick={() => setOrderTab(tab)}
-                style={{
-                  color: orderTab === tab ? col : t.subtle,
-                  borderBottomColor: orderTab === tab ? col : "transparent",
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold tracking-wider uppercase border-b-2 transition-colors"
-              >
-                {tab[0].toUpperCase() + tab.slice(1)}
-                <span
-                  style={{
-                    background: orderTab === tab ? col : t.surface2,
-                    color: orderTab === tab ? "#fff" : t.text,
-                  }}
-                  className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
-                >
-                  {count}
-                </span>
-              </button>
-            ))}
+            <TabStrip />
           </div>
-          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2.5">
-            {displayed.length === 0 && (
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+            {displayed.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 gap-3">
-                <span className="text-4xl opacity-30">🍽️</span>
+                <span className="text-4xl opacity-20">🍽️</span>
                 <p
                   style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
                   className="text-sm"
@@ -1873,15 +2483,12 @@ function OrdersPage({ t }) {
                   No {orderTab} orders
                 </p>
               </div>
+            ) : (
+              displayed.map((o) => <OrderCard key={o.id} order={o} />)
             )}
-            {displayed.map((order) => (
-              <OrderCard key={order.id} order={order} />
-            ))}
           </div>
         </div>
-
-        {/* Detail panel — FIX: removed inner padding wrapper so OrderDetail fills the panel
-            and its own internal overflow-y-auto handles all scrolling */}
+        {/* Detail panel */}
         <div
           className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "detail" ? "translate-x-0" : "translate-x-full"}`}
           style={{ background: t.bg }}
@@ -1889,6 +2496,10 @@ function OrdersPage({ t }) {
           {selectedOrder && <OrderDetail />}
         </div>
       </div>
+
+      {/* Modals */}
+      {showRejectModal && selectedOrder && <RejectModal />}
+      {showDeliveryModal && selectedOrder && <DeliveryModal />}
     </div>
   );
 }
@@ -5389,20 +6000,55 @@ export default function Dashboard({ user, onLogout }) {
   const [pickup, setPickup] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [liveNewCount, setLiveNewCount] = useState(0);
+  const [liveAcceptedCount, setLiveAcceptedCount] = useState(0);
 
   const t = darkMode ? DARK : LIGHT;
+  const restId = user?.role === "owner" ? user?.main_rest : user?.rest_id;
 
-  const newCount = SAMPLE_ORDERS.filter((o) => o.status === "new").length;
-  const acceptedCount = SAMPLE_ORDERS.filter(
-    (o) => o.status === "accepted",
-  ).length;
+  // Live order counts for header badges
+  useEffect(() => {
+    if (!restId) return;
+    const fetchCounts = async () => {
+      const { data } = await supabase
+        .from("Orders")
+        .select("id, status")
+        .eq("rest_id", restId)
+        .in("status", ["pending", "accepted", "preparing", "on_the_way"]);
+      const rows = data || [];
+      setLiveNewCount(rows.filter((o) => o.status === "pending").length);
+      setLiveAcceptedCount(
+        rows.filter((o) =>
+          ["accepted", "preparing", "on_the_way"].includes(o.status),
+        ).length,
+      );
+    };
+    fetchCounts();
+    const ch = supabase
+      .channel(`dash-counts-${restId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "Orders",
+          filter: `rest_id=eq.${restId}`,
+        },
+        fetchCounts,
+      )
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [restId]);
+
+  const newCount = liveNewCount;
+  const acceptedCount = liveAcceptedCount;
 
   const renderPage = () => {
     switch (activeNav) {
       case "home":
         return <HomePage t={t} />;
       case "orders":
-        return <OrdersPage t={t} />;
+        return <OrdersPage t={t} user={user} />;
       case "menu":
         return <MenuPage t={t} user={user} />;
       default:
