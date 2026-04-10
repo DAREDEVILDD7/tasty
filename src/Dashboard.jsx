@@ -1115,40 +1115,20 @@ const fmtKD = (n) => `KD ${Number(n || 0).toFixed(3)}`;
 const fmtDate = (ts) => {
   if (!ts) return "—";
   const d = new Date(ts);
-  return d.toLocaleString("en-KW", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return d.toLocaleString("en-KW", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 };
 const STATUS_META = {
-  pending: { label: "New", color: "#C4711A", bg: "rgba(196,113,26,0.1)" },
-  accepted: { label: "Accepted", color: "#2563EB", bg: "rgba(37,99,235,0.08)" },
-  preparing: {
-    label: "Preparing",
-    color: "#7C3AED",
-    bg: "rgba(124,58,237,0.08)",
-  },
-  on_the_way: {
-    label: "Out for Delivery",
-    color: "#2D7A4F",
-    bg: "rgba(45,122,79,0.08)",
-  },
-  delivered: {
-    label: "Delivered",
-    color: "#2D7A4F",
-    bg: "rgba(45,122,79,0.08)",
-  },
-  rejected: { label: "Rejected", color: "#B83232", bg: "rgba(184,50,50,0.08)" },
+  pending:    { label: "New",          color: "#C4711A", bg: "rgba(196,113,26,0.1)" },
+  accepted:   { label: "Accepted",     color: "#2563EB", bg: "rgba(37,99,235,0.08)" },
+  preparing:  { label: "Preparing",    color: "#7C3AED", bg: "rgba(124,58,237,0.08)" },
+  on_the_way: { label: "Out for Delivery", color: "#2D7A4F", bg: "rgba(45,122,79,0.08)" },
+  delivered:  { label: "Delivered",    color: "#2D7A4F", bg: "rgba(45,122,79,0.08)" },
+  rejected:   { label: "Rejected",     color: "#B83232", bg: "rgba(184,50,50,0.08)" },
 };
 
 // ─── Invoice Generator (opens print dialog with styled HTML) ─────────────────
 function printInvoice(order, items, restaurant) {
-  const rows = (items || [])
-    .map(
-      (it) => `
+  const rows = (items || []).map((it) => `
     <tr>
       <td style="padding:8px 12px;color:#555;font-size:13px">${it.quantity}×</td>
       <td style="padding:8px 12px;font-size:13px">
@@ -1158,9 +1138,7 @@ function printInvoice(order, items, restaurant) {
       </td>
       <td style="padding:8px 12px;text-align:right;font-weight:600;font-size:13px">KD ${Number(it.unit_price).toFixed(3)}</td>
       <td style="padding:8px 12px;text-align:right;font-weight:700;font-size:13px">KD ${Number(it.subtotal).toFixed(3)}</td>
-    </tr>`,
-    )
-    .join("");
+    </tr>`).join("");
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Invoice #${order.id}</title>
@@ -1216,6 +1194,7 @@ function printInvoice(order, items, restaurant) {
     </div>
     ${order.delivery_rider_name ? `<div><div class="label">Delivery rider</div><div class="value">${order.delivery_rider_name}</div><div style="font-size:13px;color:#555;margin-top:2px">${order.delivery_rider_phone || ""}</div></div>` : ""}
     ${order.notes ? `<div style="grid-column:1/-1"><div class="label">Order notes</div><div style="font-size:13px;color:#555;font-style:italic">${order.notes}</div></div>` : ""}
+    ${order.deliveryAddress ? `<div style="grid-column:1/-1"><div class="label">Delivery address</div><div style="font-size:13px;color:#555">${order.deliveryAddress}</div></div>` : ""}
   </div>
   <hr class="divider">
   <table>
@@ -1231,10 +1210,7 @@ function printInvoice(order, items, restaurant) {
   </body></html>`;
 
   const w = window.open("", "_blank");
-  if (w) {
-    w.document.write(html);
-    w.document.close();
-  }
+  if (w) { w.document.write(html); w.document.close(); }
 }
 
 // ─── OrdersPage (full real-data implementation) ───────────────────────────────
@@ -1245,49 +1221,29 @@ function OrdersPage({ t, user }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState(null);
-  const [orderTab, setOrderTab] = useState("pending"); // pending | accepted | preparing | on_the_way | history
+  const [orderTab, setOrderTab] = useState("pending");
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [orderItems, setOrderItems] = useState([]); // items for selected order
+  const [orderItems, setOrderItems] = useState([]);
   const [itemsLoading, setItemsLoading] = useState(false);
-  const [mobileView, setMobileView] = useState("list"); // list | detail
+  const [deliveryAddr, setDeliveryAddr] = useState(null); // fetched separately
+  const [mobileView, setMobileView] = useState("list");
 
   // Action modals
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [rejectCustom, setRejectCustom] = useState("");
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [riders, setRiders] = useState([]);
-  const [selectedRider, setSelectedRider] = useState(null);
-  const [riderDirect, setRiderDirect] = useState({ name: "", phone: "" });
-  const [orderNote, setOrderNote] = useState("");
-  const [showAddRider, setShowAddRider] = useState(false);
-  const [newRider, setNewRider] = useState({ name: "", phone: "" });
   const [actionLoading, setActionLoading] = useState(false);
   const [actionErr, setActionErr] = useState("");
 
-  const REJECT_REASONS = [
-    "Item(s) unavailable",
-    "Restaurant is closed",
-    "Outside delivery zone",
-    "Order too large to fulfill",
-    "Customer unreachable",
-    "Other",
-  ];
-
   // ── Fetch orders ───────────────────────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
-    if (!restId) {
-      setLoading(false);
-      setLoadErr("No restaurant linked.");
-      return;
-    }
+    if (!restId) { setLoading(false); setLoadErr("No restaurant linked."); return; }
     try {
       const { data, error } = await supabase
         .from("Orders")
-        .select(
-          `id, status, total_amount, payment_method, payment_status, notes, created_at,
-                 cust_id, Customer(cust_name, ph_num)`,
-        )
+        .select(`id, status, total_amount, payment_method, payment_status, notes, created_at,
+                 delivery_rider_name, delivery_rider_phone,
+                 cust_id, Customer(id, cust_name, ph_num)`)
         .eq("rest_id", restId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -1298,6 +1254,25 @@ function OrdersPage({ t, user }) {
       setLoading(false);
     }
   }, [restId]);
+
+  // ── Fetch delivery address for selected order's customer ───────────────────
+  const fetchDeliveryAddr = useCallback(async (custId) => {
+    setDeliveryAddr(null);
+    if (!custId) return;
+    try {
+      // Get the default (first) address for this customer
+      const { data } = await supabase
+        .from("Customer_Address")
+        .select("id, label, street, block, bldg_name, apartment_no, floor, landmark, latitude, longitude, map_snapshot_url")
+        .eq("cust_id", custId)
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      setDeliveryAddr(data || null);
+    } catch (e) {
+      console.error("[fetchDeliveryAddr]", e);
+    }
+  }, []);
 
   // ── Fetch riders ───────────────────────────────────────────────────────────
   const fetchRiders = useCallback(async () => {
@@ -1317,28 +1292,22 @@ function OrdersPage({ t, user }) {
     try {
       const { data: items, error } = await supabase
         .from("Order_Items")
-        .select(
-          `id, menu_id, quantity, unit_price, subtotal, item_note, Menu(name)`,
-        )
+        .select(`id, menu_id, quantity, unit_price, subtotal, item_note, Menu(name)`)
         .eq("order_id", orderId);
       if (error) throw error;
 
       // Fetch variant option names for each item
-      const enriched = await Promise.all(
-        (items || []).map(async (it) => {
-          const { data: vars } = await supabase
-            .from("Order_Item_Variants")
-            .select(`variant_opt_id, price_adj, "Variant Options"(name)`)
-            .eq("order_item_id", it.id);
-          return {
-            ...it,
-            menu_name: it.Menu?.name || "—",
-            variants: (vars || [])
-              .map((v) => v["Variant Options"]?.name)
-              .filter(Boolean),
-          };
-        }),
-      );
+      const enriched = await Promise.all((items || []).map(async (it) => {
+        const { data: vars } = await supabase
+          .from("Order_Item_Variants")
+          .select(`variant_opt_id, price_adj, "Variant Options"(name)`)
+          .eq("order_item_id", it.id);
+        return {
+          ...it,
+          menu_name: it.Menu?.name || "—",
+          variants: (vars || []).map((v) => v["Variant Options"]?.name).filter(Boolean),
+        };
+      }));
       setOrderItems(enriched);
     } catch (e) {
       console.error("[fetchOrderItems]", e);
@@ -1356,45 +1325,35 @@ function OrdersPage({ t, user }) {
 
     const channel = supabase
       .channel(`orders-rest-${restId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "Orders",
-          filter: `rest_id=eq.${restId}`,
-        },
-        async (payload) => {
-          if (payload.eventType === "INSERT") {
-            // Fetch with Customer join
-            const { data } = await supabase
-              .from("Orders")
-              .select(
-                `id, status, total_amount, payment_method, payment_status, notes, created_at, cust_id, Customer(cust_name, ph_num)`,
-              )
-              .eq("id", payload.new.id)
-              .single();
-            if (data) setOrders((prev) => [data, ...prev]);
-          } else if (payload.eventType === "UPDATE") {
-            setOrders((prev) =>
-              prev.map((o) =>
-                o.id === payload.new.id ? { ...o, ...payload.new } : o,
-              ),
-            );
-            // If this is the selected order, update it too
-            setSelectedOrder((prev) =>
-              prev?.id === payload.new.id ? { ...prev, ...payload.new } : prev,
-            );
-          } else if (payload.eventType === "DELETE") {
-            setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
-          }
-        },
-      )
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "Orders",
+        filter: `rest_id=eq.${restId}`,
+      }, async (payload) => {
+        if (payload.eventType === "INSERT") {
+          // Fetch with simple Customer join (no nested address)
+          const { data } = await supabase
+            .from("Orders")
+            .select(`id, status, total_amount, payment_method, payment_status, notes, created_at, delivery_rider_name, delivery_rider_phone, cust_id, Customer(id, cust_name, ph_num)`)
+            .eq("id", payload.new.id)
+            .single();
+          if (data) setOrders((prev) => [data, ...prev]);
+        } else if (payload.eventType === "UPDATE") {
+          setOrders((prev) => prev.map((o) =>
+            o.id === payload.new.id ? { ...o, ...payload.new } : o
+          ));
+          // If this is the selected order, update it too
+          setSelectedOrder((prev) =>
+            prev?.id === payload.new.id ? { ...prev, ...payload.new } : prev
+          );
+        } else if (payload.eventType === "DELETE") {
+          setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
+        }
+      })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [restId, fetchOrders, fetchRiders]);
 
   // ── Select order ───────────────────────────────────────────────────────────
@@ -1402,45 +1361,34 @@ function OrdersPage({ t, user }) {
     setSelectedOrder(order);
     setMobileView("detail");
     fetchOrderItems(order.id);
+    fetchDeliveryAddr(order.cust_id);
     setActionErr("");
   };
 
   // ── Computed order lists ───────────────────────────────────────────────────
   const byStatus = {
-    pending: orders.filter((o) => o.status === "pending"),
-    accepted: orders.filter((o) => o.status === "accepted"),
-    preparing: orders.filter((o) => o.status === "preparing"),
+    pending:    orders.filter((o) => o.status === "pending"),
+    accepted:   orders.filter((o) => o.status === "accepted"),
+    preparing:  orders.filter((o) => o.status === "preparing"),
     on_the_way: orders.filter((o) => o.status === "on_the_way"),
-    history: orders.filter((o) => ["delivered", "rejected"].includes(o.status)),
+    history:    orders.filter((o) => ["delivered", "rejected"].includes(o.status)),
   };
   const displayed = byStatus[orderTab] || [];
 
   // Count of active orders for header badge
-  const activeCount =
-    (byStatus.pending?.length || 0) +
-    (byStatus.accepted?.length || 0) +
-    (byStatus.preparing?.length || 0);
+  const activeCount = (byStatus.pending?.length || 0) + (byStatus.accepted?.length || 0) + (byStatus.preparing?.length || 0);
 
   // ── Status update helper ───────────────────────────────────────────────────
   const updateStatus = async (orderId, newStatus, extraFields = {}) => {
-    setActionLoading(true);
-    setActionErr("");
+    setActionLoading(true); setActionErr("");
     try {
       const { error } = await supabase
         .from("Orders")
         .update({ status: newStatus, ...extraFields })
         .eq("id", orderId);
       if (error) throw error;
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === orderId ? { ...o, status: newStatus, ...extraFields } : o,
-        ),
-      );
-      setSelectedOrder((prev) =>
-        prev?.id === orderId
-          ? { ...prev, status: newStatus, ...extraFields }
-          : prev,
-      );
+      setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus, ...extraFields } : o));
+      setSelectedOrder((prev) => prev?.id === orderId ? { ...prev, status: newStatus, ...extraFields } : prev);
     } catch (e) {
       setActionErr(e.message || "Action failed.");
     } finally {
@@ -1455,73 +1403,10 @@ function OrdersPage({ t, user }) {
   const handlePreparing = () => updateStatus(selectedOrder.id, "preparing");
 
   // ── Reject order ───────────────────────────────────────────────────────────
-  const handleReject = async () => {
-    const reason =
-      rejectReason === "Other" ? rejectCustom.trim() : rejectReason;
-    if (!reason) {
-      setActionErr("Please select or enter a rejection reason.");
-      return;
-    }
-    await updateStatus(selectedOrder.id, "rejected", { notes: reason });
-    setShowRejectModal(false);
-    setRejectReason("");
-    setRejectCustom("");
-  };
-
-  // ── Save new rider ─────────────────────────────────────────────────────────
-  const handleSaveRider = async () => {
-    if (!newRider.name.trim() || !newRider.phone.trim()) {
-      setActionErr("Rider name and phone are required.");
-      return;
-    }
-    setActionLoading(true);
-    setActionErr("");
-    try {
-      const { data, error } = await supabase
-        .from("Delivery_Riders")
-        .insert({
-          rest_id: restId,
-          name: newRider.name.trim(),
-          phone: newRider.phone.trim(),
-          active: true,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      setRiders((prev) => [...prev, data]);
-      setSelectedRider(data);
-      setNewRider({ name: "", phone: "" });
-      setShowAddRider(false);
-    } catch (e) {
-      setActionErr(e.message || "Failed to save rider.");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  // (handled inside RejectOrderModal)
 
   // ── Send for delivery ──────────────────────────────────────────────────────
-  const handleSendDelivery = async () => {
-    const riderName = selectedRider
-      ? selectedRider.name
-      : riderDirect.name.trim();
-    const riderPhone = selectedRider
-      ? selectedRider.phone
-      : riderDirect.phone.trim();
-    if (!riderName) {
-      setActionErr("Please select or enter a delivery rider.");
-      return;
-    }
-
-    await updateStatus(selectedOrder.id, "on_the_way", {
-      notes: orderNote || selectedOrder.notes || "",
-      delivery_rider_name: riderName,
-      delivery_rider_phone: riderPhone,
-    });
-    setShowDeliveryModal(false);
-    setSelectedRider(null);
-    setRiderDirect({ name: "", phone: "" });
-    setOrderNote("");
-  };
+  // (handled inside DeliveryAssignModal)
 
   // ── Mark delivered ─────────────────────────────────────────────────────────
   const handleDelivered = () => updateStatus(selectedOrder.id, "delivered");
@@ -1543,49 +1428,20 @@ function OrdersPage({ t, user }) {
         className="rounded-xl p-3.5 transition-all duration-150 hover:shadow-sm active:scale-[0.98]"
       >
         <div className="flex items-center justify-between mb-1.5">
-          <span
-            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-            className="text-xs"
-          >
+          <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">
             #{order.id}
           </span>
-          <span
-            style={{
-              background: meta.bg,
-              color: meta.color,
-              fontFamily: "'Lato', sans-serif",
-            }}
-            className="text-xs font-bold px-2 py-0.5 rounded-full"
-          >
+          <span style={{ background: meta.bg, color: meta.color, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold px-2 py-0.5 rounded-full">
             {meta.label}
           </span>
         </div>
-        <p
-          style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-          className="text-sm font-semibold truncate"
-        >
-          {custName}
-        </p>
+        <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold truncate">{custName}</p>
         <div className="flex justify-between mt-1">
-          <p
-            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-            className="text-xs"
-          >
-            {fmtDate(order.created_at)}
-          </p>
-          <p
-            style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-            className="text-xs font-bold"
-          >
-            {fmtKD(order.total_amount)}
-          </p>
+          <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{fmtDate(order.created_at)}</p>
+          <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold">{fmtKD(order.total_amount)}</p>
         </div>
-        <p
-          style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-          className="text-xs mt-0.5"
-        >
-          {order.payment_method}
-        </p>
+        <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs mt-0.5">{order.payment_method}</p>
       </button>
     );
   };
@@ -1603,432 +1459,206 @@ function OrdersPage({ t, user }) {
     const isClosed = ["delivered", "rejected"].includes(selectedOrder.status);
 
     return (
-      <div
-        style={{ background: t.surface, border: `1px solid ${t.border}` }}
-        className="flex-1 flex flex-col rounded-xl overflow-hidden min-w-0"
-      >
+      <div style={{ background: t.surface, border: `1px solid ${t.border}` }}
+        className="flex-1 flex flex-col rounded-xl overflow-hidden min-w-0">
         {/* Header */}
-        <div
-          style={{ borderBottom: `1px solid ${t.border}` }}
-          className="px-5 pt-4 pb-3 flex items-center gap-3 flex-shrink-0"
-        >
-          <button
-            onClick={() => setMobileView("list")}
-            style={{
-              color: t.accent,
-              background: t.accentBg,
-              border: `1px solid ${t.accentBorder}`,
-            }}
-            className="lg:hidden flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
-          >
-            ←
-          </button>
+        <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 pt-4 pb-3 flex items-center gap-3 flex-shrink-0">
+          <button onClick={() => setMobileView("list")}
+            style={{ color: t.accent, background: t.accentBg, border: `1px solid ${t.accentBorder}` }}
+            className="lg:hidden flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold">←</button>
           <div className="flex-1 min-w-0">
-            <h2
-              style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                color: t.text,
-              }}
-              className="text-xl font-bold"
-            >
+            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-xl font-bold">
               Order #{selectedOrder.id}
             </h2>
-            <p
-              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-              className="text-xs"
-            >
-              {fmtDate(selectedOrder.created_at)}
-            </p>
+            <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{fmtDate(selectedOrder.created_at)}</p>
           </div>
-          <span
-            style={{
-              background: meta.bg,
-              color: meta.color,
-              fontFamily: "'Lato', sans-serif",
-            }}
-            className="text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0"
-          >
-            {meta.label}
-          </span>
+          <span style={{ background: meta.bg, color: meta.color, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0">{meta.label}</span>
           {/* Print invoice */}
           <button
-            onClick={() =>
-              printInvoice(
-                {
-                  ...selectedOrder,
-                  cust_name: custName,
-                  cust_phone: custPhone,
-                },
-                orderItems,
-                null,
-              )
-            }
-            style={{
-              color: t.subtle,
-              background: t.surface2,
-              border: `1px solid ${t.border2}`,
-            }}
+            onClick={() => printInvoice(
+              { ...selectedOrder, cust_name: custName, cust_phone: custPhone },
+              orderItems,
+              null
+            )}
+            style={{ color: t.subtle, background: t.surface2, border: `1px solid ${t.border2}` }}
             className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm hover:opacity-70 transition-opacity"
-            title="Download invoice"
-          >
-            🧾
-          </button>
+            title="Download invoice">🧾</button>
         </div>
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto">
           {/* Customer info */}
-          <div
-            style={{ borderBottom: `1px solid ${t.border}` }}
-            className="px-5 py-4 flex items-center gap-3"
-          >
-            <div
-              style={{
-                background: t.accentBg,
-                border: `1px solid ${t.accentBorder}`,
-                color: t.accent,
-              }}
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
-            >
+          <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4 flex items-center gap-3">
+            <div style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
               {custName[0].toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p
-                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                className="text-sm font-semibold"
-              >
-                {custName}
-              </p>
-              <p
-                style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                className="text-xs"
-              >
-                {custPhone}
-              </p>
+              <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{custName}</p>
+              <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{custPhone}</p>
             </div>
             {custPhone !== "—" && (
-              <a
-                href={`https://wa.me/${custPhone.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  color: "#25D366",
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
-                }}
-                className="ml-auto flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm hover:opacity-70 transition-opacity"
-              >
-                💬
-              </a>
+              <a href={`https://wa.me/${custPhone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
+                style={{ color: "#25D366", background: "#f0fdf4", border: "1px solid #bbf7d0" }}
+                className="ml-auto flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm hover:opacity-70 transition-opacity">💬</a>
             )}
           </div>
 
           {/* Bill summary */}
-          <div
-            style={{ borderBottom: `1px solid ${t.border}` }}
-            className="px-5 py-3 space-y-1"
-          >
+          <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-3 space-y-1">
             <div className="flex justify-between text-sm">
-              <span
-                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-              >
-                Payment
-              </span>
-              <span
-                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                className="font-semibold"
-              >
-                {selectedOrder.payment_method}
-              </span>
+              <span style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}>Payment</span>
+              <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="font-semibold">{selectedOrder.payment_method}</span>
             </div>
-            <div
-              className="flex justify-between text-sm pt-1"
-              style={{ borderTop: `1px solid ${t.border}` }}
-            >
-              <span
-                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                className="font-bold"
-              >
-                Total
-              </span>
-              <span
-                style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-                className="font-bold"
-              >
-                {fmtKD(selectedOrder.total_amount)}
-              </span>
+            <div className="flex justify-between text-sm pt-1" style={{ borderTop: `1px solid ${t.border}` }}>
+              <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="font-bold">Total</span>
+              <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="font-bold">{fmtKD(selectedOrder.total_amount)}</span>
             </div>
           </div>
 
           {/* Items table */}
           <div style={{ borderBottom: `1px solid ${t.border}` }}>
             <div className="grid grid-cols-12 px-5 py-2">
-              {[
-                ["Qty", "col-span-2"],
-                ["Items", "col-span-7"],
-                ["KD", "col-span-3 text-right"],
-              ].map(([l, c]) => (
-                <span
-                  key={l}
-                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                  className={`${c} text-xs font-bold tracking-widest uppercase`}
-                >
-                  {l}
-                </span>
+              {[["Qty","col-span-2"],["Items","col-span-7"],["KD","col-span-3 text-right"]].map(([l,c]) => (
+                <span key={l} style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className={`${c} text-xs font-bold tracking-widest uppercase`}>{l}</span>
               ))}
             </div>
             {itemsLoading ? (
-              <div className="px-5 py-4">
-                <p
-                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm"
-                >
-                  Loading items…
-                </p>
-              </div>
+              <div className="px-5 py-4"><p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">Loading items…</p></div>
             ) : orderItems.length === 0 ? (
-              <div className="px-5 py-4">
-                <p
-                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm italic"
-                >
-                  No items found
-                </p>
-              </div>
-            ) : (
-              orderItems.map((it, i) => (
-                <div
-                  key={i}
-                  style={{ borderTop: `1px solid ${t.border}` }}
-                  className="grid grid-cols-12 px-5 py-3"
-                >
-                  <div className="col-span-2">
-                    <span
-                      style={{
-                        color: t.accent,
-                        fontFamily: "'Lato', sans-serif",
-                      }}
-                      className="text-sm font-bold"
-                    >
-                      {it.quantity}×
-                    </span>
-                  </div>
-                  <div className="col-span-7">
-                    <p
-                      style={{
-                        color: t.text,
-                        fontFamily: "'Lato', sans-serif",
-                      }}
-                      className="text-sm font-semibold"
-                    >
-                      {it.menu_name}
-                    </p>
-                    {it.variants?.map((v, vi) => (
-                      <p
-                        key={vi}
-                        style={{
-                          color: t.accent,
-                          fontFamily: "'Lato', sans-serif",
-                        }}
-                        className="text-xs mt-0.5"
-                      >
-                        · {v}
-                      </p>
-                    ))}
-                    {it.item_note && (
-                      <p
-                        style={{
-                          color: t.muted,
-                          fontFamily: "'Lato', sans-serif",
-                        }}
-                        className="text-xs mt-0.5 italic"
-                      >
-                        📝 {it.item_note}
-                      </p>
-                    )}
-                  </div>
-                  <div className="col-span-3 text-right">
-                    <span
-                      style={{
-                        color: t.text,
-                        fontFamily: "'Lato', sans-serif",
-                      }}
-                      className="text-sm font-semibold"
-                    >
-                      {Number(it.unit_price).toFixed(3)}
-                    </span>
-                  </div>
+              <div className="px-5 py-4"><p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm italic">No items found</p></div>
+            ) : orderItems.map((it, i) => (
+              <div key={i} style={{ borderTop: `1px solid ${t.border}` }} className="grid grid-cols-12 px-5 py-3">
+                <div className="col-span-2">
+                  <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold">{it.quantity}×</span>
                 </div>
-              ))
-            )}
+                <div className="col-span-7">
+                  <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{it.menu_name}</p>
+                  {it.variants?.map((v, vi) => (
+                    <p key={vi} style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs mt-0.5">· {v}</p>
+                  ))}
+                  {it.item_note && (
+                    <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs mt-0.5 italic">📝 {it.item_note}</p>
+                  )}
+                </div>
+                <div className="col-span-3 text-right">
+                  <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{Number(it.unit_price).toFixed(3)}</span>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Notes */}
           {selectedOrder.notes && (
-            <div
-              style={{ borderBottom: `1px solid ${t.border}` }}
-              className="px-5 py-3"
-            >
-              <p
-                style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-                className="text-xs font-bold tracking-widest uppercase mb-1"
-              >
-                Order Notes
-              </p>
-              <p
-                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-                className="text-sm italic"
-              >
-                {selectedOrder.notes}
-              </p>
+            <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-3">
+              <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-1">Order Notes</p>
+              <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm italic">{selectedOrder.notes}</p>
             </div>
           )}
 
-          {/* Delivery rider info if on the way */}
-          {selectedOrder.delivery_rider_name && (
-            <div
-              style={{
-                borderBottom: `1px solid ${t.border}`,
-                background: t.greenBg,
-              }}
-              className="px-5 py-3"
-            >
-              <p
-                style={{ color: t.green, fontFamily: "'Lato', sans-serif" }}
-                className="text-xs font-bold tracking-widest uppercase mb-1"
-              >
-                Delivery Rider
-              </p>
-              <p
-                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                className="text-sm font-semibold"
-              >
-                {selectedOrder.delivery_rider_name}
-              </p>
+          {/* Delivery rider info */}
+          {(selectedOrder.delivery_rider_name) && (
+            <div style={{ borderBottom: `1px solid ${t.border}`, background: t.greenBg }} className="px-5 py-3">
+              <p style={{ color: t.green, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-1">Delivery Rider</p>
+              <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{selectedOrder.delivery_rider_name}</p>
               {selectedOrder.delivery_rider_phone && (
-                <p
-                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                  className="text-xs"
-                >
-                  {selectedOrder.delivery_rider_phone}
-                </p>
+                <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{selectedOrder.delivery_rider_phone}</p>
               )}
             </div>
           )}
 
+          {/* Delivery address — fetched separately for reliability */}
+          {(() => {
+            const addr = deliveryAddr;
+            if (!addr) return null;
+            const addrLine = [
+              addr.apartment_no && `Apt ${addr.apartment_no}`,
+              addr.floor && `Floor ${addr.floor}`,
+              addr.bldg_name,
+              addr.street,
+              addr.block,
+              addr.landmark,
+            ].filter(Boolean).join(", ");
+            return (
+              <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-3">
+                <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-2">
+                  📍 Delivery Address
+                </p>
+                <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold mb-0.5">{addr.label || "Home"}</p>
+                <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm leading-relaxed">{addrLine || "No address details"}</p>
+                {addr.latitude && addr.longitude && (
+                  <a
+                    href={`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: t.accent, fontFamily: "'Lato', sans-serif", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6, fontSize: 12, fontWeight: 600 }}
+                  >
+                    🗺️ Open in Google Maps ↗
+                  </a>
+                )}
+                {addr.latitude && addr.longitude && (
+                  <iframe
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${addr.longitude - 0.005},${addr.latitude - 0.004},${addr.longitude + 0.005},${addr.latitude + 0.004}&layer=mapnik&marker=${addr.latitude},${addr.longitude}`}
+                    title="delivery location"
+                    style={{ width: "100%", height: 130, border: `1px solid ${t.border}`, borderRadius: 8, marginTop: 8, display: "block", pointerEvents: "none" }}
+                    scrolling="no"
+                  />
+                )}
+              </div>
+            );
+          })()}
+
           {/* Error */}
           {actionErr && (
-            <div
-              className="mx-5 my-3 px-4 py-3 rounded-lg"
-              style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}
-            >
-              <p
-                style={{ color: "#B83232", fontFamily: "'Lato', sans-serif" }}
-                className="text-sm"
-              >
-                ⚠️ {actionErr}
-              </p>
+            <div className="mx-5 my-3 px-4 py-3 rounded-lg" style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}>
+              <p style={{ color: "#B83232", fontFamily: "'Lato', sans-serif" }} className="text-sm">⚠️ {actionErr}</p>
             </div>
           )}
         </div>
 
         {/* Action footer */}
         {!isClosed && (
-          <div
-            style={{ borderTop: `1px solid ${t.border}` }}
-            className="px-5 py-4 flex gap-2.5 flex-shrink-0 flex-wrap"
-          >
+          <div style={{ borderTop: `1px solid ${t.border}` }} className="px-5 py-4 flex gap-2.5 flex-shrink-0 flex-wrap">
             {isPending && (
               <>
-                <button
-                  onClick={() => {
-                    setActionErr("");
-                    setShowRejectModal(true);
-                  }}
-                  style={{
-                    border: `1px solid ${t.red}`,
-                    color: t.red,
-                    fontFamily: "'Lato', sans-serif",
-                  }}
-                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
-                >
+                <button onClick={() => { setActionErr(""); setShowRejectModal(true); }}
+                  style={{ border: `1px solid ${t.red}`, color: t.red, fontFamily: "'Lato', sans-serif" }}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all">
                   ✕ Reject
                 </button>
-                <button
-                  onClick={handleAccept}
-                  disabled={actionLoading}
-                  style={{
-                    background: t.accent,
-                    color: "#fff",
-                    fontFamily: "'Lato', sans-serif",
-                    opacity: actionLoading ? 0.7 : 1,
-                  }}
-                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
-                >
+                <button onClick={handleAccept} disabled={actionLoading}
+                  style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: actionLoading ? 0.7 : 1 }}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
                   {actionLoading ? "…" : "✓ Accept"}
                 </button>
               </>
             )}
             {isAccepted && (
               <>
-                <button
-                  onClick={() => {
-                    setActionErr("");
-                    setShowRejectModal(true);
-                  }}
-                  style={{
-                    border: `1px solid ${t.red}`,
-                    color: t.red,
-                    fontFamily: "'Lato', sans-serif",
-                  }}
-                  className="flex-1 min-w-[80px] py-2.5 rounded-lg text-xs font-semibold hover:opacity-80 active:scale-95 transition-all"
-                >
+                <button onClick={() => { setActionErr(""); setShowRejectModal(true); }}
+                  style={{ border: `1px solid ${t.red}`, color: t.red, fontFamily: "'Lato', sans-serif" }}
+                  className="flex-1 min-w-[80px] py-2.5 rounded-lg text-xs font-semibold hover:opacity-80 active:scale-95 transition-all">
                   ✕ Reject
                 </button>
-                <button
-                  onClick={handlePreparing}
-                  disabled={actionLoading}
-                  style={{
-                    background: "#7C3AED",
-                    color: "#fff",
-                    fontFamily: "'Lato', sans-serif",
-                    opacity: actionLoading ? 0.7 : 1,
-                  }}
-                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
-                >
+                <button onClick={handlePreparing} disabled={actionLoading}
+                  style={{ background: "#7C3AED", color: "#fff", fontFamily: "'Lato', sans-serif", opacity: actionLoading ? 0.7 : 1 }}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
                   {actionLoading ? "…" : "👨‍🍳 Preparing"}
                 </button>
               </>
             )}
             {isPreparing && (
-              <button
-                onClick={() => {
-                  setActionErr("");
-                  setShowDeliveryModal(true);
-                  fetchRiders();
-                }}
-                style={{
-                  background: t.green,
-                  color: "#fff",
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
-              >
+              <button onClick={() => { setActionErr(""); setShowDeliveryModal(true); fetchRiders(); }}
+                style={{ background: t.green, color: "#fff", fontFamily: "'Lato', sans-serif" }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
                 🛵 Send for Delivery
               </button>
             )}
             {isOnWay && (
-              <button
-                onClick={handleDelivered}
-                disabled={actionLoading}
-                style={{
-                  background: t.green,
-                  color: "#fff",
-                  fontFamily: "'Lato', sans-serif",
-                  opacity: actionLoading ? 0.7 : 1,
-                }}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
-              >
+              <button onClick={handleDelivered} disabled={actionLoading}
+                style={{ background: t.green, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: actionLoading ? 0.7 : 1 }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
                 {actionLoading ? "…" : "✅ Mark Delivered"}
               </button>
             )}
@@ -2040,38 +1670,22 @@ function OrdersPage({ t, user }) {
 
   // ─── Tab strip with counts ──────────────────────────────────────────────────
   const TABS = [
-    { id: "pending", label: "New", color: t.accent },
-    { id: "accepted", label: "Accepted", color: "#2563EB" },
-    { id: "preparing", label: "Preparing", color: "#7C3AED" },
-    { id: "on_the_way", label: "On Way", color: t.green },
-    { id: "history", label: "History", color: t.muted },
+    { id: "pending",    label: "New",       color: t.accent },
+    { id: "accepted",   label: "Accepted",  color: "#2563EB" },
+    { id: "preparing",  label: "Preparing", color: "#7C3AED" },
+    { id: "on_the_way", label: "On Way",    color: t.green  },
+    { id: "history",    label: "History",   color: t.muted  },
   ];
 
   const TabStrip = () => (
-    <div
-      style={{ borderBottom: `1px solid ${t.border}` }}
-      className="flex overflow-x-auto scrollbar-none"
-    >
+    <div style={{ borderBottom: `1px solid ${t.border}` }} className="flex overflow-x-auto scrollbar-none">
       {TABS.map(({ id, label, color }) => (
-        <button
-          key={id}
-          onClick={() => setOrderTab(id)}
-          style={{
-            color: orderTab === id ? color : t.subtle,
-            borderBottomColor: orderTab === id ? color : "transparent",
-            fontFamily: "'Lato', sans-serif",
-            flexShrink: 0,
-          }}
-          className="flex items-center gap-1.5 px-4 py-3 text-xs font-bold tracking-wider uppercase border-b-2 transition-colors whitespace-nowrap"
-        >
+        <button key={id} onClick={() => setOrderTab(id)}
+          style={{ color: orderTab === id ? color : t.subtle, borderBottomColor: orderTab === id ? color : "transparent", fontFamily: "'Lato', sans-serif", flexShrink: 0 }}
+          className="flex items-center gap-1.5 px-4 py-3 text-xs font-bold tracking-wider uppercase border-b-2 transition-colors whitespace-nowrap">
           {label}
-          <span
-            style={{
-              background: orderTab === id ? color : t.surface2,
-              color: orderTab === id ? "#fff" : t.muted,
-            }}
-            className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
-          >
+          <span style={{ background: orderTab === id ? color : t.surface2, color: orderTab === id ? "#fff" : t.muted }}
+            className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
             {byStatus[id]?.length || 0}
           </span>
         </button>
@@ -2079,315 +1693,19 @@ function OrdersPage({ t, user }) {
     </div>
   );
 
-  // ─── Reject Modal ──────────────────────────────────────────────────────────
-  const RejectModal = () => (
-    <Modal
-      title="Reject Order"
-      onClose={() => {
-        setShowRejectModal(false);
-        setRejectReason("");
-        setRejectCustom("");
-        setActionErr("");
-      }}
-      t={t}
-    >
-      <p
-        style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-        className="text-sm mb-4"
-      >
-        Please select the reason for rejecting order #{selectedOrder?.id}. This
-        will be shown to the customer.
-      </p>
-      <div className="space-y-2 mb-4">
-        {REJECT_REASONS.map((r) => (
-          <button
-            key={r}
-            onClick={() => setRejectReason(r)}
-            style={{
-              background: rejectReason === r ? t.accentBg : t.surface2,
-              border: `1px solid ${rejectReason === r ? t.accentBorder : t.border2}`,
-              color: rejectReason === r ? t.accent : t.text,
-              fontFamily: "'Lato', sans-serif",
-            }}
-            className="w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all"
-          >
-            {r}
-          </button>
-        ))}
-      </div>
-      {rejectReason === "Other" && (
-        <div className="mb-4">
-          <label
-            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-            className="text-xs font-bold tracking-widest uppercase block mb-2"
-          >
-            Specify reason
-          </label>
-          <textarea
-            value={rejectCustom}
-            onChange={(e) => setRejectCustom(e.target.value)}
-            placeholder="Enter custom rejection reason…"
-            rows={3}
-            style={{
-              background: t.surface2,
-              border: `1px solid ${t.border2}`,
-              color: t.text,
-              fontFamily: "'Lato', sans-serif",
-              resize: "none",
-            }}
-            className="w-full rounded-lg px-4 py-3 text-sm outline-none"
-          />
-        </div>
-      )}
-      {actionErr && (
-        <p
-          style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
-          className="text-sm mb-3"
-        >
-          ⚠️ {actionErr}
-        </p>
-      )}
-      <button
-        onClick={handleReject}
-        disabled={actionLoading || !rejectReason}
-        style={{
-          background: t.red,
-          color: "#fff",
-          fontFamily: "'Lato', sans-serif",
-          opacity: !rejectReason ? 0.5 : 1,
-        }}
-        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
-      >
-        {actionLoading ? "Rejecting…" : "Confirm Rejection"}
-      </button>
-    </Modal>
-  );
-
-  // ─── Delivery Modal ────────────────────────────────────────────────────────
-  const DeliveryModal = () => (
-    <Modal
-      title="Send for Delivery"
-      onClose={() => {
-        setShowDeliveryModal(false);
-        setSelectedRider(null);
-        setRiderDirect({ name: "", phone: "" });
-        setActionErr("");
-      }}
-      t={t}
-    >
-      <p
-        style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-        className="text-sm mb-4"
-      >
-        Assign a delivery rider for order #{selectedOrder?.id}.
-      </p>
-
-      {/* Saved riders */}
-      {riders.length > 0 && (
-        <div className="mb-4">
-          <p
-            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-            className="text-xs font-bold tracking-widest uppercase mb-2"
-          >
-            Saved Riders
-          </p>
-          <div className="space-y-2">
-            {riders.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => {
-                  setSelectedRider(r);
-                  setRiderDirect({ name: "", phone: "" });
-                }}
-                style={{
-                  background:
-                    selectedRider?.id === r.id ? t.accentBg : t.surface2,
-                  border: `1px solid ${selectedRider?.id === r.id ? t.accentBorder : t.border2}`,
-                  color: t.text,
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="w-full text-left px-4 py-3 rounded-lg text-sm transition-all"
-              >
-                <span className="font-semibold">{r.name}</span>
-                <span style={{ color: t.muted }} className="text-xs ml-2">
-                  {r.phone}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Add new rider */}
-      {!showAddRider ? (
-        <button
-          onClick={() => {
-            setShowAddRider(true);
-            setSelectedRider(null);
-          }}
-          style={{
-            color: t.accent,
-            fontFamily: "'Lato', sans-serif",
-            border: `1px solid ${t.accentBorder}`,
-            background: t.accentBg,
-          }}
-          className="w-full py-2.5 rounded-lg text-sm font-semibold mb-4 hover:opacity-80 transition-opacity"
-        >
-          + Save new rider profile
-        </button>
-      ) : (
-        <div
-          style={{ background: t.surface2, border: `1px solid ${t.border2}` }}
-          className="rounded-xl p-4 mb-4 space-y-3"
-        >
-          <p
-            style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-            className="text-sm font-semibold"
-          >
-            New Rider Profile
-          </p>
-          <Field
-            label="Rider Name"
-            value={newRider.name}
-            onChange={(v) => setNewRider((p) => ({ ...p, name: v }))}
-            placeholder="e.g. Mohammed Ali"
-            t={t}
-          />
-          <Field
-            label="Phone Number"
-            value={newRider.phone}
-            onChange={(v) => setNewRider((p) => ({ ...p, phone: v }))}
-            placeholder="+965 XXXX XXXX"
-            t={t}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowAddRider(false)}
-              style={{
-                color: t.subtle,
-                border: `1px solid ${t.border2}`,
-                fontFamily: "'Lato', sans-serif",
-              }}
-              className="flex-1 py-2 rounded-lg text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveRider}
-              disabled={actionLoading}
-              style={{
-                background: t.accent,
-                color: "#fff",
-                fontFamily: "'Lato', sans-serif",
-              }}
-              className="flex-1 py-2 rounded-lg text-sm font-semibold"
-            >
-              {actionLoading ? "Saving…" : "Save & Select"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Or enter directly */}
-      <div style={{ borderTop: `1px solid ${t.border}` }} className="pt-4 mb-4">
-        <p
-          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-          className="text-xs font-bold tracking-widest uppercase mb-3"
-        >
-          Or Enter Directly (one-time)
-        </p>
-        <Field
-          label="Rider Name"
-          value={riderDirect.name}
-          onChange={(v) => {
-            setRiderDirect((p) => ({ ...p, name: v }));
-            setSelectedRider(null);
-          }}
-          placeholder="Name"
-          t={t}
-        />
-        <Field
-          label="Phone"
-          value={riderDirect.phone}
-          onChange={(v) => {
-            setRiderDirect((p) => ({ ...p, phone: v }));
-            setSelectedRider(null);
-          }}
-          placeholder="Phone"
-          t={t}
-        />
-      </div>
-
-      {/* Order note */}
-      <div className="mb-4">
-        <label
-          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-          className="text-xs font-bold tracking-widest uppercase block mb-2"
-        >
-          Note (optional)
-        </label>
-        <textarea
-          value={orderNote}
-          onChange={(e) => setOrderNote(e.target.value)}
-          placeholder="Any delivery instructions…"
-          rows={2}
-          style={{
-            background: t.surface2,
-            border: `1px solid ${t.border2}`,
-            color: t.text,
-            fontFamily: "'Lato', sans-serif",
-            resize: "none",
-          }}
-          className="w-full rounded-lg px-4 py-3 text-sm outline-none"
-        />
-      </div>
-
-      {actionErr && (
-        <p
-          style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
-          className="text-sm mb-3"
-        >
-          ⚠️ {actionErr}
-        </p>
-      )}
-      <button
-        onClick={handleSendDelivery}
-        disabled={actionLoading || (!selectedRider && !riderDirect.name.trim())}
-        style={{
-          background: t.green,
-          color: "#fff",
-          fontFamily: "'Lato', sans-serif",
-          opacity: !selectedRider && !riderDirect.name.trim() ? 0.5 : 1,
-        }}
-        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
-      >
-        {actionLoading ? "Sending…" : "🛵 Confirm — Send for Delivery"}
-      </button>
-    </Modal>
-  );
 
   // ─── Render ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p
-          style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-          className="text-sm"
-        >
-          Loading orders…
-        </p>
+        <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">Loading orders…</p>
       </div>
     );
   }
   if (loadErr) {
     return (
       <div className="flex-1 flex items-center justify-center px-6 text-center">
-        <p
-          style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
-          className="text-sm"
-        >
-          {loadErr}
-        </p>
+        <p style={{ color: t.red, fontFamily: "'Lato', sans-serif" }} className="text-sm">{loadErr}</p>
       </div>
     );
   }
@@ -2396,22 +1714,12 @@ function OrdersPage({ t, user }) {
     <div className="flex flex-col h-full">
       {/* Page header */}
       <div className="px-5 md:px-8 pt-6 pb-3 flex-shrink-0 flex items-center justify-between">
-        <h1
-          style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
-          className="text-3xl md:text-4xl font-bold tracking-tight"
-        >
+        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl md:text-4xl font-bold tracking-tight">
           Orders
         </h1>
         {activeCount > 0 && (
-          <span
-            style={{
-              background: t.accentBg,
-              color: t.accent,
-              border: `1px solid ${t.accentBorder}`,
-              fontFamily: "'Lato', sans-serif",
-            }}
-            className="text-xs font-bold px-3 py-1.5 rounded-full"
-          >
+          <span style={{ background: t.accentBg, color: t.accent, border: `1px solid ${t.accentBorder}`, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold px-3 py-1.5 rounded-full">
             {activeCount} active
           </span>
         )}
@@ -2420,42 +1728,22 @@ function OrdersPage({ t, user }) {
       {/* ── DESKTOP layout ── */}
       <div className="hidden lg:flex flex-1 overflow-hidden px-5 md:px-6 pb-6 gap-4">
         {/* Left: list */}
-        <div
-          style={{ background: t.surface, border: `1px solid ${t.border}` }}
-          className="w-72 flex-shrink-0 flex flex-col rounded-xl overflow-hidden"
-        >
+        <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="w-72 flex-shrink-0 flex flex-col rounded-xl overflow-hidden">
           <TabStrip />
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {displayed.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 gap-2">
                 <span className="text-3xl opacity-20">🍽️</span>
-                <p
-                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                  className="text-xs"
-                >
-                  No {orderTab} orders
-                </p>
+                <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">No {orderTab} orders</p>
               </div>
-            ) : (
-              displayed.map((o) => <OrderCard key={o.id} order={o} />)
-            )}
+            ) : displayed.map((o) => <OrderCard key={o.id} order={o} />)}
           </div>
         </div>
         {/* Right: detail */}
-        {selectedOrder ? (
-          <OrderDetail />
-        ) : (
-          <div
-            style={{ background: t.surface, border: `1px solid ${t.border}` }}
-            className="flex-1 flex flex-col items-center justify-center rounded-xl gap-3"
-          >
+        {selectedOrder ? <OrderDetail /> : (
+          <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="flex-1 flex flex-col items-center justify-center rounded-xl gap-3">
             <span className="text-5xl opacity-20">🍽️</span>
-            <p
-              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-              className="text-sm"
-            >
-              Select an order to view details
-            </p>
+            <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">Select an order to view details</p>
           </div>
         )}
       </div>
@@ -2463,44 +1751,284 @@ function OrdersPage({ t, user }) {
       {/* ── MOBILE layout ── */}
       <div className="lg:hidden flex-1 overflow-hidden relative">
         {/* List panel */}
-        <div
-          className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "list" ? "translate-x-0" : "-translate-x-full"}`}
-          style={{ background: t.bg }}
-        >
-          <div
-            style={{ background: t.surface, border: `1px solid ${t.border}` }}
-          >
+        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "list" ? "translate-x-0" : "-translate-x-full"}`}
+          style={{ background: t.bg }}>
+          <div style={{ background: t.surface, border: `1px solid ${t.border}` }}>
             <TabStrip />
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
             {displayed.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 gap-3">
                 <span className="text-4xl opacity-20">🍽️</span>
-                <p
-                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm"
-                >
-                  No {orderTab} orders
-                </p>
+                <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">No {orderTab} orders</p>
               </div>
-            ) : (
-              displayed.map((o) => <OrderCard key={o.id} order={o} />)
-            )}
+            ) : displayed.map((o) => <OrderCard key={o.id} order={o} />)}
           </div>
         </div>
         {/* Detail panel */}
-        <div
-          className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "detail" ? "translate-x-0" : "translate-x-full"}`}
-          style={{ background: t.bg }}
-        >
+        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "detail" ? "translate-x-0" : "translate-x-full"}`}
+          style={{ background: t.bg }}>
           {selectedOrder && <OrderDetail />}
         </div>
       </div>
 
-      {/* Modals */}
-      {showRejectModal && selectedOrder && <RejectModal />}
-      {showDeliveryModal && selectedOrder && <DeliveryModal />}
+      {/* Modals — extracted as top-level components to prevent focus loss on re-render */}
+      {showRejectModal && selectedOrder && (
+        <RejectOrderModal
+          t={t}
+          orderId={selectedOrder.id}
+          onClose={() => { setShowRejectModal(false); setActionErr(""); }}
+          onConfirm={async (reason) => {
+            await updateStatus(selectedOrder.id, "rejected", { notes: reason });
+            setShowRejectModal(false);
+          }}
+        />
+      )}
+      {showDeliveryModal && selectedOrder && (
+        <DeliveryAssignModal
+          t={t}
+          orderId={selectedOrder.id}
+          restId={restId}
+          riders={riders}
+          onRiderSaved={(r) => setRiders((prev) => [...prev, r])}
+          onClose={() => { setShowDeliveryModal(false); setActionErr(""); }}
+          onConfirm={async ({ riderName, riderPhone, note }) => {
+            await updateStatus(selectedOrder.id, "on_the_way", {
+              notes: note || selectedOrder.notes || "",
+              delivery_rider_name: riderName,
+              delivery_rider_phone: riderPhone,
+            });
+            setShowDeliveryModal(false);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── RejectOrderModal (top-level to preserve input focus) ─────────────────────
+const REJECT_REASONS_LIST = [
+  "Item(s) unavailable",
+  "Restaurant is closed",
+  "Outside delivery zone",
+  "Order too large to fulfill",
+  "Customer unreachable",
+  "Other",
+];
+
+function RejectOrderModal({ t, orderId, onClose, onConfirm }) {
+  const [reason, setReason] = useState("");
+  const [custom, setCustom] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const handleConfirm = async () => {
+    const final = reason === "Other" ? custom.trim() : reason;
+    if (!final) { setErr("Please select or enter a reason."); return; }
+    setLoading(true); setErr("");
+    try {
+      await onConfirm(final);
+    } catch (e) {
+      setErr(e.message || "Failed to reject order.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal title="Reject Order" onClose={onClose} t={t}>
+      <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-4">
+        Select a reason for rejecting order #{orderId}. This will be recorded.
+      </p>
+      <div className="space-y-2 mb-4">
+        {REJECT_REASONS_LIST.map((r) => (
+          <button key={r} onClick={() => setReason(r)}
+            style={{ background: reason === r ? t.accentBg : t.surface2, border: `1px solid ${reason === r ? t.accentBorder : t.border2}`, color: reason === r ? t.accent : t.text, fontFamily: "'Lato', sans-serif" }}
+            className="w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all">
+            {r}
+          </button>
+        ))}
+      </div>
+      {reason === "Other" && (
+        <div className="mb-4">
+          <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase block mb-2">Specify reason</label>
+          <textarea
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            placeholder="Enter rejection reason…"
+            rows={3}
+            autoFocus
+            style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif", resize: "none", width: "100%" }}
+            className="rounded-lg px-4 py-3 text-sm outline-none"
+          />
+        </div>
+      )}
+      {err && <p style={{ color: t.red, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-3">⚠️ {err}</p>}
+      <button onClick={handleConfirm} disabled={loading || !reason}
+        style={{ background: t.red, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: !reason ? 0.5 : 1 }}
+        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
+        {loading ? "Rejecting…" : "Confirm Rejection"}
+      </button>
+    </Modal>
+  );
+}
+
+// ─── DeliveryAssignModal (top-level to preserve input focus) ──────────────────
+function DeliveryAssignModal({ t, orderId, restId, riders, onRiderSaved, onClose, onConfirm }) {
+  const [selectedRider, setSelectedRider] = useState(null);
+  const [directName, setDirectName] = useState("");
+  const [directPhone, setDirectPhone] = useState("");
+  const [note, setNote] = useState("");
+  const [showAddRider, setShowAddRider] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const handleSaveRider = async () => {
+    if (!newName.trim() || !newPhone.trim()) { setErr("Rider name and phone are required."); return; }
+    setLoading(true); setErr("");
+    try {
+      const { data, error } = await supabase
+        .from("Delivery_Riders")
+        .insert({ rest_id: restId, name: newName.trim(), phone: newPhone.trim(), active: true })
+        .select().single();
+      if (error) throw error;
+      onRiderSaved(data);
+      setSelectedRider(data);
+      setNewName(""); setNewPhone(""); setShowAddRider(false);
+    } catch (e) {
+      setErr(e.message || "Failed to save rider.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    const riderName = selectedRider ? selectedRider.name : directName.trim();
+    const riderPhone = selectedRider ? selectedRider.phone : directPhone.trim();
+    if (!riderName) { setErr("Please select or enter a delivery rider."); return; }
+    setLoading(true); setErr("");
+    try {
+      await onConfirm({ riderName, riderPhone, note });
+    } catch (e) {
+      setErr(e.message || "Failed to send for delivery.");
+      setLoading(false);
+    }
+  };
+
+  const canSubmit = selectedRider || directName.trim().length > 0;
+
+  return (
+    <Modal title="Send for Delivery" onClose={onClose} t={t}>
+      <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-4">
+        Assign a delivery rider for order #{orderId}.
+      </p>
+
+      {/* Saved riders */}
+      {riders.length > 0 && (
+        <div className="mb-4">
+          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-2">Saved Riders</p>
+          <div className="space-y-2">
+            {riders.map((r) => (
+              <button key={r.id} onClick={() => { setSelectedRider(r); setDirectName(""); setDirectPhone(""); }}
+                style={{ background: selectedRider?.id === r.id ? t.accentBg : t.surface2, border: `1px solid ${selectedRider?.id === r.id ? t.accentBorder : t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm transition-all">
+                <span className="font-semibold">{r.name}</span>
+                <span style={{ color: t.muted }} className="text-xs ml-2">{r.phone}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Save new rider */}
+      {!showAddRider ? (
+        <button onClick={() => { setShowAddRider(true); setSelectedRider(null); }}
+          style={{ color: t.accent, border: `1px solid ${t.accentBorder}`, background: t.accentBg, fontFamily: "'Lato', sans-serif" }}
+          className="w-full py-2.5 rounded-lg text-sm font-semibold mb-4 hover:opacity-80 transition-opacity">
+          + Save new rider profile
+        </button>
+      ) : (
+        <div style={{ background: t.surface2, border: `1px solid ${t.border2}` }} className="rounded-xl p-4 mb-4">
+          <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold mb-3">New Rider Profile</p>
+          <div className="mb-3">
+            <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Rider Name</label>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="e.g. Mohammed Ali"
+              style={{ background: t.surface, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+              className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+            />
+          </div>
+          <div className="mb-3">
+            <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Phone Number</label>
+            <input
+              type="text"
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value)}
+              placeholder="+965 XXXX XXXX"
+              style={{ background: t.surface, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+              className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setShowAddRider(false)} style={{ color: t.subtle, border: `1px solid ${t.border2}`, fontFamily: "'Lato', sans-serif" }} className="flex-1 py-2 rounded-lg text-sm">Cancel</button>
+            <button onClick={handleSaveRider} disabled={loading} style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }} className="flex-1 py-2 rounded-lg text-sm font-semibold">
+              {loading ? "Saving…" : "Save & Select"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Direct entry */}
+      <div style={{ borderTop: `1px solid ${t.border}` }} className="pt-4 mb-4">
+        <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-3">Or Enter Directly (one-time)</p>
+        <div className="mb-3">
+          <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Rider Name</label>
+          <input
+            type="text"
+            value={directName}
+            onChange={(e) => { setDirectName(e.target.value); setSelectedRider(null); }}
+            placeholder="Name"
+            style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+            className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+          />
+        </div>
+        <div className="mb-3">
+          <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Phone</label>
+          <input
+            type="text"
+            value={directPhone}
+            onChange={(e) => { setDirectPhone(e.target.value); setSelectedRider(null); }}
+            placeholder="Phone number"
+            style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+            className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+          />
+        </div>
+      </div>
+
+      {/* Delivery note */}
+      <div className="mb-4">
+        <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Note (optional)</label>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Any delivery instructions…"
+          rows={2}
+          style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif", resize: "none", width: "100%" }}
+          className="rounded-lg px-4 py-3 text-sm outline-none"
+        />
+      </div>
+
+      {err && <p style={{ color: t.red, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-3">⚠️ {err}</p>}
+      <button onClick={handleConfirm} disabled={loading || !canSubmit}
+        style={{ background: t.green, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: !canSubmit ? 0.5 : 1 }}
+        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
+        {loading ? "Sending…" : "🛵 Confirm — Send for Delivery"}
+      </button>
+    </Modal>
   );
 }
 
@@ -2528,6 +2056,7 @@ function AddonItemRow({ addon, t, onEdit, onDelete }) {
             e.currentTarget.src = "/sides.jpg";
           }}
         />
+
       </div>
       <div className="flex-1 min-w-0">
         <p
@@ -2755,7 +2284,7 @@ function MenuPage({ t, user }) {
         const { data: items, error: itemErr } = await supabase
           .from("Menu")
           .select(
-            "id, name, price, is_available, visible, description, image_path, sort_order, categ_id, recommended, avail_from, avail_to, is_customizable",
+            "id, name, price, is_available, visible, description, image_path, sort_order, categ_id, avail_from, avail_to, is_customizable, is_popular",
           )
           .eq("rest_id", restId)
           .order("sort_order", { ascending: true });
@@ -2791,7 +2320,59 @@ function MenuPage({ t, user }) {
       }
     };
     fetchMenu();
-  }, [restId]);
+
+    // ── Real-time: Menu + Categories changes ─────────────────────────────────
+    const menuChannel = supabase
+      .channel(`menu-rt-${restId}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "Menu",
+        filter: `rest_id=eq.${restId}`,
+      }, (payload) => {
+        // Update matching item in local state without a full refetch
+        setCategories((prev) =>
+          prev.map((c) => ({
+            ...c,
+            items: c.items.map((it) =>
+              it.id === payload.new.id ? { ...it, ...payload.new } : it
+            ),
+          }))
+        );
+      })
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "Menu",
+        filter: `rest_id=eq.${restId}`,
+      }, () => {
+        // Full refetch on new item (need to rebuild category grouping)
+        fetchMenu();
+      })
+      .on("postgres_changes", {
+        event: "DELETE",
+        schema: "public",
+        table: "Menu",
+      }, (payload) => {
+        setCategories((prev) =>
+          prev.map((c) => ({
+            ...c,
+            items: c.items.filter((it) => it.id !== payload.old.id),
+          }))
+        );
+      })
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "Categories",
+        filter: `rest_id=eq.${restId}`,
+      }, () => {
+        fetchMenu();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(menuChannel); };
+  }, [restId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Drag refs ───────────────────────────────────────────────────────────────
   const dragCat = useRef(null);
@@ -3061,7 +2642,36 @@ function MenuPage({ t, user }) {
     }
   };
 
-  // ── Item is_available toggle → immediate DB (with time-window guard) ────────
+  // ── Item is_popular toggle → immediate DB ─────────────────────────────────
+  const toggleItemPopular = async (cid, iid) => {
+    const cat = categories.find((c) => c.id === cid);
+    const item = cat?.items.find((i) => i.id === iid);
+    if (!item) return;
+    const newVal = !item.is_popular;
+    // Optimistic update
+    setCategories((p) =>
+      p.map((c) =>
+        c.id !== cid
+          ? c
+          : { ...c, items: c.items.map((i) => i.id === iid ? { ...i, is_popular: newVal } : i) },
+      ),
+    );
+    const { error } = await supabase
+      .from("Menu")
+      .update({ is_popular: newVal })
+      .eq("id", iid);
+    if (error) {
+      // Revert on failure
+      setCategories((p) =>
+        p.map((c) =>
+          c.id !== cid
+            ? c
+            : { ...c, items: c.items.map((i) => i.id === iid ? { ...i, is_popular: !newVal } : i) },
+        ),
+      );
+      console.error("Failed to toggle popular:", error);
+    }
+  };
   const toggleItemStock = async (cid, iid) => {
     const cat = categories.find((c) => c.id === cid);
     const item = cat?.items.find((i) => i.id === iid);
@@ -3314,7 +2924,7 @@ function MenuPage({ t, user }) {
           image_path: imagePath,
           is_available: true,
           visible: true,
-          recommended: false,
+          is_popular: false,
           sort_order: sortOrder,
           avail_from: itemForm.avail_from || null,
           avail_to: itemForm.avail_to || null,
@@ -4257,6 +3867,15 @@ function MenuPage({ t, user }) {
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Popular star toggle */}
+            <button
+              onClick={() => toggleItemPopular(selectedCatId, item.id)}
+              style={{ color: item.is_popular ? "#F59E0B" : t.muted }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:opacity-70 transition-opacity text-base"
+              title={item.is_popular ? "Unmark as popular" : "Mark as popular"}
+            >
+              {item.is_popular ? "★" : "☆"}
+            </button>
             <button
               onClick={() => openVariants(item)}
               style={{
@@ -6017,25 +5636,11 @@ export default function Dashboard({ user, onLogout }) {
         .in("status", ["pending", "accepted", "preparing", "on_the_way"]);
       const rows = data || [];
       setLiveNewCount(rows.filter((o) => o.status === "pending").length);
-      setLiveAcceptedCount(
-        rows.filter((o) =>
-          ["accepted", "preparing", "on_the_way"].includes(o.status),
-        ).length,
-      );
+      setLiveAcceptedCount(rows.filter((o) => ["accepted", "preparing", "on_the_way"].includes(o.status)).length);
     };
     fetchCounts();
-    const ch = supabase
-      .channel(`dash-counts-${restId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "Orders",
-          filter: `rest_id=eq.${restId}`,
-        },
-        fetchCounts,
-      )
+    const ch = supabase.channel(`dash-counts-${restId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "Orders", filter: `rest_id=eq.${restId}` }, fetchCounts)
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [restId]);

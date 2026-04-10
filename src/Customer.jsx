@@ -3,7 +3,8 @@ import { supabase } from "./supabaseClient";
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 const fmt = (n) => `KD ${Number(n || 0).toFixed(3)}`;
-const getRestId = () => new URLSearchParams(window.location.search).get("rest_id");
+const getRestId = () =>
+  new URLSearchParams(window.location.search).get("rest_id");
 // Key is per-restaurant so returning users of restaurant A don't auto-login at restaurant B
 const custKey = (restId) => `frt_cust_${restId}`;
 
@@ -15,18 +16,18 @@ const COUNTRIES = [
   { code: "BH", dial: "+973", flag: "🇧🇭", name: "Bahrain" },
   { code: "QA", dial: "+974", flag: "🇶🇦", name: "Qatar" },
   { code: "OM", dial: "+968", flag: "🇴🇲", name: "Oman" },
-  { code: "IN", dial: "+91",  flag: "🇮🇳", name: "India" },
-  { code: "PK", dial: "+92",  flag: "🇵🇰", name: "Pakistan" },
-  { code: "EG", dial: "+20",  flag: "🇪🇬", name: "Egypt" },
-  { code: "PH", dial: "+63",  flag: "🇵🇭", name: "Philippines" },
+  { code: "IN", dial: "+91", flag: "🇮🇳", name: "India" },
+  { code: "PK", dial: "+92", flag: "🇵🇰", name: "Pakistan" },
+  { code: "EG", dial: "+20", flag: "🇪🇬", name: "Egypt" },
+  { code: "PH", dial: "+63", flag: "🇵🇭", name: "Philippines" },
   { code: "BD", dial: "+880", flag: "🇧🇩", name: "Bangladesh" },
-  { code: "LK", dial: "+94",  flag: "🇱🇰", name: "Sri Lanka" },
+  { code: "LK", dial: "+94", flag: "🇱🇰", name: "Sri Lanka" },
   { code: "NP", dial: "+977", flag: "🇳🇵", name: "Nepal" },
-  { code: "GB", dial: "+44",  flag: "🇬🇧", name: "UK" },
-  { code: "US", dial: "+1",   flag: "🇺🇸", name: "USA" },
+  { code: "GB", dial: "+44", flag: "🇬🇧", name: "UK" },
+  { code: "US", dial: "+1", flag: "🇺🇸", name: "USA" },
   { code: "JO", dial: "+962", flag: "🇯🇴", name: "Jordan" },
   { code: "LB", dial: "+961", flag: "🇱🇧", name: "Lebanon" },
-  { code: "TR", dial: "+90",  flag: "🇹🇷", name: "Turkey" },
+  { code: "TR", dial: "+90", flag: "🇹🇷", name: "Turkey" },
 ];
 
 /* ── tiny SVG icons ───────────────────────────────────────────────────────── */
@@ -637,7 +638,10 @@ const ErrScreen = ({ msg }) => (
 let leafletLoaded = false;
 let leafletCallbacks = [];
 function loadLeaflet(cb) {
-  if (leafletLoaded) { cb(); return; }
+  if (leafletLoaded) {
+    cb();
+    return;
+  }
   leafletCallbacks.push(cb);
   if (document.getElementById("leaflet-css")) return; // already loading
   const link = document.createElement("link");
@@ -647,8 +651,13 @@ function loadLeaflet(cb) {
   document.head.appendChild(link);
   const script = document.createElement("script");
   script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-  script.onload = () => { leafletLoaded = true; leafletCallbacks.forEach((f) => f()); leafletCallbacks = []; };
-  script.onerror = () => leafletCallbacks.forEach((f) => f(new Error("Leaflet failed to load")));
+  script.onload = () => {
+    leafletLoaded = true;
+    leafletCallbacks.forEach((f) => f());
+    leafletCallbacks = [];
+  };
+  script.onerror = () =>
+    leafletCallbacks.forEach((f) => f(new Error("Leaflet failed to load")));
   document.head.appendChild(script);
 }
 
@@ -657,18 +666,26 @@ function MapPicker({ initialLat, initialLng, onConfirm, onClose }) {
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const leafletMapRef = useRef(null);
-  const [pos, setPos] = useState({ lat: initialLat || 29.3759, lng: initialLng || 47.9774 }); // Default: Kuwait City
+  const [pos, setPos] = useState({
+    lat: initialLat || 29.3759,
+    lng: initialLng || 47.9774,
+  }); // Default: Kuwait City
   const [leafletErr, setLeafletErr] = useState(null);
   const [leafletReady, setLeafletReady] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   useEffect(() => {
     loadLeaflet((err) => {
-      if (err) { setLeafletErr("Map failed to load. Check your connection."); return; }
+      if (err) {
+        setLeafletErr("Map failed to load. Check your connection.");
+        return;
+      }
       setLeafletReady(true);
     });
   }, []);
@@ -681,17 +698,26 @@ function MapPicker({ initialLat, initialLng, onConfirm, onClose }) {
     // Avoid double-init
     if (leafletMapRef.current) return;
 
-    const map = L.map(mapRef.current, { zoomControl: true }).setView([pos.lat, pos.lng], 15);
+    const map = L.map(mapRef.current, { zoomControl: true }).setView(
+      [pos.lat, pos.lng],
+      15,
+    );
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OSM contributors", maxZoom: 19,
+      attribution: "© OSM contributors",
+      maxZoom: 19,
     }).addTo(map);
 
     const icon = L.divIcon({
       html: `<div style="width:32px;height:32px;background:var(--orange);border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>`,
-      iconSize: [32, 32], iconAnchor: [16, 32], className: "",
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      className: "",
     });
 
-    const marker = L.marker([pos.lat, pos.lng], { draggable: true, icon }).addTo(map);
+    const marker = L.marker([pos.lat, pos.lng], {
+      draggable: true,
+      icon,
+    }).addTo(map);
     markerRef.current = marker;
     leafletMapRef.current = map;
 
@@ -720,7 +746,10 @@ function MapPicker({ initialLat, initialLng, onConfirm, onClose }) {
       );
     }
 
-    return () => { map.remove(); leafletMapRef.current = null; };
+    return () => {
+      map.remove();
+      leafletMapRef.current = null;
+    };
   }, [leafletReady]); // eslint-disable-line
 
   // Generate static OSM snapshot URL for saving (no API key required)
@@ -730,11 +759,16 @@ function MapPicker({ initialLat, initialLng, onConfirm, onClose }) {
   return (
     <>
       <div className="overlay" onClick={onClose} />
-      <div className="sheet" style={{ paddingBottom: 0, display: "flex", flexDirection: "column" }}>
+      <div
+        className="sheet"
+        style={{ paddingBottom: 0, display: "flex", flexDirection: "column" }}
+      >
         <div className="drag-pill" />
         <div className="sheet-hd" style={{ flexShrink: 0 }}>
           <span className="sheet-title">Pin your location</span>
-          <button className="close-btn" onClick={onClose}>{Ic.close}</button>
+          <button className="close-btn" onClick={onClose}>
+            {Ic.close}
+          </button>
         </div>
         <p style={{ fontSize: 13, color: "var(--t2)", padding: "0 20px 12px" }}>
           Tap the map or drag the pin to set your delivery spot.
@@ -742,27 +776,64 @@ function MapPicker({ initialLat, initialLng, onConfirm, onClose }) {
         <div style={{ flex: 1, padding: "0 20px", minHeight: 0 }}>
           {leafletErr ? (
             <div style={{ padding: "32px 0", textAlign: "center" }}>
-              <p style={{ fontSize: 13, color: "var(--red)" }}>⚠️ {leafletErr}</p>
+              <p style={{ fontSize: 13, color: "var(--red)" }}>
+                ⚠️ {leafletErr}
+              </p>
             </div>
           ) : !leafletReady ? (
-            <div style={{ height: 240, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div
+              style={{
+                height: 240,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Spinner size={28} />
             </div>
           ) : (
             <div className="map-wrap">
-              <div id="leaflet-map" ref={mapRef} style={{ width: "100%", height: "100%" }} />
+              <div
+                id="leaflet-map"
+                ref={mapRef}
+                style={{ width: "100%", height: "100%" }}
+              />
             </div>
           )}
-          <p style={{ fontSize: 12, color: "var(--t3)", textAlign: "center", marginTop: 6 }}>
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--t3)",
+              textAlign: "center",
+              marginTop: 6,
+            }}
+          >
             {pos.lat.toFixed(5)}, {pos.lng.toFixed(5)}
           </p>
         </div>
-        <div style={{ padding: "14px 20px", borderTop: "1px solid var(--border)", flexShrink: 0, paddingBottom: "calc(14px + env(safe-area-inset-bottom,0px))", display: "flex", gap: 10 }}>
-          <button className="btn-out" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+        <div
+          style={{
+            padding: "14px 20px",
+            borderTop: "1px solid var(--border)",
+            flexShrink: 0,
+            paddingBottom: "calc(14px + env(safe-area-inset-bottom,0px))",
+            display: "flex",
+            gap: 10,
+          }}
+        >
+          <button className="btn-out" style={{ flex: 1 }} onClick={onClose}>
+            Cancel
+          </button>
           <button
             className="btn-primary"
             style={{ flex: 2 }}
-            onClick={() => onConfirm({ lat: pos.lat, lng: pos.lng, snapshotUrl: getSnapshotUrl(pos) })}
+            onClick={() =>
+              onConfirm({
+                lat: pos.lat,
+                lng: pos.lng,
+                snapshotUrl: getSnapshotUrl(pos),
+              })
+            }
           >
             Confirm location
           </button>
@@ -786,15 +857,17 @@ function PhoneOnboarding({ restId, onComplete }) {
   const dropRef = useRef(null);
 
   const fullPhone = `${country.dial}${phone.replace(/\D/g, "")}`;
-  const filteredCountries = COUNTRIES.filter((c) =>
-    c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
-    c.dial.includes(countrySearch)
+  const filteredCountries = COUNTRIES.filter(
+    (c) =>
+      c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.dial.includes(countrySearch),
   );
 
   // Close country dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (dropRef.current && !dropRef.current.contains(e.target)) setShowDrop(false);
+      if (dropRef.current && !dropRef.current.contains(e.target))
+        setShowDrop(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -802,8 +875,12 @@ function PhoneOnboarding({ restId, onComplete }) {
 
   const lookupPhone = async () => {
     const digits = phone.replace(/\D/g, "");
-    if (digits.length < 7) { setErr("Enter a valid phone number."); return; }
-    setLoading(true); setErr("");
+    if (digits.length < 7) {
+      setErr("Enter a valid phone number.");
+      return;
+    }
+    setLoading(true);
+    setErr("");
     try {
       // Look up existing customer with this phone for this restaurant
       const { data: existing } = await supabase
@@ -824,7 +901,9 @@ function PhoneOnboarding({ restId, onComplete }) {
         localStorage.setItem(custKey(restId), existing.id);
         if (!link) {
           // First time at THIS restaurant — create link, still known customer
-          await supabase.from("Customer_Restaurant").insert({ cust_id: existing.id, rest_id: restId });
+          await supabase
+            .from("Customer_Restaurant")
+            .insert({ cust_id: existing.id, rest_id: restId });
         }
         onComplete(existing);
       } else {
@@ -840,16 +919,27 @@ function PhoneOnboarding({ restId, onComplete }) {
   };
 
   const createCustomer = async () => {
-    if (!name.trim()) { setErr("Please enter your name."); return; }
-    setLoading(true); setErr("");
+    if (!name.trim()) {
+      setErr("Please enter your name.");
+      return;
+    }
+    setLoading(true);
+    setErr("");
     try {
       const { data: nc, error } = await supabase
         .from("Customer")
-        .insert({ cust_name: name.trim(), ph_num: fullPhone, broadcast: false, joined_on: new Date().toISOString().slice(0, 10) })
+        .insert({
+          cust_name: name.trim(),
+          ph_num: fullPhone,
+          broadcast: false,
+          joined_on: new Date().toISOString().slice(0, 10),
+        })
         .select()
         .single();
       if (error) throw error;
-      await supabase.from("Customer_Restaurant").insert({ cust_id: nc.id, rest_id: restId });
+      await supabase
+        .from("Customer_Restaurant")
+        .insert({ cust_id: nc.id, rest_id: restId });
       localStorage.setItem(custKey(restId), nc.id);
       onComplete(nc);
     } catch (e) {
@@ -865,26 +955,53 @@ function PhoneOnboarding({ restId, onComplete }) {
       <div className="phone-card">
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div style={{ fontSize: 40, marginBottom: 10 }}>🍽️</div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>Welcome!</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>
+            Welcome!
+          </h2>
           <p style={{ fontSize: 14, color: "var(--t2)" }}>
-            {step === "phone" ? "Enter your WhatsApp number to get started." : "Almost there — just your name."}
+            {step === "phone"
+              ? "Enter your WhatsApp number to get started."
+              : "Almost there — just your name."}
           </p>
         </div>
 
         {step === "phone" && (
           <>
             <label className="lbl">WhatsApp number</label>
-            <div style={{ display: "flex", position: "relative", marginBottom: 14 }} ref={dropRef}>
-              <button className="phone-flag-btn" onClick={() => setShowDrop((s) => !s)}>
+            <div
+              style={{
+                display: "flex",
+                position: "relative",
+                marginBottom: 14,
+              }}
+              ref={dropRef}
+            >
+              <button
+                className="phone-flag-btn"
+                onClick={() => setShowDrop((s) => !s)}
+              >
                 <span>{country.flag}</span>
                 <span>{country.dial}</span>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
               </button>
               <input
                 className="phone-input-box"
                 placeholder="e.g. 50 123 4567"
                 value={phone}
-                onChange={(e) => { setPhone(e.target.value); setErr(""); }}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setErr("");
+                }}
                 onKeyDown={(e) => e.key === "Enter" && lookupPhone()}
                 inputMode="tel"
                 autoFocus
@@ -899,7 +1016,15 @@ function PhoneOnboarding({ restId, onComplete }) {
                     autoFocus
                   />
                   {filteredCountries.map((c) => (
-                    <div key={c.code} className="country-opt" onClick={() => { setCountry(c); setShowDrop(false); setCountrySearch(""); }}>
+                    <div
+                      key={c.code}
+                      className="country-opt"
+                      onClick={() => {
+                        setCountry(c);
+                        setShowDrop(false);
+                        setCountrySearch("");
+                      }}
+                    >
                       <span style={{ fontSize: 20 }}>{c.flag}</span>
                       <span style={{ flex: 1 }}>{c.name}</span>
                       <span style={{ color: "var(--t3)" }}>{c.dial}</span>
@@ -916,7 +1041,16 @@ function PhoneOnboarding({ restId, onComplete }) {
 
         {step === "name" && (
           <>
-            <p style={{ fontSize: 13, color: "var(--t2)", marginBottom: 14, background: "#f5f5f5", padding: "10px 14px", borderRadius: "var(--r-sm)" }}>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--t2)",
+                marginBottom: 14,
+                background: "#f5f5f5",
+                padding: "10px 14px",
+                borderRadius: "var(--r-sm)",
+              }}
+            >
               {country.flag} {fullPhone}
             </p>
             <label className="lbl">Your name</label>
@@ -924,7 +1058,10 @@ function PhoneOnboarding({ restId, onComplete }) {
               className="inp"
               placeholder="e.g. Ahmed Al-Rashidi"
               value={name}
-              onChange={(e) => { setName(e.target.value); setErr(""); }}
+              onChange={(e) => {
+                setName(e.target.value);
+                setErr("");
+              }}
               onKeyDown={(e) => e.key === "Enter" && createCustomer()}
               autoFocus
               style={{ marginBottom: 14 }}
@@ -933,7 +1070,17 @@ function PhoneOnboarding({ restId, onComplete }) {
         )}
 
         {err && (
-          <div style={{ background: "#fdecea", border: "1px solid #fca5a5", borderRadius: "var(--r-sm)", padding: "10px 14px", fontSize: 13, color: "var(--red)", marginBottom: 14 }}>
+          <div
+            style={{
+              background: "#fdecea",
+              border: "1px solid #fca5a5",
+              borderRadius: "var(--r-sm)",
+              padding: "10px 14px",
+              fontSize: 13,
+              color: "var(--red)",
+              marginBottom: 14,
+            }}
+          >
             ⚠️ {err}
           </div>
         )}
@@ -943,11 +1090,24 @@ function PhoneOnboarding({ restId, onComplete }) {
           disabled={loading}
           onClick={step === "phone" ? lookupPhone : createCustomer}
         >
-          {loading ? <Spinner size={20} /> : step === "phone" ? "Continue →" : "Get started →"}
+          {loading ? (
+            <Spinner size={20} />
+          ) : step === "phone" ? (
+            "Continue →"
+          ) : (
+            "Get started →"
+          )}
         </button>
 
         {step === "name" && (
-          <button className="btn-out" style={{ width: "100%", justifyContent: "center", marginTop: 10 }} onClick={() => { setStep("phone"); setErr(""); }}>
+          <button
+            className="btn-out"
+            style={{ width: "100%", justifyContent: "center", marginTop: 10 }}
+            onClick={() => {
+              setStep("phone");
+              setErr("");
+            }}
+          >
             ← Change number
           </button>
         )}
@@ -979,7 +1139,9 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   useEffect(() => {
@@ -1003,7 +1165,10 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
           const { data: oData, error: oErr } = await supabase
             .from("Variant Options")
             .select("id, var_group_id, name, price_adj")
-            .in("var_group_id", groups.map((g) => g.id))
+            .in(
+              "var_group_id",
+              groups.map((g) => g.id),
+            )
             .order("id", { ascending: true });
           if (oErr) throw oErr;
           options = oData || [];
@@ -1031,14 +1196,21 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [item.id]);
 
   const toggleVar = (gid, oid, multi) => {
     if (multi) {
       setSelVars((p) => {
         const cur = Array.isArray(p[gid]) ? p[gid] : [];
-        return { ...p, [gid]: cur.includes(oid) ? cur.filter((x) => x !== oid) : [...cur, oid] };
+        return {
+          ...p,
+          [gid]: cur.includes(oid)
+            ? cur.filter((x) => x !== oid)
+            : [...cur, oid],
+        };
       });
     } else {
       setSelVars((p) => ({ ...p, [gid]: oid }));
@@ -1046,10 +1218,20 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
   };
 
   const extraCost = varGroups.reduce((total, g) => {
-    const opts = g.Variant_Options || [], sel = selVars[g.id];
+    const opts = g.Variant_Options || [],
+      sel = selVars[g.id];
     if (Array.isArray(sel))
-      return total + sel.reduce((s, sid) => { const o = opts.find((x) => x.id === sid); return s + (o ? +o.price_adj : 0); }, 0);
-    if (sel) { const o = opts.find((x) => x.id === sel); return total + (o ? +o.price_adj : 0); }
+      return (
+        total +
+        sel.reduce((s, sid) => {
+          const o = opts.find((x) => x.id === sid);
+          return s + (o ? +o.price_adj : 0);
+        }, 0)
+      );
+    if (sel) {
+      const o = opts.find((x) => x.id === sel);
+      return total + (o ? +o.price_adj : 0);
+    }
     return total;
   }, 0);
 
@@ -1070,14 +1252,25 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
       const sel = selVars[g.id];
       if (!sel || (Array.isArray(sel) && sel.length === 0)) return;
       const ids = Array.isArray(sel) ? sel : [sel];
-      const names = ids.map((id) => (g.Variant_Options || []).find((o) => o.id === id)?.name).filter(Boolean);
-      if (names.length > 0) variantMeta[g.id] = { groupName: g.name, optionNames: names };
+      const names = ids
+        .map((id) => (g.Variant_Options || []).find((o) => o.id === id)?.name)
+        .filter(Boolean);
+      if (names.length > 0)
+        variantMeta[g.id] = { groupName: g.name, optionNames: names };
     });
 
     // Always propagate the note update to all matching cart entries first
     if (onUpdateNote) onUpdateNote(item.id, note);
 
-    onAdd({ item, qty, selectedVariants: selVars, variantMeta, selectedAddOns: [], unitPrice, note });
+    onAdd({
+      item,
+      qty,
+      selectedVariants: selVars,
+      variantMeta,
+      selectedAddOns: [],
+      unitPrice,
+      note,
+    });
     onClose();
   };
 
@@ -1088,18 +1281,47 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
         {/* Hero image */}
         <div className="item-img-wrap">
           {item.image_path ? (
-            <img src={item.image_path} alt={item.name} onError={(e) => (e.target.style.display = "none")} />
+            <img
+              src={item.image_path}
+              alt={item.name}
+              onError={(e) => (e.target.style.display = "none")}
+            />
           ) : (
             <div className="item-img-empty">🍽️</div>
           )}
           <button
             onClick={onClose}
-            style={{ position: "absolute", top: 12, left: 12, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,.92)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}
+            style={{
+              position: "absolute",
+              top: 12,
+              left: 12,
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background: "rgba(255,255,255,.92)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backdropFilter: "blur(4px)",
+            }}
           >
             {Ic.back}
           </button>
-          {(item.is_popular || item.recommended) && (
-            <span style={{ position: "absolute", top: 12, right: 12, background: "rgba(0,0,0,.62)", color: "#fff", borderRadius: 6, fontSize: 11, fontWeight: 700, padding: "4px 9px", backdropFilter: "blur(4px)" }}>
+          {item.is_popular && (
+            <span
+              style={{
+                position: "absolute",
+                top: 12,
+                right: 12,
+                background: "rgba(0,0,0,.62)",
+                color: "#fff",
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 700,
+                padding: "4px 9px",
+                backdropFilter: "blur(4px)",
+              }}
+            >
               ⭐ Popular
             </span>
           )}
@@ -1107,44 +1329,116 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
 
         {/* Item name + price */}
         <div style={{ padding: "20px 20px 0" }}>
-          <h2 style={{ fontSize: 21, fontWeight: 800, marginBottom: 6, lineHeight: 1.25 }}>{item.name}</h2>
+          <h2
+            style={{
+              fontSize: 21,
+              fontWeight: 800,
+              marginBottom: 6,
+              lineHeight: 1.25,
+            }}
+          >
+            {item.name}
+          </h2>
           {item.description && (
-            <p style={{ fontSize: 14, color: "var(--t2)", lineHeight: 1.65, marginBottom: 10 }}>{item.description}</p>
+            <p
+              style={{
+                fontSize: 14,
+                color: "var(--t2)",
+                lineHeight: 1.65,
+                marginBottom: 10,
+              }}
+            >
+              {item.description}
+            </p>
           )}
-          <p style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>{fmt(unitPrice)}</p>
+          <p style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>
+            {fmt(unitPrice)}
+          </p>
         </div>
 
         {/* Variants / loading / error */}
         {loading ? (
-          <div style={{ padding: "20px", display: "flex", justifyContent: "center" }}>
+          <div
+            style={{
+              padding: "20px",
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
             <Spinner size={28} />
           </div>
         ) : fetchErr ? (
           <div style={{ padding: "16px 20px" }}>
-            <p style={{ fontSize: 13, color: "var(--red)", marginBottom: 10 }}>⚠️ {fetchErr}</p>
+            <p style={{ fontSize: 13, color: "var(--red)", marginBottom: 10 }}>
+              ⚠️ {fetchErr}
+            </p>
           </div>
         ) : (
           <div style={{ padding: "0 20px" }}>
             {varGroups.map((g) => (
               <div key={g.id} style={{ marginBottom: 22 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 10,
+                  }}
+                >
                   <p style={{ fontWeight: 700, fontSize: 15 }}>{g.name}</p>
                   {g.is_required && (
-                    <span style={{ fontSize: 10, fontWeight: 700, background: "#f3f4f6", color: "var(--t2)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        background: "#f3f4f6",
+                        color: "var(--t2)",
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        textTransform: "uppercase",
+                        letterSpacing: ".04em",
+                      }}
+                    >
                       Required
                     </span>
                   )}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
                   {(g.Variant_Options || []).map((opt) => {
                     const s = selVars[g.id];
-                    const sel = g.is_multiple ? Array.isArray(s) && s.includes(opt.id) : s === opt.id;
+                    const sel = g.is_multiple
+                      ? Array.isArray(s) && s.includes(opt.id)
+                      : s === opt.id;
                     return (
-                      <div key={opt.id} className={`var-opt${sel ? " sel" : ""}`} onClick={() => toggleVar(g.id, opt.id, g.is_multiple)}>
-                        <span style={{ fontSize: 14, fontWeight: sel ? 600 : 400 }}>{opt.name}</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div
+                        key={opt.id}
+                        className={`var-opt${sel ? " sel" : ""}`}
+                        onClick={() => toggleVar(g.id, opt.id, g.is_multiple)}
+                      >
+                        <span
+                          style={{ fontSize: 14, fontWeight: sel ? 600 : 400 }}
+                        >
+                          {opt.name}
+                        </span>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
                           {+opt.price_adj !== 0 && (
-                            <span style={{ fontSize: 13, color: "var(--t2)", fontWeight: 600 }}>+{fmt(opt.price_adj)}</span>
+                            <span
+                              style={{
+                                fontSize: 13,
+                                color: "var(--t2)",
+                                fontWeight: 600,
+                              }}
+                            >
+                              +{fmt(opt.price_adj)}
+                            </span>
                           )}
                           <CheckDot sel={sel} multi={g.is_multiple} />
                         </div>
@@ -1159,10 +1453,14 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
             <div style={{ marginBottom: 20 }}>
               <label className="lbl">
                 Special instructions{" "}
-                <span style={{ textTransform: "none", fontWeight: 400 }}>(optional)</span>
+                <span style={{ textTransform: "none", fontWeight: 400 }}>
+                  (optional)
+                </span>
               </label>
               {alreadyInCart && (
-                <p style={{ fontSize: 11, color: "var(--t3)", marginBottom: 6 }}>
+                <p
+                  style={{ fontSize: 11, color: "var(--t3)", marginBottom: 6 }}
+                >
                   This note applies to all "{item.name}" in your cart.
                 </p>
               )}
@@ -1180,9 +1478,23 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
         )}
 
         {/* Footer */}
-        <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, borderTop: "1px solid var(--border)", background: "#fff", position: "sticky", bottom: 0, paddingBottom: "calc(14px + env(safe-area-inset-bottom,0px))" }}>
+        <div
+          style={{
+            padding: "14px 20px",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            borderTop: "1px solid var(--border)",
+            background: "#fff",
+            position: "sticky",
+            bottom: 0,
+            paddingBottom: "calc(14px + env(safe-area-inset-bottom,0px))",
+          }}
+        >
           <div className="qty-ctrl" style={{ flexShrink: 0 }}>
-            <button onClick={() => setQty((q) => Math.max(1, q - 1))}>{Ic.minus}</button>
+            <button onClick={() => setQty((q) => Math.max(1, q - 1))}>
+              {Ic.minus}
+            </button>
             <span>{qty}</span>
             <button onClick={() => setQty((q) => q + 1)}>{Ic.plus}</button>
           </div>
@@ -1201,15 +1513,28 @@ function ItemDetailSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
 }
 
 /* ── CartSheet ────────────────────────────────────────────────────────────── */
-function CartSheet({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQty, calcTotals, onCheckout, onClose }) {
+function CartSheet({
+  cart,
+  addonCart,
+  restaurant,
+  onUpdateQty,
+  onUpdateAddonQty,
+  calcTotals,
+  onCheckout,
+  onClose,
+}) {
   const [note, setNote] = useState("");
   const { subT, delivery, total } = calcTotals(cart, addonCart);
   const minOk = !restaurant?.min_order || subT >= restaurant.min_order;
-  const totalItems = cart.reduce((s, c) => s + c.qty, 0) + addonCart.reduce((s, a) => s + a.qty, 0);
+  const totalItems =
+    cart.reduce((s, c) => s + c.qty, 0) +
+    addonCart.reduce((s, a) => s + a.qty, 0);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   return (
@@ -1218,22 +1543,41 @@ function CartSheet({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQty,
       <div className="sheet">
         <div className="drag-pill" />
         <div className="sheet-hd">
-          <span className="sheet-title">Your cart {totalItems > 0 ? `(${totalItems})` : ""}</span>
-          <button className="close-btn" onClick={onClose}>{Ic.close}</button>
+          <span className="sheet-title">
+            Your cart {totalItems > 0 ? `(${totalItems})` : ""}
+          </span>
+          <button className="close-btn" onClick={onClose}>
+            {Ic.close}
+          </button>
         </div>
 
         {totalItems === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 56, marginBottom: 12 }}>🛒</div>
-            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Your cart is empty</p>
-            <p style={{ color: "var(--t2)", fontSize: 14 }}>Add items from the menu to get started</p>
+            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
+              Your cart is empty
+            </p>
+            <p style={{ color: "var(--t2)", fontSize: 14 }}>
+              Add items from the menu to get started
+            </p>
           </div>
         ) : (
           <div style={{ padding: "0 20px 24px" }}>
             {/* ── Menu items ── */}
             {cart.length > 0 && (
               <div style={{ marginBottom: 4 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: ".06em", padding: "10px 0 6px" }}>Menu items</p>
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--t3)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    padding: "10px 0 6px",
+                  }}
+                >
+                  Menu items
+                </p>
                 {cart.map((c, i) => {
                   // Show option names only (no group name prefix)
                   const varLines = Object.values(c.variantMeta || {})
@@ -1242,12 +1586,28 @@ function CartSheet({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQty,
                   return (
                     <div key={i} className="cart-row">
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{c.item.name}</p>
+                        <p
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 14,
+                            marginBottom: 2,
+                          }}
+                        >
+                          {c.item.name}
+                        </p>
                         {/* Variant option names */}
                         {varLines.length > 0 && (
                           <p className="cart-detail">
                             {varLines.map((v, vi) => (
-                              <span key={vi} style={{ display: "inline-block", marginRight: 6 }}>· {v}</span>
+                              <span
+                                key={vi}
+                                style={{
+                                  display: "inline-block",
+                                  marginRight: 6,
+                                }}
+                              >
+                                · {v}
+                              </span>
                             ))}
                           </p>
                         )}
@@ -1257,12 +1617,25 @@ function CartSheet({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQty,
                             📝 {c.note}
                           </p>
                         )}
-                        <p style={{ fontSize: 13, color: "var(--t2)", fontWeight: 700, marginTop: 3 }}>{fmt(c.unitPrice)}</p>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--t2)",
+                            fontWeight: 700,
+                            marginTop: 3,
+                          }}
+                        >
+                          {fmt(c.unitPrice)}
+                        </p>
                       </div>
                       <div className="qty-ctrl" style={{ flexShrink: 0 }}>
-                        <button onClick={() => onUpdateQty(i, c.qty - 1)}>{c.qty === 1 ? Ic.trash : Ic.minus}</button>
+                        <button onClick={() => onUpdateQty(i, c.qty - 1)}>
+                          {c.qty === 1 ? Ic.trash : Ic.minus}
+                        </button>
                         <span>{c.qty}</span>
-                        <button onClick={() => onUpdateQty(i, c.qty + 1)}>{Ic.plus}</button>
+                        <button onClick={() => onUpdateQty(i, c.qty + 1)}>
+                          {Ic.plus}
+                        </button>
                       </div>
                     </div>
                   );
@@ -1273,17 +1646,48 @@ function CartSheet({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQty,
             {/* ── Add-on cart rows ── */}
             {addonCart.length > 0 && (
               <div style={{ marginBottom: 4 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: ".06em", padding: "10px 0 6px" }}>Add-ons</p>
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--t3)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    padding: "10px 0 6px",
+                  }}
+                >
+                  Add-ons
+                </p>
                 {addonCart.map((a, i) => (
                   <div key={i} className="cart-row">
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{a.addon.name}</p>
-                      <p style={{ fontSize: 13, color: "var(--t2)", fontWeight: 700 }}>{fmt(a.addon.price)}</p>
+                      <p
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 14,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {a.addon.name}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          color: "var(--t2)",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {fmt(a.addon.price)}
+                      </p>
                     </div>
                     <div className="qty-ctrl" style={{ flexShrink: 0 }}>
-                      <button onClick={() => onUpdateAddonQty(a.addon.id, -1)}>{a.qty === 1 ? Ic.trash : Ic.minus}</button>
+                      <button onClick={() => onUpdateAddonQty(a.addon.id, -1)}>
+                        {a.qty === 1 ? Ic.trash : Ic.minus}
+                      </button>
                       <span>{a.qty}</span>
-                      <button onClick={() => onUpdateAddonQty(a.addon.id, 1)}>{Ic.plus}</button>
+                      <button onClick={() => onUpdateAddonQty(a.addon.id, 1)}>
+                        {Ic.plus}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1294,7 +1698,15 @@ function CartSheet({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQty,
             <div style={{ margin: "16px 0" }}>
               <label className="lbl">
                 Order note{" "}
-                <span style={{ textTransform: "none", fontWeight: 400, color: "var(--t3)" }}>(optional · applies to whole order)</span>
+                <span
+                  style={{
+                    textTransform: "none",
+                    fontWeight: 400,
+                    color: "var(--t3)",
+                  }}
+                >
+                  (optional · applies to whole order)
+                </span>
               </label>
               <textarea
                 className="inp"
@@ -1308,17 +1720,51 @@ function CartSheet({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQty,
             </div>
 
             {/* ── Bill summary ── */}
-            <div style={{ background: "#fafafa", borderRadius: var_r, padding: "14px 16px", marginBottom: 14 }}>
-              <div className="sum-row"><span>Subtotal</span><span>{fmt(subT)}</span></div>
-              <div className="sum-row"><span>Delivery fee</span><span>{fmt(delivery)}</span></div>
-              <div style={{ borderTop: "1px solid var(--border)", marginTop: 10, paddingTop: 10 }}>
-                <div className="sum-row total"><span>Total</span><span>{fmt(total)}</span></div>
+            <div
+              style={{
+                background: "#fafafa",
+                borderRadius: var_r,
+                padding: "14px 16px",
+                marginBottom: 14,
+              }}
+            >
+              <div className="sum-row">
+                <span>Subtotal</span>
+                <span>{fmt(subT)}</span>
+              </div>
+              <div className="sum-row">
+                <span>Delivery fee</span>
+                <span>{fmt(delivery)}</span>
+              </div>
+              <div
+                style={{
+                  borderTop: "1px solid var(--border)",
+                  marginTop: 10,
+                  paddingTop: 10,
+                }}
+              >
+                <div className="sum-row total">
+                  <span>Total</span>
+                  <span>{fmt(total)}</span>
+                </div>
               </div>
             </div>
 
             {restaurant?.min_order && subT < restaurant.min_order && (
-              <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: var_r_sm, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#e65100", fontWeight: 500 }}>
-                ⚠️ Min. order {fmt(restaurant.min_order)} · add {fmt(restaurant.min_order - subT)} more
+              <div
+                style={{
+                  background: "#fff8e1",
+                  border: "1px solid #ffe082",
+                  borderRadius: var_r_sm,
+                  padding: "10px 14px",
+                  marginBottom: 14,
+                  fontSize: 13,
+                  color: "#e65100",
+                  fontWeight: 500,
+                }}
+              >
+                ⚠️ Min. order {fmt(restaurant.min_order)} · add{" "}
+                {fmt(restaurant.min_order - subT)} more
               </div>
             )}
 
@@ -1357,7 +1803,9 @@ function CheckoutSheet({
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   const addr = addresses.find((a) => a.id === selAddr);
@@ -1474,7 +1922,17 @@ function CheckoutSheet({
           {cartNote ? (
             <div style={{ marginBottom: 22 }}>
               <label className="lbl">Special instructions</label>
-              <div style={{ background: "#fafafa", border: "1px solid var(--border)", borderRadius: var_r_sm, padding: "10px 14px", fontSize: 13.5, color: "var(--t2)", lineHeight: 1.5 }}>
+              <div
+                style={{
+                  background: "#fafafa",
+                  border: "1px solid var(--border)",
+                  borderRadius: var_r_sm,
+                  padding: "10px 14px",
+                  fontSize: 13.5,
+                  color: "var(--t2)",
+                  lineHeight: 1.5,
+                }}
+              >
                 {cartNote}
               </div>
             </div>
@@ -1505,7 +1963,11 @@ function CheckoutSheet({
                 return;
               }
               setPlacing(true);
-              await onPlaceOrder({ address: addr, payMethod: pay, notes: cartNote || "" });
+              await onPlaceOrder({
+                address: addr,
+                payMethod: pay,
+                notes: cartNote || "",
+              });
               setPlacing(false);
             }}
           >
@@ -1518,21 +1980,28 @@ function CheckoutSheet({
 }
 
 /* ── TrackSheet ───────────────────────────────────────────────────────────── */
-function TrackSheet({ order, restaurant, address, onClose }) {
+function TrackSheet({ order, restaurant, address, onClose, onStatusUpdate }) {
+  const [liveStatus, setLiveStatus] = useState(order?.status || "pending");
+  const [riderName, setRiderName] = useState(
+    order?.delivery_rider_name || null,
+  );
+
   const steps = [
     { l: "Order placed!", e: "✅" },
-    { l: "Waiting for restaurant", e: "🍽️" },
+    { l: "Accepted by restaurant", e: "🍽️" },
     { l: "Food being prepared", e: "👨‍🍳" },
     { l: "On the way!", e: "🛵" },
   ];
   const cur =
-    order?.status === "accepted"
+    liveStatus === "accepted"
       ? 2
-      : order?.status === "preparing"
+      : liveStatus === "preparing"
         ? 3
-        : order?.status === "on_the_way"
+        : liveStatus === "on_the_way"
           ? 4
-          : 1;
+          : liveStatus === "delivered"
+            ? 5
+            : 1;
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -1540,6 +2009,30 @@ function TrackSheet({ order, restaurant, address, onClose }) {
       document.body.style.overflow = "";
     };
   }, []);
+
+  // Real-time: watch this order for status changes
+  useEffect(() => {
+    if (!order?.id) return;
+    const ch = supabase
+      .channel(`order-track-${order.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "Orders",
+          filter: `id=eq.${order.id}`,
+        },
+        (payload) => {
+          setLiveStatus(payload.new.status);
+          if (payload.new.delivery_rider_name)
+            setRiderName(payload.new.delivery_rider_name);
+          if (onStatusUpdate) onStatusUpdate(payload.new.status);
+        },
+      )
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [order?.id]); // eslint-disable-line
 
   return (
     <>
@@ -1553,65 +2046,153 @@ function TrackSheet({ order, restaurant, address, onClose }) {
           </button>
         </div>
         <div style={{ padding: "0 20px 28px" }}>
-          <p
+          <div
             style={{
-              fontSize: 13,
-              color: "var(--t3)",
-              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
               marginBottom: 24,
             }}
           >
-            Order #{order?.id}
-          </p>
+            <p style={{ fontSize: 13, color: "var(--t3)", fontWeight: 500 }}>
+              Order #{order?.id}
+            </p>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                padding: "3px 10px",
+                borderRadius: 99,
+                background:
+                  liveStatus === "delivered"
+                    ? "var(--green-l)"
+                    : liveStatus === "rejected"
+                      ? "var(--red-l)"
+                      : "#fff0e8",
+                color:
+                  liveStatus === "delivered"
+                    ? "var(--green)"
+                    : liveStatus === "rejected"
+                      ? "var(--red)"
+                      : "var(--orange)",
+              }}
+            >
+              {liveStatus === "delivered"
+                ? "Delivered ✅"
+                : liveStatus === "rejected"
+                  ? "Rejected"
+                  : liveStatus === "on_the_way"
+                    ? "On the way 🛵"
+                    : liveStatus === "preparing"
+                      ? "Preparing 👨‍🍳"
+                      : liveStatus === "accepted"
+                        ? "Accepted"
+                        : "Pending"}
+            </span>
+          </div>
+
+          {/* Rejected banner */}
+          {liveStatus === "rejected" && (
+            <div
+              style={{
+                background: "var(--red-l)",
+                border: "1px solid #fca5a5",
+                borderRadius: "var(--r-sm)",
+                padding: "12px 14px",
+                marginBottom: 20,
+              }}
+            >
+              <p
+                style={{
+                  fontWeight: 700,
+                  fontSize: 14,
+                  color: "var(--red)",
+                  marginBottom: 4,
+                }}
+              >
+                Order rejected
+              </p>
+              <p style={{ fontSize: 13, color: "var(--t2)" }}>
+                {order?.notes || "The restaurant could not fulfill your order."}
+              </p>
+            </div>
+          )}
 
           {/* Steps */}
-          <div style={{ marginBottom: 24 }}>
-            {steps.map((s, i) => {
-              const n = i + 1,
-                done = n < cur,
-                active = n === cur;
-              return (
-                <div
-                  key={i}
-                  style={{ position: "relative", marginBottom: i < 3 ? 0 : 0 }}
-                >
-                  <div
-                    className="track-step"
-                    style={{ paddingBottom: i < 3 ? 8 : 0 }}
-                  >
+          {liveStatus !== "rejected" && (
+            <div style={{ marginBottom: 24 }}>
+              {steps.map((s, i) => {
+                const n = i + 1,
+                  done = n < cur,
+                  active = n === cur;
+                return (
+                  <div key={i} style={{ position: "relative" }}>
                     <div
-                      className="track-dot"
-                      style={{
-                        background: done
-                          ? "var(--green)"
-                          : active
-                            ? "var(--orange)"
-                            : "#f0f0f0",
-                        color: done || active ? "#fff" : "var(--t3)",
-                        fontSize: done ? 16 : 18,
-                      }}
+                      className="track-step"
+                      style={{ paddingBottom: i < 3 ? 8 : 0 }}
                     >
-                      {done ? Ic.check : s.e}
-                    </div>
-                    <div style={{ paddingTop: 6 }}>
-                      <p
+                      <div
+                        className="track-dot"
                         style={{
-                          fontSize: 14,
-                          fontWeight: active ? 700 : 400,
-                          color: done || active ? "var(--t1)" : "var(--t3)",
+                          background: done
+                            ? "var(--green)"
+                            : active
+                              ? "var(--orange)"
+                              : "#f0f0f0",
+                          color: done || active ? "#fff" : "var(--t3)",
+                          fontSize: done ? 16 : 18,
                         }}
                       >
-                        {s.l}
-                      </p>
+                        {done ? Ic.check : s.e}
+                      </div>
+                      <div style={{ paddingTop: 6 }}>
+                        <p
+                          style={{
+                            fontSize: 14,
+                            fontWeight: active ? 700 : 400,
+                            color: done || active ? "var(--t1)" : "var(--t3)",
+                          }}
+                        >
+                          {s.l}
+                        </p>
+                      </div>
                     </div>
+                    {i < 3 && (
+                      <div className={`track-line${done ? " done" : ""}`} />
+                    )}
                   </div>
-                  {i < 3 && (
-                    <div className={`track-line${done ? " done" : ""}`} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Rider info */}
+          {riderName &&
+            (liveStatus === "on_the_way" || liveStatus === "delivered") && (
+              <div
+                style={{
+                  background: "var(--green-l)",
+                  border: "1px solid var(--green-border, #B8DEC9)",
+                  borderRadius: "var(--r-sm)",
+                  padding: "12px 14px",
+                  marginBottom: 20,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--green)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    marginBottom: 4,
+                  }}
+                >
+                  Your delivery rider
+                </p>
+                <p style={{ fontWeight: 700, fontSize: 15 }}>{riderName}</p>
+              </div>
+            )}
 
           {/* WhatsApp */}
           {restaurant?.ph_no && (
@@ -1685,19 +2266,43 @@ function TrackSheet({ order, restaurant, address, onClose }) {
 
 /* ── ProfileSheet ─────────────────────────────────────────────────────────── */
 function ProfileSheet({
-  customer, addresses, orderHistory, ordersLoading,
-  onClose, onSaveProfile, onSaveAddress, onDeleteAddress, onSetDefault,
-  defaultAddrId, onLoadOrders,
+  customer,
+  addresses,
+  orderHistory,
+  ordersLoading,
+  onClose,
+  onSaveProfile,
+  onSaveAddress,
+  onDeleteAddress,
+  onSetDefault,
+  defaultAddrId,
+  onLoadOrders,
 }) {
   const [tab, setTab] = useState("info");
-  const [form, setForm] = useState({ cust_name: customer?.cust_name || "", ph_num: customer?.ph_num || "" });
+  const [form, setForm] = useState({
+    cust_name: customer?.cust_name || "",
+    ph_num: customer?.ph_num || "",
+  });
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
 
   // Address editing state
   const [addrView, setAddrView] = useState("list"); // "list" | "form" | "map"
   const [editingAddr, setEditingAddr] = useState(null); // null = new
-  const [af, setAf] = useState({ label: "Home", labelCustom: "", street: "", block: "", bldg_name: "", apartment_no: "", floor: "", landmark: "", note: "", lat: null, lng: null, snapshotUrl: null });
+  const [af, setAf] = useState({
+    label: "Home",
+    labelCustom: "",
+    street: "",
+    block: "",
+    bldg_name: "",
+    apartment_no: "",
+    floor: "",
+    landmark: "",
+    note: "",
+    lat: null,
+    lng: null,
+    snapshotUrl: null,
+  });
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [delConfirm, setDelConfirm] = useState(null);
   const [addrSaving, setAddrSaving] = useState(false);
@@ -1710,7 +2315,9 @@ function ProfileSheet({
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   // Load orders when tab opens
@@ -1720,7 +2327,20 @@ function ProfileSheet({
 
   const openNewAddr = () => {
     setEditingAddr(null);
-    setAf({ label: "Home", labelCustom: "", street: "", block: "", bldg_name: "", apartment_no: "", floor: "", landmark: "", note: "", lat: null, lng: null, snapshotUrl: null });
+    setAf({
+      label: "Home",
+      labelCustom: "",
+      street: "",
+      block: "",
+      bldg_name: "",
+      apartment_no: "",
+      floor: "",
+      landmark: "",
+      note: "",
+      lat: null,
+      lng: null,
+      snapshotUrl: null,
+    });
     setCustomLabel(false);
     setAddrErr("");
     setAddrView("form");
@@ -1748,15 +2368,32 @@ function ProfileSheet({
     setAddrView("form");
   };
 
-  const finalLabel = af.label === "Other" && af.labelCustom.trim() ? af.labelCustom.trim() : af.label;
+  const finalLabel =
+    af.label === "Other" && af.labelCustom.trim()
+      ? af.labelCustom.trim()
+      : af.label;
 
   const handleSaveAddr = async () => {
-    if (!af.street.trim()) { setAddrErr("Street is required."); return; }
-    if (!af.block.trim()) { setAddrErr("Block / area is required."); return; }
-    if (!af.lat) { setAddrErr("Please pin your location on the map."); return; }
-    setAddrSaving(true); setAddrErr("");
+    if (!af.street.trim()) {
+      setAddrErr("Street is required.");
+      return;
+    }
+    if (!af.block.trim()) {
+      setAddrErr("Block / area is required.");
+      return;
+    }
+    if (!af.lat) {
+      setAddrErr("Please pin your location on the map.");
+      return;
+    }
+    setAddrSaving(true);
+    setAddrErr("");
     try {
-      await onSaveAddress({ ...af, label: finalLabel, id: editingAddr?.id || null });
+      await onSaveAddress({
+        ...af,
+        label: finalLabel,
+        id: editingAddr?.id || null,
+      });
       setAddrView("list");
     } catch (e) {
       setAddrErr("Failed to save address. Try again.");
@@ -1772,8 +2409,21 @@ function ProfileSheet({
 
   // Active order statuses
   const ACTIVE = ["pending", "accepted", "preparing", "on_the_way"];
-  const statusLabel = (s) => ({ pending: "Pending", accepted: "Accepted", preparing: "Preparing", on_the_way: "On the way", delivered: "Delivered", cancelled: "Cancelled" }[s] || s);
-  const statusColor = (s) => ACTIVE.includes(s) ? "var(--orange)" : s === "delivered" ? "var(--green)" : "var(--t3)";
+  const statusLabel = (s) =>
+    ({
+      pending: "Pending",
+      accepted: "Accepted",
+      preparing: "Preparing",
+      on_the_way: "On the way",
+      delivered: "Delivered",
+      cancelled: "Cancelled",
+    })[s] || s;
+  const statusColor = (s) =>
+    ACTIVE.includes(s)
+      ? "var(--orange)"
+      : s === "delivered"
+        ? "var(--green)"
+        : "var(--t3)";
 
   return (
     <>
@@ -1782,49 +2432,134 @@ function ProfileSheet({
         <div className="drag-pill" />
         <div className="sheet-hd">
           <span className="sheet-title">
-            {addrView === "form" ? (editingAddr ? "Edit address" : "New address") : "My profile"}
+            {addrView === "form"
+              ? editingAddr
+                ? "Edit address"
+                : "New address"
+              : "My profile"}
           </span>
-          <button className="close-btn" onClick={addrView !== "list" ? () => setAddrView("list") : onClose}>
+          <button
+            className="close-btn"
+            onClick={addrView !== "list" ? () => setAddrView("list") : onClose}
+          >
             {addrView !== "list" ? Ic.back : Ic.close}
           </button>
         </div>
 
         {/* Tabs — only show when not in address form */}
         {addrView === "list" && (
-          <div style={{ display: "flex", gap: 20, padding: "0 20px", borderBottom: "1.5px solid var(--border)", marginBottom: 20 }}>
-            {[["info","Profile"],["addresses","Addresses"],["orders","Orders"]].map(([k,l]) => (
-              <button key={k} className={`ptab${tab===k?" on":""}`} onClick={() => setTab(k)}>{l}</button>
+          <div
+            style={{
+              display: "flex",
+              gap: 20,
+              padding: "0 20px",
+              borderBottom: "1.5px solid var(--border)",
+              marginBottom: 20,
+            }}
+          >
+            {[
+              ["info", "Profile"],
+              ["addresses", "Addresses"],
+              ["orders", "Orders"],
+            ].map(([k, l]) => (
+              <button
+                key={k}
+                className={`ptab${tab === k ? " on" : ""}`}
+                onClick={() => setTab(k)}
+              >
+                {l}
+              </button>
             ))}
           </div>
         )}
 
         <div style={{ padding: "0 20px 32px" }}>
-
           {/* ── PROFILE TAB ── */}
           {addrView === "list" && tab === "info" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Avatar card */}
-              <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "#fafafa", borderRadius: var_r, marginBottom: 4 }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--orange)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 22, fontWeight: 800, flexShrink: 0 }}>
-                  {(form.cust_name || customer?.cust_name || "?")[0].toUpperCase()}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: "14px 16px",
+                  background: "#fafafa",
+                  borderRadius: var_r,
+                  marginBottom: 4,
+                }}
+              >
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: "50%",
+                    background: "var(--orange)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontSize: 22,
+                    fontWeight: 800,
+                    flexShrink: 0,
+                  }}
+                >
+                  {(form.cust_name ||
+                    customer?.cust_name ||
+                    "?")[0].toUpperCase()}
                 </div>
                 <div>
-                  <p style={{ fontWeight: 700, fontSize: 15 }}>{form.cust_name || "Your Name"}</p>
-                  <p style={{ fontSize: 13, color: "var(--t3)" }}>{customer?.ph_num || "—"}</p>
+                  <p style={{ fontWeight: 700, fontSize: 15 }}>
+                    {form.cust_name || "Your Name"}
+                  </p>
+                  <p style={{ fontSize: 13, color: "var(--t3)" }}>
+                    {customer?.ph_num || "—"}
+                  </p>
                 </div>
               </div>
               <div>
                 <label className="lbl">Full name</label>
-                <input className="inp" placeholder="Your name" value={form.cust_name} onChange={(e) => { setForm({ ...form, cust_name: e.target.value }); setSaveErr(""); }} />
+                <input
+                  className="inp"
+                  placeholder="Your name"
+                  value={form.cust_name}
+                  onChange={(e) => {
+                    setForm({ ...form, cust_name: e.target.value });
+                    setSaveErr("");
+                  }}
+                />
               </div>
               {/* Phone is read-only — set during onboarding */}
               <div>
                 <label className="lbl">WhatsApp number</label>
-                <input className="inp" value={customer?.ph_num || ""} readOnly style={{ background: "#f9f9f9", color: "var(--t3)" }} />
-                <p style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>Contact support to change your number.</p>
+                <input
+                  className="inp"
+                  value={customer?.ph_num || ""}
+                  readOnly
+                  style={{ background: "#f9f9f9", color: "var(--t3)" }}
+                />
+                <p style={{ fontSize: 11, color: "var(--t3)", marginTop: 4 }}>
+                  Contact support to change your number.
+                </p>
               </div>
-              {saveErr && <p style={{ fontSize: 12, color: "var(--red)" }}>⚠️ {saveErr}</p>}
-              <button className="btn-primary" disabled={saving} onClick={async () => { if (!form.cust_name.trim()) { setSaveErr("Name is required."); return; } setSaving(true); await onSaveProfile(form); setSaving(false); }}>
+              {saveErr && (
+                <p style={{ fontSize: 12, color: "var(--red)" }}>
+                  ⚠️ {saveErr}
+                </p>
+              )}
+              <button
+                className="btn-primary"
+                disabled={saving}
+                onClick={async () => {
+                  if (!form.cust_name.trim()) {
+                    setSaveErr("Name is required.");
+                    return;
+                  }
+                  setSaving(true);
+                  await onSaveProfile(form);
+                  setSaving(false);
+                }}
+              >
                 {saving ? <Spinner size={20} /> : "Save profile"}
               </button>
             </div>
@@ -1836,51 +2571,191 @@ function ProfileSheet({
               {addresses.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 0" }}>
                   <div style={{ fontSize: 48, marginBottom: 10 }}>📍</div>
-                  <p style={{ color: "var(--t2)", fontSize: 14, marginBottom: 16 }}>No saved addresses yet</p>
-                </div>
-              ) : addresses.map((a) => (
-                <div key={a.id} className="addr-card" style={{ borderColor: a.id === defaultAddrId ? "var(--orange)" : "var(--border)", background: a.id === defaultAddrId ? "#fff9f6" : "#fff" }}>
-                  {/* Map snapshot thumbnail */}
-                  {a.map_snapshot_url ? (
-                    <img
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${a.longitude-0.005},${a.latitude-0.004},${a.longitude+0.005},${a.latitude+0.004}&layer=mapnik&marker=${a.latitude},${a.longitude}`}
-                      className="map-snapshot"
-                      alt="map"
-                      onError={(e) => (e.target.style.display = "none")}
-                    />
-                  ) : a.latitude && a.longitude ? (
-                    <iframe
-                      className="map-snapshot"
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${a.longitude-0.005},${a.latitude-0.004},${a.longitude+0.005},${a.latitude+0.004}&layer=mapnik&marker=${a.latitude},${a.longitude}`}
-                      title="map"
-                      scrolling="no"
-                      style={{ pointerEvents: "none" }}
-                    />
-                  ) : null}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 16 }}>{a.label === "Home" ? "🏠" : a.label === "Work" ? "🏢" : a.label === "Gym" ? "🏋️" : "📍"}</span>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{a.label}</span>
-                    {a.id === defaultAddrId && <span style={{ fontSize: 10, fontWeight: 700, background: "#fff0e8", color: "var(--orange)", padding: "2px 8px", borderRadius: 99, marginLeft: 4 }}>Default</span>}
-                  </div>
-                  <p style={{ fontSize: 13, color: "var(--t2)", marginBottom: 10, paddingLeft: 24 }}>
-                    {[a.apartment_no && `Apt ${a.apartment_no}`, a.floor && `Floor ${a.floor}`, a.bldg_name, a.street, a.block].filter(Boolean).join(", ")}
+                  <p
+                    style={{
+                      color: "var(--t2)",
+                      fontSize: 14,
+                      marginBottom: 16,
+                    }}
+                  >
+                    No saved addresses yet
                   </p>
-                  <div style={{ display: "flex", gap: 8, paddingLeft: 24, flexWrap: "wrap" }}>
-                    <button className="btn-out" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => openEditAddr(a)}>{Ic.edit} Edit</button>
-                    {a.id !== defaultAddrId && <button className="btn-out" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => onSetDefault(a.id)}>⭐ Default</button>}
-                    <button className="btn-out" style={{ fontSize: 12, padding: "5px 11px", color: "var(--red)", borderColor: "#fca5a5" }} onClick={() => setDelConfirm(a.id)}>{Ic.trash}</button>
-                  </div>
                 </div>
-              ))}
-              <button className="btn-out" style={{ justifyContent: "center", width: "100%" }} onClick={openNewAddr}>{Ic.plus} Add new address</button>
+              ) : (
+                addresses.map((a) => (
+                  <div
+                    key={a.id}
+                    className="addr-card"
+                    style={{
+                      borderColor:
+                        a.id === defaultAddrId
+                          ? "var(--orange)"
+                          : "var(--border)",
+                      background: a.id === defaultAddrId ? "#fff9f6" : "#fff",
+                    }}
+                  >
+                    {/* Map snapshot thumbnail */}
+                    {a.map_snapshot_url ? (
+                      <img
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${a.longitude - 0.005},${a.latitude - 0.004},${a.longitude + 0.005},${a.latitude + 0.004}&layer=mapnik&marker=${a.latitude},${a.longitude}`}
+                        className="map-snapshot"
+                        alt="map"
+                        onError={(e) => (e.target.style.display = "none")}
+                      />
+                    ) : a.latitude && a.longitude ? (
+                      <iframe
+                        className="map-snapshot"
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${a.longitude - 0.005},${a.latitude - 0.004},${a.longitude + 0.005},${a.latitude + 0.004}&layer=mapnik&marker=${a.latitude},${a.longitude}`}
+                        title="map"
+                        scrolling="no"
+                        style={{ pointerEvents: "none" }}
+                      />
+                    ) : null}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>
+                        {a.label === "Home"
+                          ? "🏠"
+                          : a.label === "Work"
+                            ? "🏢"
+                            : a.label === "Gym"
+                              ? "🏋️"
+                              : "📍"}
+                      </span>
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>
+                        {a.label}
+                      </span>
+                      {a.id === defaultAddrId && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            background: "#fff0e8",
+                            color: "var(--orange)",
+                            padding: "2px 8px",
+                            borderRadius: 99,
+                            marginLeft: 4,
+                          }}
+                        >
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: "var(--t2)",
+                        marginBottom: 10,
+                        paddingLeft: 24,
+                      }}
+                    >
+                      {[
+                        a.apartment_no && `Apt ${a.apartment_no}`,
+                        a.floor && `Floor ${a.floor}`,
+                        a.bldg_name,
+                        a.street,
+                        a.block,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        paddingLeft: 24,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <button
+                        className="btn-out"
+                        style={{ fontSize: 12, padding: "5px 11px" }}
+                        onClick={() => openEditAddr(a)}
+                      >
+                        {Ic.edit} Edit
+                      </button>
+                      {a.id !== defaultAddrId && (
+                        <button
+                          className="btn-out"
+                          style={{ fontSize: 12, padding: "5px 11px" }}
+                          onClick={() => onSetDefault(a.id)}
+                        >
+                          ⭐ Default
+                        </button>
+                      )}
+                      <button
+                        className="btn-out"
+                        style={{
+                          fontSize: 12,
+                          padding: "5px 11px",
+                          color: "var(--red)",
+                          borderColor: "#fca5a5",
+                        }}
+                        onClick={() => setDelConfirm(a.id)}
+                      >
+                        {Ic.trash}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+              <button
+                className="btn-out"
+                style={{ justifyContent: "center", width: "100%" }}
+                onClick={openNewAddr}
+              >
+                {Ic.plus} Add new address
+              </button>
 
               {/* Delete confirm inline */}
               {delConfirm && (
-                <div style={{ background: "#fdecea", border: "1px solid #fca5a5", borderRadius: var_r_sm, padding: "12px 14px" }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: "var(--t1)" }}>Delete this address?</p>
+                <div
+                  style={{
+                    background: "#fdecea",
+                    border: "1px solid #fca5a5",
+                    borderRadius: var_r_sm,
+                    padding: "12px 14px",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      marginBottom: 10,
+                      color: "var(--t1)",
+                    }}
+                  >
+                    Delete this address?
+                  </p>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button className="btn-out" style={{ flex: 1, justifyContent: "center", fontSize: 13 }} onClick={() => setDelConfirm(null)}>Cancel</button>
-                    <button className="btn-primary" style={{ flex: 1, fontSize: 13, background: "var(--red)" }} onClick={() => handleDelete(delConfirm)}>Delete</button>
+                    <button
+                      className="btn-out"
+                      style={{
+                        flex: 1,
+                        justifyContent: "center",
+                        fontSize: 13,
+                      }}
+                      onClick={() => setDelConfirm(null)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="btn-primary"
+                      style={{
+                        flex: 1,
+                        fontSize: 13,
+                        background: "var(--red)",
+                      }}
+                      onClick={() => handleDelete(delConfirm)}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               )}
@@ -1890,43 +2765,98 @@ function ProfileSheet({
           {/* ── ADDRESSES TAB: FORM ── */}
           {addrView === "form" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-
               {/* Label selector */}
               <div>
                 <label className="lbl">Label</label>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: customLabel ? 10 : 0 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginBottom: customLabel ? 10 : 0,
+                  }}
+                >
                   {PRESET_LABELS.map((l) => (
-                    <button key={l} onClick={() => { setAf({ ...af, label: l }); setCustomLabel(l === "Other"); }} style={{ padding: "9px 16px", border: `2px solid ${af.label === l ? "var(--orange)" : "var(--border)"}`, borderRadius: var_r_sm, background: af.label === l ? "#fff9f6" : "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "var(--font)", transition: "all .15s" }}>
-                      {l === "Home" ? "🏠" : l === "Work" ? "🏢" : l === "Gym" ? "🏋️" : "📍"} {l}
+                    <button
+                      key={l}
+                      onClick={() => {
+                        setAf({ ...af, label: l });
+                        setCustomLabel(l === "Other");
+                      }}
+                      style={{
+                        padding: "9px 16px",
+                        border: `2px solid ${af.label === l ? "var(--orange)" : "var(--border)"}`,
+                        borderRadius: var_r_sm,
+                        background: af.label === l ? "#fff9f6" : "#fff",
+                        fontWeight: 700,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        fontFamily: "var(--font)",
+                        transition: "all .15s",
+                      }}
+                    >
+                      {l === "Home"
+                        ? "🏠"
+                        : l === "Work"
+                          ? "🏢"
+                          : l === "Gym"
+                            ? "🏋️"
+                            : "📍"}{" "}
+                      {l}
                     </button>
                   ))}
                 </div>
                 {customLabel && (
-                  <input className="inp" placeholder="e.g. Parents' house, Office…" value={af.labelCustom} onChange={(e) => setAf({ ...af, labelCustom: e.target.value })} style={{ marginTop: 8 }} />
+                  <input
+                    className="inp"
+                    placeholder="e.g. Parents' house, Office…"
+                    value={af.labelCustom}
+                    onChange={(e) =>
+                      setAf({ ...af, labelCustom: e.target.value })
+                    }
+                    style={{ marginTop: 8 }}
+                  />
                 )}
               </div>
 
               {/* Map location picker */}
               <div>
-                <label className="lbl">Location on map <span style={{ textTransform: "none", fontWeight: 400 }}>(required)</span></label>
+                <label className="lbl">
+                  Location on map{" "}
+                  <span style={{ textTransform: "none", fontWeight: 400 }}>
+                    (required)
+                  </span>
+                </label>
                 {af.lat ? (
                   <>
                     <iframe
                       className="map-snapshot"
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${af.lng-0.005},${af.lat-0.004},${af.lng+0.005},${af.lat+0.004}&layer=mapnik&marker=${af.lat},${af.lng}`}
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${af.lng - 0.005},${af.lat - 0.004},${af.lng + 0.005},${af.lat + 0.004}&layer=mapnik&marker=${af.lat},${af.lng}`}
                       title="selected location"
                       scrolling="no"
                       style={{ pointerEvents: "none" }}
                     />
-                    <button className="btn-out" style={{ fontSize: 12, marginBottom: 4 }} onClick={() => setChangeLocConfirm(true)}>📍 Change location</button>
+                    <button
+                      className="btn-out"
+                      style={{ fontSize: 12, marginBottom: 4 }}
+                      onClick={() => setChangeLocConfirm(true)}
+                    >
+                      📍 Change location
+                    </button>
                   </>
                 ) : (
-                  <div className="map-snapshot-empty" onClick={() => setShowMapPicker(true)}>
-                    <span>🗺️</span><span>Tap to pin location</span>
+                  <div
+                    className="map-snapshot-empty"
+                    onClick={() => setShowMapPicker(true)}
+                  >
+                    <span>🗺️</span>
+                    <span>Tap to pin location</span>
                   </div>
                 )}
                 <p style={{ fontSize: 11, color: "var(--t3)" }}>
-                  {af.lat ? `${af.lat.toFixed(5)}, ${af.lng.toFixed(5)}` : "Location not set"}
+                  {af.lat
+                    ? `${af.lat.toFixed(5)}, ${af.lng.toFixed(5)}`
+                    : "Location not set"}
                 </p>
               </div>
 
@@ -1942,14 +2872,37 @@ function ProfileSheet({
               ].map(({ f, l, t }) => (
                 <div key={f}>
                   <label className="lbl">{l}</label>
-                  <input className="inp" type={t || "text"} placeholder={l} value={af[f]} onChange={(e) => { setAf({ ...af, [f]: e.target.value }); setAddrErr(""); }} />
+                  <input
+                    className="inp"
+                    type={t || "text"}
+                    placeholder={l}
+                    value={af[f]}
+                    onChange={(e) => {
+                      setAf({ ...af, [f]: e.target.value });
+                      setAddrErr("");
+                    }}
+                  />
                 </div>
               ))}
 
-              {addrErr && <p style={{ fontSize: 12, color: "var(--red)" }}>⚠️ {addrErr}</p>}
+              {addrErr && (
+                <p style={{ fontSize: 12, color: "var(--red)" }}>
+                  ⚠️ {addrErr}
+                </p>
+              )}
 
-              <button className="btn-primary" disabled={addrSaving} onClick={handleSaveAddr}>
-                {addrSaving ? <Spinner size={20} /> : (editingAddr ? "Save changes" : "Save address")}
+              <button
+                className="btn-primary"
+                disabled={addrSaving}
+                onClick={handleSaveAddr}
+              >
+                {addrSaving ? (
+                  <Spinner size={20} />
+                ) : editingAddr ? (
+                  "Save changes"
+                ) : (
+                  "Save address"
+                )}
               </button>
             </div>
           )}
@@ -1958,47 +2911,130 @@ function ProfileSheet({
           {addrView === "list" && tab === "orders" && (
             <div>
               {ordersLoading ? (
-                <div style={{ display: "flex", justifyContent: "center", padding: "32px 0" }}><Spinner size={28} /></div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    padding: "32px 0",
+                  }}
+                >
+                  <Spinner size={28} />
+                </div>
               ) : orderHistory.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "40px 0" }}>
                   <div style={{ fontSize: 52, marginBottom: 12 }}>📋</div>
-                  <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>No orders yet</p>
-                  <p style={{ color: "var(--t2)", fontSize: 14 }}>Your order history will appear here</p>
+                  <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
+                    No orders yet
+                  </p>
+                  <p style={{ color: "var(--t2)", fontSize: 14 }}>
+                    Your order history will appear here
+                  </p>
                 </div>
               ) : (
                 <>
                   {orderHistory.map((o) => {
                     const isActive = ACTIVE.includes(o.status);
                     return (
-                      <div key={o.id} className={`order-card${isActive ? " active" : ""}`}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        key={o.id}
+                        className={`order-card${isActive ? " active" : ""}`}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 6,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
                             {isActive && <span className="active-dot" />}
-                            <span style={{ fontWeight: 700, fontSize: 14 }}>Order #{o.id}</span>
+                            <span style={{ fontWeight: 700, fontSize: 14 }}>
+                              Order #{o.id}
+                            </span>
                           </div>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: statusColor(o.status), background: isActive ? "#fff0e8" : o.status === "delivered" ? "var(--green-l)" : "#f5f5f5", padding: "3px 9px", borderRadius: 99 }}>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: statusColor(o.status),
+                              background: isActive
+                                ? "#fff0e8"
+                                : o.status === "delivered"
+                                  ? "var(--green-l)"
+                                  : "#f5f5f5",
+                              padding: "3px 9px",
+                              borderRadius: 99,
+                            }}
+                          >
                             {statusLabel(o.status)}
                           </span>
                         </div>
-                        <p style={{ fontSize: 13, color: "var(--t2)", marginBottom: 4 }}>
-                          {new Date(o.created_at).toLocaleDateString("en-KW", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--t2)",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {new Date(o.created_at).toLocaleDateString("en-KW", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </p>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span style={{ fontSize: 13, color: "var(--t3)" }}>{o.payment_method}</span>
-                          <span style={{ fontWeight: 800, fontSize: 15 }}>{fmt(o.total_amount)}</span>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <span style={{ fontSize: 13, color: "var(--t3)" }}>
+                            {o.payment_method}
+                          </span>
+                          <span style={{ fontWeight: 800, fontSize: 15 }}>
+                            {fmt(o.total_amount)}
+                          </span>
                         </div>
-                        {o.notes && <p style={{ fontSize: 12, color: "var(--t3)", fontStyle: "italic", marginTop: 4 }}>"{o.notes}"</p>}
+                        {o.notes && (
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "var(--t3)",
+                              fontStyle: "italic",
+                              marginTop: 4,
+                            }}
+                          >
+                            "{o.notes}"
+                          </p>
+                        )}
                       </div>
                     );
                   })}
-                  <button className="btn-out" style={{ width: "100%", justifyContent: "center", marginTop: 4 }} onClick={onLoadOrders}>
+                  <button
+                    className="btn-out"
+                    style={{
+                      width: "100%",
+                      justifyContent: "center",
+                      marginTop: 4,
+                    }}
+                    onClick={onLoadOrders}
+                  >
                     Refresh ↺
                   </button>
                 </>
               )}
             </div>
           )}
-
         </div>
       </div>
 
@@ -2018,13 +3054,48 @@ function ProfileSheet({
       {/* "Change location" confirmation */}
       {changeLocConfirm && (
         <>
-          <div className="overlay" style={{ zIndex: 400 }} onClick={() => setChangeLocConfirm(false)} />
-          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: "#fff", borderRadius: "var(--r) var(--r) 0 0", padding: "24px 20px", paddingBottom: "calc(24px + env(safe-area-inset-bottom,0px))" }}>
-            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Change location?</p>
-            <p style={{ fontSize: 13, color: "var(--t2)", marginBottom: 20 }}>Your current pin will be replaced with a new one.</p>
+          <div
+            className="overlay"
+            style={{ zIndex: 400 }}
+            onClick={() => setChangeLocConfirm(false)}
+          />
+          <div
+            style={{
+              position: "fixed",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 401,
+              background: "#fff",
+              borderRadius: "var(--r) var(--r) 0 0",
+              padding: "24px 20px",
+              paddingBottom: "calc(24px + env(safe-area-inset-bottom,0px))",
+            }}
+          >
+            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
+              Change location?
+            </p>
+            <p style={{ fontSize: 13, color: "var(--t2)", marginBottom: 20 }}>
+              Your current pin will be replaced with a new one.
+            </p>
             <div style={{ display: "flex", gap: 10 }}>
-              <button className="btn-out" style={{ flex: 1, justifyContent: "center" }} onClick={() => setChangeLocConfirm(false)}>Keep current</button>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={() => { setChangeLocConfirm(false); setShowMapPicker(true); }}>Open map</button>
+              <button
+                className="btn-out"
+                style={{ flex: 1, justifyContent: "center" }}
+                onClick={() => setChangeLocConfirm(false)}
+              >
+                Keep current
+              </button>
+              <button
+                className="btn-primary"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  setChangeLocConfirm(false);
+                  setShowMapPicker(true);
+                }}
+              >
+                Open map
+              </button>
             </div>
           </div>
         </>
@@ -2034,33 +3105,81 @@ function ProfileSheet({
 }
 
 /* ── Desktop CartPanel (sidebar) ─────────────────────────────────────────── */
-function DesktopCart({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQty, calcTotals, onCheckout }) {
+function DesktopCart({
+  cart,
+  addonCart,
+  restaurant,
+  onUpdateQty,
+  onUpdateAddonQty,
+  calcTotals,
+  onCheckout,
+}) {
   const [note, setNote] = useState("");
   const { subT, delivery, total } = calcTotals(cart, addonCart);
   const minOk = !restaurant?.min_order || subT >= restaurant.min_order;
-  const totalItems = cart.reduce((s, c) => s + c.qty, 0) + (addonCart || []).reduce((s, a) => s + a.qty, 0);
+  const totalItems =
+    cart.reduce((s, c) => s + c.qty, 0) +
+    (addonCart || []).reduce((s, a) => s + a.qty, 0);
 
   return (
-    <div style={{ background: "var(--card)", borderRadius: "var(--r)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
-      <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--border)" }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 2 }}>
+    <div
+      style={{
+        background: "var(--card)",
+        borderRadius: "var(--r)",
+        boxShadow: "var(--shadow)",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          padding: "18px 20px 14px",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "var(--t3)",
+            textTransform: "uppercase",
+            letterSpacing: ".06em",
+            marginBottom: 2,
+          }}
+        >
           {restaurant?.name}
         </p>
-        <h3 style={{ fontSize: 18, fontWeight: 800 }}>Your order {totalItems > 0 ? `(${totalItems})` : ""}</h3>
+        <h3 style={{ fontSize: 18, fontWeight: 800 }}>
+          Your order {totalItems > 0 ? `(${totalItems})` : ""}
+        </h3>
       </div>
       <div style={{ padding: "16px 20px 20px" }}>
         {totalItems === 0 ? (
           <div style={{ textAlign: "center", padding: "32px 0" }}>
             <div style={{ fontSize: 44, marginBottom: 10 }}>🛒</div>
-            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Cart is empty</p>
-            <p style={{ color: "var(--t3)", fontSize: 13 }}>Add items to get started</p>
+            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+              Cart is empty
+            </p>
+            <p style={{ color: "var(--t3)", fontSize: 13 }}>
+              Add items to get started
+            </p>
           </div>
         ) : (
           <>
             {/* Menu items */}
             {cart.length > 0 && (
               <div>
-                <p style={{ fontSize: 10, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Menu items</p>
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: "var(--t3)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    marginBottom: 6,
+                  }}
+                >
+                  Menu items
+                </p>
                 {cart.map((c, i) => {
                   const varLines = Object.values(c.variantMeta || {})
                     .flatMap((m) => m.optionNames)
@@ -2068,21 +3187,61 @@ function DesktopCart({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQt
                   return (
                     <div key={i} className="cart-row">
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{c.item.name}</p>
+                        <p
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 13,
+                            marginBottom: 2,
+                          }}
+                        >
+                          {c.item.name}
+                        </p>
                         {varLines.length > 0 && (
                           <p className="cart-detail">
-                            {varLines.map((v, vi) => <span key={vi} style={{ display: "inline-block", marginRight: 6 }}>· {v}</span>)}
+                            {varLines.map((v, vi) => (
+                              <span
+                                key={vi}
+                                style={{
+                                  display: "inline-block",
+                                  marginRight: 6,
+                                }}
+                              >
+                                · {v}
+                              </span>
+                            ))}
                           </p>
                         )}
                         {c.note && (
-                          <p className="cart-note" style={{ marginTop: 3 }}>📝 {c.note}</p>
+                          <p className="cart-note" style={{ marginTop: 3 }}>
+                            📝 {c.note}
+                          </p>
                         )}
-                        <p style={{ fontSize: 13, color: "var(--t2)", fontWeight: 700 }}>{fmt(c.unitPrice)}</p>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--t2)",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {fmt(c.unitPrice)}
+                        </p>
                       </div>
                       <div className="qty-ctrl" style={{ flexShrink: 0 }}>
-                        <button onClick={() => onUpdateQty(i, c.qty - 1)} style={{ width: 32, height: 32 }}>{c.qty === 1 ? Ic.trash : Ic.minus}</button>
-                        <span style={{ minWidth: 26, fontSize: 13 }}>{c.qty}</span>
-                        <button onClick={() => onUpdateQty(i, c.qty + 1)} style={{ width: 32, height: 32 }}>{Ic.plus}</button>
+                        <button
+                          onClick={() => onUpdateQty(i, c.qty - 1)}
+                          style={{ width: 32, height: 32 }}
+                        >
+                          {c.qty === 1 ? Ic.trash : Ic.minus}
+                        </button>
+                        <span style={{ minWidth: 26, fontSize: 13 }}>
+                          {c.qty}
+                        </span>
+                        <button
+                          onClick={() => onUpdateQty(i, c.qty + 1)}
+                          style={{ width: 32, height: 32 }}
+                        >
+                          {Ic.plus}
+                        </button>
                       </div>
                     </div>
                   );
@@ -2093,17 +3252,56 @@ function DesktopCart({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQt
             {/* Add-on rows */}
             {addonCart && addonCart.length > 0 && (
               <div style={{ marginTop: cart.length > 0 ? 8 : 0 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Add-ons</p>
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: "var(--t3)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                    marginBottom: 6,
+                  }}
+                >
+                  Add-ons
+                </p>
                 {addonCart.map((a, i) => (
                   <div key={i} className="cart-row">
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{a.addon.name}</p>
-                      <p style={{ fontSize: 13, color: "var(--t2)", fontWeight: 700 }}>{fmt(a.addon.price)}</p>
+                      <p
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 13,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {a.addon.name}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          color: "var(--t2)",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {fmt(a.addon.price)}
+                      </p>
                     </div>
                     <div className="qty-ctrl" style={{ flexShrink: 0 }}>
-                      <button onClick={() => onUpdateAddonQty(a.addon.id, -1)} style={{ width: 32, height: 32 }}>{a.qty === 1 ? Ic.trash : Ic.minus}</button>
-                      <span style={{ minWidth: 26, fontSize: 13 }}>{a.qty}</span>
-                      <button onClick={() => onUpdateAddonQty(a.addon.id, 1)} style={{ width: 32, height: 32 }}>{Ic.plus}</button>
+                      <button
+                        onClick={() => onUpdateAddonQty(a.addon.id, -1)}
+                        style={{ width: 32, height: 32 }}
+                      >
+                        {a.qty === 1 ? Ic.trash : Ic.minus}
+                      </button>
+                      <span style={{ minWidth: 26, fontSize: 13 }}>
+                        {a.qty}
+                      </span>
+                      <button
+                        onClick={() => onUpdateAddonQty(a.addon.id, 1)}
+                        style={{ width: 32, height: 32 }}
+                      >
+                        {Ic.plus}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -2112,7 +3310,12 @@ function DesktopCart({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQt
 
             {/* Order note */}
             <div style={{ margin: "14px 0 12px" }}>
-              <label className="lbl" style={{ fontSize: 10 }}>Order note <span style={{ textTransform: "none", fontWeight: 400 }}>(optional · whole order)</span></label>
+              <label className="lbl" style={{ fontSize: 10 }}>
+                Order note{" "}
+                <span style={{ textTransform: "none", fontWeight: 400 }}>
+                  (optional · whole order)
+                </span>
+              </label>
               <textarea
                 className="inp"
                 rows={2}
@@ -2125,20 +3328,58 @@ function DesktopCart({ cart, addonCart, restaurant, onUpdateQty, onUpdateAddonQt
             </div>
 
             {/* Bill */}
-            <div style={{ background: "#fafafa", borderRadius: var_r_sm, padding: "13px 14px", marginBottom: 14 }}>
-              <div className="sum-row" style={{ fontSize: 13 }}><span>Subtotal</span><span>{fmt(subT)}</span></div>
-              <div className="sum-row" style={{ fontSize: 13 }}><span>Delivery</span><span>{fmt(delivery)}</span></div>
-              <div style={{ borderTop: "1px solid var(--border)", marginTop: 10, paddingTop: 10 }}>
-                <div className="sum-row total" style={{ fontSize: 15 }}><span>Total</span><span>{fmt(total)}</span></div>
+            <div
+              style={{
+                background: "#fafafa",
+                borderRadius: var_r_sm,
+                padding: "13px 14px",
+                marginBottom: 14,
+              }}
+            >
+              <div className="sum-row" style={{ fontSize: 13 }}>
+                <span>Subtotal</span>
+                <span>{fmt(subT)}</span>
+              </div>
+              <div className="sum-row" style={{ fontSize: 13 }}>
+                <span>Delivery</span>
+                <span>{fmt(delivery)}</span>
+              </div>
+              <div
+                style={{
+                  borderTop: "1px solid var(--border)",
+                  marginTop: 10,
+                  paddingTop: 10,
+                }}
+              >
+                <div className="sum-row total" style={{ fontSize: 15 }}>
+                  <span>Total</span>
+                  <span>{fmt(total)}</span>
+                </div>
               </div>
             </div>
 
             {restaurant?.min_order && subT < restaurant.min_order && (
-              <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: var_r_sm, padding: "9px 12px", marginBottom: 12, fontSize: 12, color: "#e65100", fontWeight: 500 }}>
-                ⚠️ Min. {fmt(restaurant.min_order)} · add {fmt(restaurant.min_order - subT)} more
+              <div
+                style={{
+                  background: "#fff8e1",
+                  border: "1px solid #ffe082",
+                  borderRadius: var_r_sm,
+                  padding: "9px 12px",
+                  marginBottom: 12,
+                  fontSize: 12,
+                  color: "#e65100",
+                  fontWeight: 500,
+                }}
+              >
+                ⚠️ Min. {fmt(restaurant.min_order)} · add{" "}
+                {fmt(restaurant.min_order - subT)} more
               </div>
             )}
-            <button className="btn-primary" disabled={!minOk} onClick={() => onCheckout(total, note)}>
+            <button
+              className="btn-primary"
+              disabled={!minOk}
+              onClick={() => onCheckout(total, note)}
+            >
               Checkout · {fmt(total)}
             </button>
           </>
@@ -2156,9 +3397,9 @@ export default function Customer() {
   const [restaurant, setRestaurant] = useState(null);
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
-  const [addonTypes, setAddonTypes] = useState([]);   // Add_Ons_Type rows
-  const [addonItems, setAddonItems] = useState([]);   // Add_Ons rows
-  const [addonCart, setAddonCart] = useState([]);     // [{addon, qty}]
+  const [addonTypes, setAddonTypes] = useState([]); // Add_Ons_Type rows
+  const [addonItems, setAddonItems] = useState([]); // Add_Ons rows
+  const [addonCart, setAddonCart] = useState([]); // [{addon, qty}]
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -2274,12 +3515,19 @@ export default function Customer() {
 
   /* load returning customer (per-restaurant key) */
   useEffect(() => {
-    if (!restId) { setCustReady(true); return; }
+    if (!restId) {
+      setCustReady(true);
+      return;
+    }
     (async () => {
       try {
         const savedId = localStorage.getItem(custKey(restId));
         if (savedId) {
-          const { data } = await supabase.from("Customer").select("*").eq("id", savedId).maybeSingle();
+          const { data } = await supabase
+            .from("Customer")
+            .select("*")
+            .eq("id", savedId)
+            .maybeSingle();
           if (data) {
             setCustomer(data);
             await loadAddresses(data.id);
@@ -2297,13 +3545,19 @@ export default function Customer() {
 
   const loadAddresses = async (cid) => {
     try {
-      const { data } = await supabase.from("Customer_Address").select("*").eq("cust_id", cid).order("id");
+      const { data } = await supabase
+        .from("Customer_Address")
+        .select("*")
+        .eq("cust_id", cid)
+        .order("id");
       if (data) {
         setAddresses(data);
         const saved = localStorage.getItem(`frt_def_addr_${cid}`);
         setDefaultAddrId(saved ? Number(saved) : data[0]?.id || null);
       }
-    } catch (e) { console.error("[loadAddresses]", e); }
+    } catch (e) {
+      console.error("[loadAddresses]", e);
+    }
   };
 
   const loadOrderHistory = async (cid) => {
@@ -2318,8 +3572,11 @@ export default function Customer() {
         .order("created_at", { ascending: false })
         .limit(30);
       setOrderHistory(data || []);
-    } catch (e) { console.error("[loadOrderHistory]", e); }
-    finally { setOrdersLoading(false); }
+    } catch (e) {
+      console.error("[loadOrderHistory]", e);
+    } finally {
+      setOrdersLoading(false);
+    }
   };
 
   /* filtered menu */
@@ -2332,19 +3589,28 @@ export default function Customer() {
       activeCat === "all"
         ? true
         : activeCat === "recommended"
-          ? (m.is_popular || m.recommended)   // support both fields
+          ? m.is_popular
           : m.categ_id === activeCat;
     return ms && mc;
   });
 
   /* cart helpers */
   const addToCart = useCallback(
-    ({ item, qty, selectedVariants, variantMeta, selectedAddOns, unitPrice, note }) => {
+    ({
+      item,
+      qty,
+      selectedVariants,
+      variantMeta,
+      selectedAddOns,
+      unitPrice,
+      note,
+    }) => {
       setCart((prev) => {
         const idx = prev.findIndex(
           (c) =>
             c.item.id === item.id &&
-            JSON.stringify(c.selectedVariants) === JSON.stringify(selectedVariants) &&
+            JSON.stringify(c.selectedVariants) ===
+              JSON.stringify(selectedVariants) &&
             JSON.stringify(c.selectedAddOns) === JSON.stringify(selectedAddOns),
         );
         if (idx >= 0) {
@@ -2354,7 +3620,15 @@ export default function Customer() {
         }
         return [
           ...prev,
-          { item, qty, selectedVariants, variantMeta: variantMeta || {}, selectedAddOns, unitPrice, note },
+          {
+            item,
+            qty,
+            selectedVariants,
+            variantMeta: variantMeta || {},
+            selectedAddOns,
+            unitPrice,
+            note,
+          },
         ];
       });
       showToast(`${item.name} added to cart 🛒`);
@@ -2369,31 +3643,46 @@ export default function Customer() {
 
   /* Update the note for ALL cart entries of a given menu item id */
   const updateItemNote = useCallback((itemId, newNote) => {
-    setCart((p) => p.map((c) => c.item.id === itemId ? { ...c, note: newNote } : c));
+    setCart((p) =>
+      p.map((c) => (c.item.id === itemId ? { ...c, note: newNote } : c)),
+    );
   }, []);
 
   /* add-on cart helpers */
-  const updateAddonQty = useCallback((addonId, delta) => {
-    setAddonCart((prev) => {
-      const idx = prev.findIndex((a) => a.addon.id === addonId);
-      if (idx >= 0) {
-        const newQty = prev[idx].qty + delta;
-        if (newQty <= 0) return prev.filter((_, i) => i !== idx);
-        const u = [...prev];
-        u[idx] = { ...u[idx], qty: newQty };
-        return u;
-      }
-      if (delta <= 0) return prev;
-      const addon = addonItems.find((a) => a.id === addonId);
-      if (!addon) return prev;
-      return [...prev, { addon, qty: 1 }];
-    });
-  }, [addonItems]);
+  const updateAddonQty = useCallback(
+    (addonId, delta) => {
+      setAddonCart((prev) => {
+        const idx = prev.findIndex((a) => a.addon.id === addonId);
+        if (idx >= 0) {
+          const newQty = prev[idx].qty + delta;
+          if (newQty <= 0) return prev.filter((_, i) => i !== idx);
+          const u = [...prev];
+          u[idx] = { ...u[idx], qty: newQty };
+          return u;
+        }
+        if (delta <= 0) return prev;
+        const addon = addonItems.find((a) => a.id === addonId);
+        if (!addon) return prev;
+        return [...prev, { addon, qty: 1 }];
+      });
+    },
+    [addonItems],
+  );
 
   /* Direct add for non-customizable items — no popup */
-  const directAdd = useCallback((item) => {
-    addToCart({ item, qty: 1, selectedVariants: {}, selectedAddOns: [], unitPrice: +item.price, note: "" });
-  }, [addToCart]);
+  const directAdd = useCallback(
+    (item) => {
+      addToCart({
+        item,
+        qty: 1,
+        selectedVariants: {},
+        selectedAddOns: [],
+        unitPrice: +item.price,
+        note: "",
+      });
+    },
+    [addToCart],
+  );
 
   const addonCartCount = addonCart.reduce((s, a) => s + a.qty, 0);
   const cartCount = cart.reduce((s, c) => s + c.qty, 0) + addonCartCount;
@@ -2401,7 +3690,10 @@ export default function Customer() {
   /* total = menu items + add-ons + delivery (no VAT) */
   const calcTotals = (cartItems, addonCartItems) => {
     const menuSub = cartItems.reduce((s, c) => s + c.unitPrice * c.qty, 0);
-    const addonSub = addonCartItems.reduce((s, a) => s + +a.addon.price * a.qty, 0);
+    const addonSub = addonCartItems.reduce(
+      (s, a) => s + +a.addon.price * a.qty,
+      0,
+    );
     const subT = menuSub + addonSub;
     const delivery = subT > 0 ? 0.5 : 0;
     return { menuSub, addonSub, subT, delivery, total: subT + delivery };
@@ -2488,14 +3780,19 @@ export default function Customer() {
       }
 
       // 5. Update customer totals
-      await supabase.from("Customer").update({
-        total_orders: (customer.total_orders || 0) + 1,
-        total_amount: Number(customer.total_amount || 0) + total,
-      }).eq("id", customer.id);
+      await supabase
+        .from("Customer")
+        .update({
+          total_orders: (customer.total_orders || 0) + 1,
+          total_amount: Number(customer.total_amount || 0) + total,
+        })
+        .eq("id", customer.id);
 
       setLastOrder({ ...order, deliveryAddress: address });
-      setCart([]); setAddonCart([]);
-      setShowCheckout(false); setShowTrack(true);
+      setCart([]);
+      setAddonCart([]);
+      setShowCheckout(false);
+      setShowTrack(true);
       showToast("Order placed! 🎉");
       // Refresh order history
       loadOrderHistory(customer.id);
@@ -2537,17 +3834,35 @@ export default function Customer() {
     };
     try {
       if (form.id) {
-        const { data } = await supabase.from("Customer_Address").update(payload).eq("id", form.id).select().single();
-        if (data) { setAddresses((p) => p.map((a) => (a.id === form.id ? data : a))); showToast("Address updated!"); }
+        const { data } = await supabase
+          .from("Customer_Address")
+          .update(payload)
+          .eq("id", form.id)
+          .select()
+          .single();
+        if (data) {
+          setAddresses((p) => p.map((a) => (a.id === form.id ? data : a)));
+          showToast("Address updated!");
+        }
       } else {
-        const { data } = await supabase.from("Customer_Address").insert(payload).select().single();
+        const { data } = await supabase
+          .from("Customer_Address")
+          .insert(payload)
+          .select()
+          .single();
         if (data) {
           setAddresses((p) => [...p, data]);
-          if (!defaultAddrId) { setDefaultAddrId(data.id); localStorage.setItem(`frt_def_addr_${customer.id}`, data.id); }
+          if (!defaultAddrId) {
+            setDefaultAddrId(data.id);
+            localStorage.setItem(`frt_def_addr_${customer.id}`, data.id);
+          }
           showToast("Address saved!");
         }
       }
-    } catch (e) { console.error("[saveAddress]", e); showToast("Failed to save address."); }
+    } catch (e) {
+      console.error("[saveAddress]", e);
+      showToast("Failed to save address.");
+    }
   };
 
   const deleteAddress = async (id) => {
@@ -2883,7 +4198,14 @@ export default function Customer() {
                       borderBottom: "1px solid var(--border)",
                     }}
                   >
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
                       <Skeleton h={14} style={{ width: "60%" }} />
                       <Skeleton h={12} style={{ width: "90%" }} />
                       <Skeleton h={12} style={{ width: "30%" }} />
@@ -2895,9 +4217,17 @@ export default function Customer() {
             ) : activeCat === "__addons__" ? (
               /* ── ADD-ONS SECTION ── */
               addonTypes.length === 0 ? (
-                <div style={{ background: "var(--card)", padding: "60px 20px", textAlign: "center" }}>
+                <div
+                  style={{
+                    background: "var(--card)",
+                    padding: "60px 20px",
+                    textAlign: "center",
+                  }}
+                >
                   <div style={{ fontSize: 52, marginBottom: 12 }}>🍟</div>
-                  <p style={{ fontWeight: 700, fontSize: 16 }}>No add-ons available</p>
+                  <p style={{ fontWeight: 700, fontSize: 16 }}>
+                    No add-ons available
+                  </p>
                 </div>
               ) : (
                 addonTypes.map((type) => {
@@ -2907,20 +4237,42 @@ export default function Customer() {
                     <div key={type.id} className="addon-section">
                       <div className="addon-type-hd">
                         <div>
-                          <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--t1)" }}>{type.name}</h2>
+                          <h2
+                            style={{
+                              fontSize: 18,
+                              fontWeight: 800,
+                              color: "var(--t1)",
+                            }}
+                          >
+                            {type.name}
+                          </h2>
                           {type.min_qty > 0 && (
-                            <p style={{ fontSize: 12, color: "var(--t3)", marginTop: 2 }}>
+                            <p
+                              style={{
+                                fontSize: 12,
+                                color: "var(--t3)",
+                                marginTop: 2,
+                              }}
+                            >
                               Min. {type.min_qty} required
                             </p>
                           )}
                         </div>
-                        <span style={{ fontSize: 12, color: "var(--t3)", fontWeight: 600 }}>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: "var(--t3)",
+                            fontWeight: 600,
+                          }}
+                        >
                           {items.length} items
                         </span>
                       </div>
                       <div className="addon-grid">
                         {items.map((addon) => {
-                          const ac = addonCart.find((a) => a.addon.id === addon.id);
+                          const ac = addonCart.find(
+                            (a) => a.addon.id === addon.id,
+                          );
                           const qty = ac ? ac.qty : 0;
                           return (
                             <div
@@ -2934,7 +4286,9 @@ export default function Customer() {
                                   alt={addon.name}
                                   onError={(e) => {
                                     e.target.style.display = "none";
-                                    e.target.nextSibling && (e.target.nextSibling.style.display = "flex");
+                                    e.target.nextSibling &&
+                                      (e.target.nextSibling.style.display =
+                                        "flex");
                                   }}
                                 />
                               ) : (
@@ -2942,24 +4296,45 @@ export default function Customer() {
                               )}
                               <div className="addon-info">
                                 <p className="addon-name">{addon.name}</p>
-                                <p className="addon-price">{fmt(addon.price)}</p>
+                                <p className="addon-price">
+                                  {fmt(addon.price)}
+                                </p>
                               </div>
                               <div className="addon-qty-row">
                                 {qty > 0 ? (
                                   <div className="addon-qty-ctrl">
-                                    <button onClick={() => updateAddonQty(addon.id, -1)}>{Ic.minus}</button>
+                                    <button
+                                      onClick={() =>
+                                        updateAddonQty(addon.id, -1)
+                                      }
+                                    >
+                                      {Ic.minus}
+                                    </button>
                                     <span>{qty}</span>
-                                    <button onClick={() => updateAddonQty(addon.id, 1)}>{Ic.plus}</button>
+                                    <button
+                                      onClick={() =>
+                                        updateAddonQty(addon.id, 1)
+                                      }
+                                    >
+                                      {Ic.plus}
+                                    </button>
                                   </div>
                                 ) : (
                                   <button
                                     onClick={() => updateAddonQty(addon.id, 1)}
                                     style={{
-                                      display: "flex", alignItems: "center", gap: 5,
-                                      background: "var(--orange)", color: "#fff",
-                                      borderRadius: "var(--r-pill)", padding: "6px 14px",
-                                      fontSize: 13, fontWeight: 700, border: "none",
-                                      cursor: "pointer", transition: "opacity .15s",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 5,
+                                      background: "var(--orange)",
+                                      color: "#fff",
+                                      borderRadius: "var(--r-pill)",
+                                      padding: "6px 14px",
+                                      fontSize: 13,
+                                      fontWeight: 700,
+                                      border: "none",
+                                      cursor: "pointer",
+                                      transition: "opacity .15s",
                                     }}
                                   >
                                     {Ic.plus} Add
@@ -2975,18 +4350,43 @@ export default function Customer() {
                 })
               )
             ) : filtered.length === 0 ? (
-              <div style={{ background: "var(--card)", padding: "60px 20px", textAlign: "center" }}>
+              <div
+                style={{
+                  background: "var(--card)",
+                  padding: "60px 20px",
+                  textAlign: "center",
+                }}
+              >
                 <div style={{ fontSize: 56, marginBottom: 12 }}>🔍</div>
-                <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Nothing found</p>
-                <p style={{ color: "var(--t2)", fontSize: 14 }}>Try a different category or search term</p>
+                <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
+                  Nothing found
+                </p>
+                <p style={{ color: "var(--t2)", fontSize: 14 }}>
+                  Try a different category or search term
+                </p>
               </div>
             ) : activeCat === "all" ? (
               /* grouped by category */
               grouped.map(({ cat, items }) => (
-                <div key={cat?.id || "all"} style={{ background: "var(--card)", marginBottom: 8, borderRadius: 0 }}>
+                <div
+                  key={cat?.id || "all"}
+                  style={{
+                    background: "var(--card)",
+                    marginBottom: 8,
+                    borderRadius: 0,
+                  }}
+                >
                   {cat && (
                     <div style={{ padding: "18px 16px 4px" }}>
-                      <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--t1)" }}>{cat.name}</h2>
+                      <h2
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 800,
+                          color: "var(--t1)",
+                        }}
+                      >
+                        {cat.name}
+                      </h2>
                     </div>
                   )}
                   {items.map((item) => (
@@ -3007,9 +4407,24 @@ export default function Customer() {
             ) : (
               /* single category */
               <div style={{ background: "var(--card)" }}>
-                <div style={{ padding: "18px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div
+                  style={{
+                    padding: "18px 16px 4px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <h2 style={{ fontSize: 18, fontWeight: 800 }}>{catLabel}</h2>
-                  <span style={{ fontSize: 12, color: "var(--t3)", fontWeight: 600 }}>{filtered.length} items</span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "var(--t3)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {filtered.length} items
+                  </span>
                 </div>
                 {filtered.map((item) => (
                   <MenuItem
@@ -3137,6 +4552,11 @@ export default function Customer() {
           restaurant={restaurant}
           address={lastOrder.deliveryAddress}
           onClose={() => setShowTrack(false)}
+          onStatusUpdate={(newStatus) => {
+            setLastOrder((prev) =>
+              prev ? { ...prev, status: newStatus } : prev,
+            );
+          }}
         />
       )}
       {showProfile && (
@@ -3161,7 +4581,7 @@ export default function Customer() {
 /* ── CustomizeSheet ────────────────────────────────────────────────────────── */
 function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
   const [qty, setQty] = useState(1);
-  const [selVars, setSelVars] = useState({});   // { groupId: optionId | optionId[] }
+  const [selVars, setSelVars] = useState({}); // { groupId: optionId | optionId[] }
   const [varGroups, setVarGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchErr, setFetchErr] = useState(null);
@@ -3174,7 +4594,9 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   /* ── Two-step fetch: groups first, then options by var_group_id ──
@@ -3199,7 +4621,10 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
           const { data: oData, error: oErr } = await supabase
             .from("Variant Options")
             .select("id, var_group_id, name, price_adj")
-            .in("var_group_id", groups.map((g) => g.id))
+            .in(
+              "var_group_id",
+              groups.map((g) => g.id),
+            )
             .order("id", { ascending: true });
           if (oErr) throw oErr;
           options = oData || [];
@@ -3230,7 +4655,9 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [item.id]);
 
   const toggleVar = (gid, oid, isMulti) => {
@@ -3238,12 +4665,18 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
     if (isMulti) {
       setSelVars((p) => {
         const cur = Array.isArray(p[gid]) ? p[gid] : [];
-        return { ...p, [gid]: cur.includes(oid) ? cur.filter((x) => x !== oid) : [...cur, oid] };
+        return {
+          ...p,
+          [gid]: cur.includes(oid)
+            ? cur.filter((x) => x !== oid)
+            : [...cur, oid],
+        };
       });
     } else {
       // For required single-choice, don't allow deselect
       setSelVars((p) => {
-        if (varGroups.find((g) => g.id === gid)?.is_required && p[gid] === oid) return p;
+        if (varGroups.find((g) => g.id === gid)?.is_required && p[gid] === oid)
+          return p;
         return { ...p, [gid]: p[gid] === oid ? undefined : oid };
       });
     }
@@ -3253,10 +4686,13 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
   const extraCost = varGroups.reduce((total, g) => {
     const sel = selVars[g.id];
     if (Array.isArray(sel))
-      return total + sel.reduce((s, sid) => {
-        const o = g.options.find((x) => x.id === sid);
-        return s + (o ? +o.price_adj : 0);
-      }, 0);
+      return (
+        total +
+        sel.reduce((s, sid) => {
+          const o = g.options.find((x) => x.id === sid);
+          return s + (o ? +o.price_adj : 0);
+        }, 0)
+      );
     if (sel) {
       const o = g.options.find((x) => x.id === sel);
       return total + (o ? +o.price_adj : 0);
@@ -3290,44 +4726,98 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
       const sel = selVars[g.id];
       if (!sel || (Array.isArray(sel) && sel.length === 0)) return;
       const ids = Array.isArray(sel) ? sel : [sel];
-      const names = ids.map((id) => g.options.find((o) => o.id === id)?.name).filter(Boolean);
-      if (names.length > 0) variantMeta[g.id] = { groupName: g.name, optionNames: names };
+      const names = ids
+        .map((id) => g.options.find((o) => o.id === id)?.name)
+        .filter(Boolean);
+      if (names.length > 0)
+        variantMeta[g.id] = { groupName: g.name, optionNames: names };
     });
 
     // Propagate note update to all existing entries of this item
     if (onUpdateNote) onUpdateNote(item.id, note);
 
-    onAdd({ item, qty, selectedVariants: selVars, variantMeta, selectedAddOns: [], unitPrice, note });
+    onAdd({
+      item,
+      qty,
+      selectedVariants: selVars,
+      variantMeta,
+      selectedAddOns: [],
+      unitPrice,
+      note,
+    });
     onClose();
   };
 
   return (
     <>
       <div className="overlay" onClick={onClose} />
-      <div className="sheet" style={{ paddingBottom: 0, display: "flex", flexDirection: "column" }}>
+      <div
+        className="sheet"
+        style={{ paddingBottom: 0, display: "flex", flexDirection: "column" }}
+      >
         <div className="drag-pill" />
 
         {/* Header */}
         <div className="sheet-hd" style={{ paddingBottom: 6, flexShrink: 0 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p className="sheet-title" style={{ fontSize: 17 }}>{item.name}</p>
-            <p style={{ fontSize: 15, fontWeight: 800, color: "var(--orange)", marginTop: 2 }}>{fmt(unitPrice)}</p>
+            <p className="sheet-title" style={{ fontSize: 17 }}>
+              {item.name}
+            </p>
+            <p
+              style={{
+                fontSize: 15,
+                fontWeight: 800,
+                color: "var(--orange)",
+                marginTop: 2,
+              }}
+            >
+              {fmt(unitPrice)}
+            </p>
           </div>
-          <button className="close-btn" onClick={onClose}>{Ic.close}</button>
+          <button className="close-btn" onClick={onClose}>
+            {Ic.close}
+          </button>
         </div>
 
         {/* Scrollable body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "4px 20px 0", minHeight: 0 }}>
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "4px 20px 0",
+            minHeight: 0,
+          }}
+        >
           {loading ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 0", gap: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "40px 0",
+                gap: 12,
+              }}
+            >
               <Spinner size={28} />
-              <p style={{ fontSize: 13, color: "var(--t2)" }}>Loading options…</p>
+              <p style={{ fontSize: 13, color: "var(--t2)" }}>
+                Loading options…
+              </p>
             </div>
           ) : fetchErr ? (
             <div style={{ padding: "24px 0", textAlign: "center" }}>
-              <p style={{ fontSize: 13, color: "var(--red)", marginBottom: 14 }}>⚠️ {fetchErr}</p>
+              <p
+                style={{ fontSize: 13, color: "var(--red)", marginBottom: 14 }}
+              >
+                ⚠️ {fetchErr}
+              </p>
               <button
-                onClick={() => { setFetchErr(null); setLoading(true); /* re-trigger by forcing a re-render via dummy state */ }}
+                onClick={() => {
+                  setFetchErr(null);
+                  setLoading(
+                    true,
+                  ); /* re-trigger by forcing a re-render via dummy state */
+                }}
                 className="btn-out"
                 style={{ fontSize: 13 }}
               >
@@ -3335,7 +4825,13 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
               </button>
             </div>
           ) : varGroups.length === 0 ? (
-            <p style={{ color: "var(--t2)", fontSize: 14, padding: "8px 0 20px" }}>
+            <p
+              style={{
+                color: "var(--t2)",
+                fontSize: 14,
+                padding: "8px 0 20px",
+              }}
+            >
               No customization options for this item.
             </p>
           ) : (
@@ -3345,22 +4841,43 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
                 <div className="csheet-group-hd">
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontWeight: 700, fontSize: 15 }}>{g.name}</p>
-                    <p style={{ fontSize: 12, color: "var(--t2)", marginTop: 2 }}>
+                    <p
+                      style={{ fontSize: 12, color: "var(--t2)", marginTop: 2 }}
+                    >
                       {g.is_multiple ? "Choose one or more" : "Choose one"}
                     </p>
                   </div>
                   {g.is_required ? (
                     <span className="csheet-required-pill">Required</span>
                   ) : (
-                    <span style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, letterSpacing: ".04em" }}>Optional</span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "var(--t3)",
+                        fontWeight: 600,
+                        letterSpacing: ".04em",
+                      }}
+                    >
+                      Optional
+                    </span>
                   )}
                 </div>
 
                 {/* Options */}
                 {g.options.length === 0 ? (
-                  <p style={{ fontSize: 13, color: "var(--t3)", fontStyle: "italic" }}>No options configured</p>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "var(--t3)",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    No options configured
+                  </p>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                  >
                     {g.options.map((opt) => {
                       const s = selVars[g.id];
                       const isSel = g.is_multiple
@@ -3372,15 +4889,41 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
                           className={`csheet-opt-row${isSel ? " sel" : ""}`}
                           onClick={() => toggleVar(g.id, opt.id, g.is_multiple)}
                         >
-                          <span style={{ fontSize: 14, fontWeight: isSel ? 600 : 400 }}>{opt.name}</span>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span
+                            style={{
+                              fontSize: 14,
+                              fontWeight: isSel ? 600 : 400,
+                            }}
+                          >
+                            {opt.name}
+                          </span>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                            }}
+                          >
                             {+opt.price_adj !== 0 && (
-                              <span style={{ fontSize: 13, color: "var(--t2)", fontWeight: 600 }}>
-                                {+opt.price_adj > 0 ? "+" : ""}{fmt(opt.price_adj)}
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  color: "var(--t2)",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {+opt.price_adj > 0 ? "+" : ""}
+                                {fmt(opt.price_adj)}
                               </span>
                             )}
-                            <div className={`csheet-dot${g.is_multiple ? " sq" : ""}${isSel ? " on" : ""}`}>
-                              {isSel && <span style={{ color: "#fff" }}>{Ic.check}</span>}
+                            <div
+                              className={`csheet-dot${g.is_multiple ? " sq" : ""}${isSel ? " on" : ""}`}
+                            >
+                              {isSel && (
+                                <span style={{ color: "#fff" }}>
+                                  {Ic.check}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -3396,7 +4939,15 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
           <div style={{ marginBottom: 16 }}>
             <label className="lbl">
               Special instructions{" "}
-              <span style={{ textTransform: "none", fontWeight: 400, color: "var(--t3)" }}>(optional)</span>
+              <span
+                style={{
+                  textTransform: "none",
+                  fontWeight: 400,
+                  color: "var(--t3)",
+                }}
+              >
+                (optional)
+              </span>
             </label>
             {alreadyInCart && (
               <p style={{ fontSize: 11, color: "var(--t3)", marginBottom: 5 }}>
@@ -3416,7 +4967,18 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
 
           {/* Validation error banner */}
           {validationErr && (
-            <div style={{ background: "#fdecea", border: "1px solid #fca5a5", borderRadius: "var(--r-sm)", padding: "10px 14px", fontSize: 13, color: "var(--red)", fontWeight: 500, marginBottom: 16 }}>
+            <div
+              style={{
+                background: "#fdecea",
+                border: "1px solid #fca5a5",
+                borderRadius: "var(--r-sm)",
+                padding: "10px 14px",
+                fontSize: 13,
+                color: "var(--red)",
+                fontWeight: 500,
+                marginBottom: 16,
+              }}
+            >
               ⚠️ {validationErr}
             </div>
           )}
@@ -3424,15 +4986,32 @@ function CustomizeSheet({ item, cart, onClose, onAdd, onUpdateNote }) {
         </div>
 
         {/* Sticky footer — button grays out when required options unmet */}
-        <div style={{ padding: "14px 20px", borderTop: "1px solid var(--border)", background: "#fff", flexShrink: 0, paddingBottom: "calc(14px + env(safe-area-inset-bottom,0px))", display: "flex", alignItems: "center", gap: 14 }}>
+        <div
+          style={{
+            padding: "14px 20px",
+            borderTop: "1px solid var(--border)",
+            background: "#fff",
+            flexShrink: 0,
+            paddingBottom: "calc(14px + env(safe-area-inset-bottom,0px))",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
           <div className="qty-ctrl" style={{ flexShrink: 0 }}>
-            <button onClick={() => setQty((q) => Math.max(1, q - 1))}>{Ic.minus}</button>
+            <button onClick={() => setQty((q) => Math.max(1, q - 1))}>
+              {Ic.minus}
+            </button>
             <span>{qty}</span>
             <button onClick={() => setQty((q) => q + 1)}>{Ic.plus}</button>
           </div>
           <button
             className="btn-primary"
-            style={{ flex: 1, opacity: canAdd ? 1 : 0.45, pointerEvents: canAdd ? "auto" : "none" }}
+            style={{
+              flex: 1,
+              opacity: canAdd ? 1 : 0.45,
+              pointerEvents: canAdd ? "auto" : "none",
+            }}
             disabled={!canAdd || loading}
             onClick={handleAdd}
           >
@@ -3451,25 +5030,38 @@ function MenuItem({ item, cart, onOpen, onUpdate, onCustomize }) {
   const inCart = cart
     .filter((c) => c.item.id === item.id)
     .reduce((s, c) => s + c.qty, 0);
-  const lastIdx = cart.reduce((found, c, i) => (c.item.id === item.id ? i : found), -1);
+  const lastIdx = cart.reduce(
+    (found, c, i) => (c.item.id === item.id ? i : found),
+    -1,
+  );
 
   return (
     <div className="menu-card" onClick={() => onOpen(item)}>
       {/* Text side */}
       <div className="menu-info">
-        {(item.is_popular || item.recommended) && (
+        {item.is_popular && (
           <div className="menu-popular">{Ic.star} Popular</div>
         )}
         <p className="menu-name">{item.name}</p>
         {item.description && <p className="menu-desc">{item.description}</p>}
-        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+        <div
+          style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}
+        >
           <span className="menu-price">{fmt(item.price)}</span>
         </div>
         {item.is_customizable && (
           <div className="cust-badge">
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+            <svg
+              width="9"
+              height="9"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
             </svg>
             Customizable
           </div>
@@ -3480,7 +5072,11 @@ function MenuItem({ item, cart, onOpen, onUpdate, onCustomize }) {
       <div style={{ position: "relative", flexShrink: 0 }}>
         <div className="menu-thumb">
           {item.image_path ? (
-            <img src={item.image_path} alt={item.name} onError={(e) => (e.target.style.display = "none")} />
+            <img
+              src={item.image_path}
+              alt={item.name}
+              onError={(e) => (e.target.style.display = "none")}
+            />
           ) : (
             <div className="menu-thumb-empty">🍽️</div>
           )}
@@ -3488,7 +5084,9 @@ function MenuItem({ item, cart, onOpen, onUpdate, onCustomize }) {
 
         {inCart > 0 ? (
           <div className="qty-pill" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => onUpdate(lastIdx, cart[lastIdx].qty - 1)}>{Ic.minus}</button>
+            <button onClick={() => onUpdate(lastIdx, cart[lastIdx].qty - 1)}>
+              {Ic.minus}
+            </button>
             <span>{inCart}</span>
             <button
               onClick={(e) => {
