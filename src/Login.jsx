@@ -96,7 +96,7 @@ export default function Login({ onLogin }) {
               letterSpacing: "-2px",
             }}
           >
-            FeastRush
+            Ungrie
           </span>
           <p
             className="text-[#6b6457] text-sm mt-1 tracking-widest uppercase"
@@ -189,7 +189,7 @@ export default function Login({ onLogin }) {
           className="text-center text-[#3d3a32] text-xs mt-8"
           style={{ fontFamily: "'DM Mono', monospace" }}
         >
-          © {new Date().getFullYear()} FeastRush. All rights reserved.
+          © {new Date().getFullYear()} Ungrie. All rights reserved.
         </p>
       </div>
 

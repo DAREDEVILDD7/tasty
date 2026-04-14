@@ -77,7 +77,7 @@ const STAT_CARDS = [
   },
   {
     icon: "💎",
-    label: "Revenue saved by FeastRush",
+    label: "Revenue saved by Ungrie",
     value: "AED 120.00",
     sub: "0% change from yesterday",
   },
@@ -1164,7 +1164,7 @@ function printInvoice(order, items, restaurant) {
   </style></head><body>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
     <div>
-      <div class="logo">${restaurant?.name || "FeastRush"}</div>
+      <div class="logo">${restaurant?.name || "Ungrie"}</div>
       <div class="tagline">${restaurant?.branch_name || "Restaurant"}</div>
     </div>
     <div style="text-align:right">
@@ -1205,7 +1205,7 @@ function printInvoice(order, items, restaurant) {
     <div class="total-row"><span>Subtotal</span><span>KD ${Number(order.total_amount).toFixed(3)}</span></div>
     <div class="total-row grand"><span>Total</span><span>KD ${Number(order.total_amount).toFixed(3)}</span></div>
   </div>
-  <div class="footer">Thank you for ordering from ${restaurant?.name || "us"}! · Powered by FeastRush</div>
+  <div class="footer">Thank you for ordering from ${restaurant?.name || "us"}! · Powered by Ungrie</div>
   <script>window.onload=()=>window.print()</script>
   </body></html>`;
 
@@ -2837,7 +2837,7 @@ function MenuPage({ t, user }) {
       let imagePath = editingItem?.image_path || "/foodlogo.jpg";
 
       if (itemForm.imageFile) {
-        const bucketName = "feastrush-menu";
+        const bucketName = "Ungrie-menu";
         const ext = itemForm.imageFile.name.split(".").pop().toLowerCase();
         const filePath = `${restId}/menu/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
@@ -3400,7 +3400,7 @@ function MenuPage({ t, user }) {
       let imagePath = editingAddon?.image_path || null;
 
       if (addonForm.imageFile) {
-        const bucketName = "feastrush-menu";
+        const bucketName = "Ungrie-menu";
         const ext = addonForm.imageFile.name.split(".").pop().toLowerCase();
         const folderPath = `${restId}/add_ons`;
         const filePath = `${folderPath}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -5715,7 +5715,7 @@ export default function Dashboard({ user, onLogout }) {
             }}
             className="text-2xl font-bold tracking-tight"
           >
-            FeastRush
+            Ungrie
           </span>
         </div>
 
