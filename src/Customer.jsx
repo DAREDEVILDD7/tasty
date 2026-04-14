@@ -3795,6 +3795,7 @@ export default function Customer() {
       setLastOrder({ ...order, deliveryAddress: address });
       setCart([]);
       setAddonCart([]);
+      setCartNote("");
       setShowCheckout(false);
       setShowTrack(true);
       showToast("Order placed! 🎉");
