@@ -361,9 +361,11 @@ a{text-decoration:none}
 /* ── top nav ── */
 .topnav{
   position:sticky;top:0;z-index:100;height:var(--nav-h);
+  width:100%;
   background:rgba(255,255,255,.96);backdrop-filter:blur(20px);
   border-bottom:1px solid var(--border);
   display:flex;align-items:center;padding:0 16px;gap:10px;
+  box-sizing:border-box;
 }
 /* ── bottom tab bar (mobile only) ── */
 .tabbar{
@@ -524,9 +526,9 @@ a{text-decoration:none}
 /* ── page layout ── */
 .page-wrap{max-width:1200px;margin:0 auto;padding:0 0 calc(var(--tab-h) + 16px)}
 @media(min-width:1024px){
-  .page-wrap{display:grid;grid-template-columns:1fr 380px;gap:28px;padding:28px 24px 40px;align-items:start}
-  .main-col{}
-  .cart-col{position:sticky;top:calc(var(--nav-h) + 16px)}
+  .page-wrap{display:grid;grid-template-columns:1fr 360px;gap:28px;padding:28px 24px 40px;align-items:start;box-sizing:border-box;width:100%}
+  .main-col{min-width:0}
+  .cart-col{position:sticky;top:calc(var(--nav-h) + 16px);max-height:calc(100dvh - var(--nav-h) - 32px);overflow-y:auto;overflow-x:hidden}
 }
 .content-card{background:var(--card);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
 
@@ -1522,8 +1524,9 @@ function CartSheet({
   calcTotals,
   onCheckout,
   onClose,
+  note,
+  onNoteChange,
 }) {
-  const [note, setNote] = useState("");
   const { subT, delivery, total } = calcTotals(cart, addonCart);
   const minOk = !restaurant?.min_order || subT >= restaurant.min_order;
   const totalItems =
@@ -1714,7 +1717,7 @@ function CartSheet({
                 placeholder="e.g. ring the bell, leave at door, no plastic bags…"
                 style={{ resize: "none", fontSize: 13.5 }}
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
+                onChange={(e) => onNoteChange(e.target.value)}
                 maxLength={300}
               />
             </div>
@@ -3113,8 +3116,9 @@ function DesktopCart({
   onUpdateAddonQty,
   calcTotals,
   onCheckout,
+  note,
+  onNoteChange,
 }) {
-  const [note, setNote] = useState("");
   const { subT, delivery, total } = calcTotals(cart, addonCart);
   const minOk = !restaurant?.min_order || subT >= restaurant.min_order;
   const totalItems =
@@ -3322,7 +3326,7 @@ function DesktopCart({
                 placeholder="Allergies, prep notes…"
                 style={{ resize: "none", fontSize: 13, padding: "9px 12px" }}
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
+                onChange={(e) => onNoteChange(e.target.value)}
                 maxLength={300}
               />
             </div>
@@ -4453,6 +4457,8 @@ export default function Customer() {
             onUpdateQty={updateQty}
             onUpdateAddonQty={updateAddonQty}
             calcTotals={calcTotals}
+            note={cartNote}
+            onNoteChange={setCartNote}
             onCheckout={(t) => {
               setCheckoutTotal(t);
               setShowCheckout(true);
@@ -4522,6 +4528,8 @@ export default function Customer() {
           onUpdateQty={updateQty}
           onUpdateAddonQty={updateAddonQty}
           calcTotals={calcTotals}
+          note={cartNote}
+          onNoteChange={setCartNote}
           onCheckout={(t, n) => {
             setCheckoutTotal(t);
             setCartNote(n || "");
