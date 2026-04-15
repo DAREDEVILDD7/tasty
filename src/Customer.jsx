@@ -3454,6 +3454,19 @@ export default function Customer() {
     m.content = "width=device-width,initial-scale=1,maximum-scale=1";
   }, []);
 
+  /* fire-and-forget analytics — never blocks UX, never crashes app */
+  const trackEvent = useCallback(
+    (menuId, eventType) => {
+      if (!restId || !menuId) return;
+      supabase
+        .from("Menu_Events")
+        .insert({ rest_id: Number(restId), menu_id: Number(menuId), event_type: eventType })
+        .then(() => {})
+        .catch(() => {});
+    },
+    [restId],
+  );
+
   /* inject CSS once */
   useEffect(() => {
     const id = "frt-cust-css";
@@ -3609,6 +3622,8 @@ export default function Customer() {
       unitPrice,
       note,
     }) => {
+      // Track add_to_cart event (fire and forget — never blocks UI)
+      trackEvent(item.id, "add_to_cart");
       setCart((prev) => {
         const idx = prev.findIndex(
           (c) =>
@@ -3637,7 +3652,7 @@ export default function Customer() {
       });
       showToast(`${item.name} added to cart 🛒`);
     },
-    [showToast],
+    [showToast, trackEvent],
   );
 
   const updateQty = (i, q) => {
@@ -3676,6 +3691,7 @@ export default function Customer() {
   /* Direct add for non-customizable items — no popup */
   const directAdd = useCallback(
     (item) => {
+      trackEvent(item.id, "add_to_cart");
       addToCart({
         item,
         qty: 1,
@@ -3685,7 +3701,7 @@ export default function Customer() {
         note: "",
       });
     },
-    [addToCart],
+    [addToCart, trackEvent],
   );
 
   const addonCartCount = addonCart.reduce((s, a) => s + a.qty, 0);
@@ -4399,8 +4415,14 @@ export default function Customer() {
                       key={item.id}
                       item={item}
                       cart={cart}
-                      onOpen={setSelItem}
-                      onCustomize={setCustomizeItem}
+                      onOpen={(it) => {
+                        trackEvent(it.id, "view");
+                        setSelItem(it);
+                      }}
+                      onCustomize={(it) => {
+                        trackEvent(it.id, "view");
+                        setCustomizeItem(it);
+                      }}
                       onUpdate={(i, q, itm) => {
                         if (i === -1 && itm) directAdd(itm);
                         else updateQty(i, q);
@@ -4436,8 +4458,14 @@ export default function Customer() {
                     key={item.id}
                     item={item}
                     cart={cart}
-                    onOpen={setSelItem}
-                    onCustomize={setCustomizeItem}
+                    onOpen={(it) => {
+                      trackEvent(it.id, "view");
+                      setSelItem(it);
+                    }}
+                    onCustomize={(it) => {
+                      trackEvent(it.id, "view");
+                      setCustomizeItem(it);
+                    }}
                     onUpdate={(i, q, itm) => {
                       if (i === -1 && itm) directAdd(itm);
                       else updateQty(i, q);

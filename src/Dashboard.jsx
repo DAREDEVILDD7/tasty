@@ -60,118 +60,6 @@ const NAV_ITEMS = [
   { icon: "⭐", label: "Reviews", id: "reviews", badge: 0 },
 ];
 
-const STAT_CARDS = [
-  {
-    icon: "🛒",
-    label: "Total Accepted Orders",
-    value: "22",
-    sub: "↗ 15% from yesterday",
-    green: true,
-  },
-  {
-    icon: "💰",
-    label: "Total Revenue",
-    value: "AED 3,399",
-    sub: "↗ 8% from yesterday",
-    green: true,
-  },
-  {
-    icon: "💎",
-    label: "Revenue saved by Ungrie",
-    value: "AED 120.00",
-    sub: "0% change from yesterday",
-  },
-  {
-    icon: "👥",
-    label: "Customers",
-    value: "18",
-    sub: "↗ 3% from yesterday",
-    green: true,
-  },
-  {
-    icon: "⏱️",
-    label: "Total Delayed Orders",
-    value: "2",
-    sub: "0 order(s) less from yesterday",
-    green: true,
-  },
-];
-
-const TOP_ITEMS = [
-  { rank: 1, name: "Hrishi's Chicken Fried Rice", count: 51, emoji: "🍚" },
-  { rank: 2, name: "Ramen", count: 17, emoji: "🍜" },
-  { rank: 3, name: "Ethan's Smashed Beef Burger", count: 12, emoji: "🍔" },
-  { rank: 4, name: "Chatti Chor", count: 11, emoji: "🍛" },
-  { rank: 5, name: "UAE's Best Karak", count: 8, emoji: "☕" },
-  { rank: 6, name: "Deepesh's Palak Chicken", count: 3, emoji: "🍗" },
-  { rank: 7, name: "Masala Dosa", count: 2, emoji: "🥞" },
-  { rank: 8, name: "Mango Lassi", count: 1, emoji: "🥭" },
-];
-
-const TOP_CUSTOMERS = [
-  { name: "Hrishi Uralath", value: "AED 2,651" },
-  { name: "Sara Ahmed", value: "AED 603" },
-  { name: "Sreeparvathy", value: "AED 95" },
-  { name: "Deepesh Raul", value: "AED 50" },
-  { name: "Ethan Clark", value: "AED 40" },
-];
-
-const PAYMENT_DATA = [
-  { label: "Cash", count: 5, color: "#C4711A" },
-  { label: "Card", count: 17, color: "#2D7A4F" },
-  { label: "Online", count: 0, color: "#B0A898" },
-];
-
-const ORDER_TYPE_DATA = [
-  { label: "Delivery", count: 21, color: "#C4711A" },
-  { label: "Pickup", count: 1, color: "#2D7A4F" },
-];
-
-const ZONES = [
-  { label: "Zone 1", count: 21, color: "#C4711A" },
-  { label: "Zone 2", count: 1, color: "#2D7A4F" },
-];
-
-const PEAK_DAYS = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() - 29 + i);
-  return {
-    label: `${d.getDate()}/${d.getMonth() + 1}`,
-    orders: Math.random() < 0.3 ? Math.floor(Math.random() * 3) + 1 : 0,
-  };
-});
-
-const BEHAVIOR = [
-  {
-    icon: "👁️",
-    label: "Total Users Landed on Menu",
-    value: "109",
-    sub: "↘ 13% decrease from last quarter",
-    red: true,
-  },
-  {
-    icon: "💬",
-    label: "WhatsApp Conversations Started",
-    value: "80",
-    sub: "↗ 3% increase from last quarter",
-    green: true,
-  },
-];
-
-const TOP_ADDED = [
-  { rank: 1, name: "Hrishi's Chicken Fried Rice", count: 20, emoji: "🍚" },
-  { rank: 2, name: "Ramen", count: 8, emoji: "🍜" },
-  { rank: 3, name: "Ronaldo's Water", count: 8, emoji: "💧" },
-  { rank: 4, name: "UAE's Best Karak", count: 5, emoji: "☕" },
-];
-
-const TOP_VIEWED = [
-  { rank: 1, name: "Hrishi's Chicken Fried Rice", count: 21, emoji: "🍚" },
-  { rank: 2, name: "Ronaldo's Water", count: 9, emoji: "💧" },
-  { rank: 3, name: "Ramen", count: 9, emoji: "🍜" },
-  { rank: 4, name: "Chatti Chor", count: 4, emoji: "🍛" },
-];
-
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 function Toggle({ value, onChange, t }) {
   return (
@@ -276,136 +164,6 @@ function Field({ label, value, onChange, type = "text", placeholder, t }) {
   );
 }
 
-// ─── SVG Donut Chart ──────────────────────────────────────────────────────────
-function DonutChart({ data, size = 140, thickness = 28 }) {
-  const total = data.reduce((s, d) => s + d.count, 0) || 1;
-  let angle = -90;
-  const cx = size / 2,
-    cy = size / 2,
-    r = (size - thickness) / 2;
-  const slices = data.map((d) => {
-    const pct = d.count / total;
-    const start = angle;
-    angle += pct * 360;
-    return { ...d, pct, start, end: angle };
-  });
-  const arc = (cx, cy, r, startDeg, endDeg) => {
-    const s = startDeg * (Math.PI / 180),
-      e = endDeg * (Math.PI / 180);
-    const x1 = cx + r * Math.cos(s),
-      y1 = cy + r * Math.sin(s);
-    const x2 = cx + r * Math.cos(e),
-      y2 = cy + r * Math.sin(e);
-    const large = endDeg - startDeg > 180 ? 1 : 0;
-    return `M${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2}`;
-  };
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      className="flex-shrink-0"
-    >
-      {slices.map(
-        (s, i) =>
-          s.pct > 0 && (
-            <path
-              key={i}
-              d={arc(cx, cy, r, s.start, s.end)}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={thickness}
-              strokeLinecap="butt"
-            />
-          ),
-      )}
-    </svg>
-  );
-}
-
-// ─── SVG Line Chart ───────────────────────────────────────────────────────────
-function PeakChart({ data, t, height = 120 }) {
-  const max = Math.max(...data.map((d) => d.orders), 1);
-  const w = 600,
-    h = height,
-    pad = { l: 32, r: 8, t: 10, b: 28 };
-  const iw = w - pad.l - pad.r,
-    ih = h - pad.t - pad.b;
-  const step = iw / (data.length - 1);
-  const pts = data.map((d, i) => ({
-    x: pad.l + i * step,
-    y: pad.t + ih - (d.orders / max) * ih,
-    v: d.orders,
-    l: d.label,
-  }));
-  const polyline = pts.map((p) => `${p.x},${p.y}`).join(" ");
-  const area =
-    `M${pts[0].x},${pad.t + ih} ` +
-    pts.map((p) => `L${p.x},${p.y}`).join(" ") +
-    ` L${pts[pts.length - 1].x},${pad.t + ih} Z`;
-  const yTicks = [0, 1, 2, 3].filter((v) => v <= max);
-  return (
-    <div className="overflow-x-auto w-full">
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        style={{ minWidth: 400, width: "100%", height: "auto" }}
-        preserveAspectRatio="none"
-      >
-        {yTicks.map((v) => {
-          const y = pad.t + ih - (v / max) * ih;
-          return (
-            <g key={v}>
-              <line
-                x1={pad.l}
-                y1={y}
-                x2={w - pad.r}
-                y2={y}
-                stroke={t.border}
-                strokeWidth="0.8"
-              />
-              <text
-                x={pad.l - 4}
-                y={y + 3}
-                textAnchor="end"
-                fontSize="8"
-                fill={t.muted}
-              >
-                {v}
-              </text>
-            </g>
-          );
-        })}
-        <path d={area} fill={t.accent} fillOpacity="0.07" />
-        <polyline
-          points={polyline}
-          fill="none"
-          stroke={t.accent}
-          strokeWidth="2"
-        />
-        {pts.map(
-          (p, i) =>
-            p.v > 0 && (
-              <circle key={i} cx={p.x} cy={p.y} r="3.5" fill={t.accent} />
-            ),
-        )}
-        {pts
-          .filter((_, i) => i % 5 === 0 || i === pts.length - 1)
-          .map((p, i) => (
-            <text
-              key={i}
-              x={p.x}
-              y={h - 4}
-              textAnchor="middle"
-              fontSize="7"
-              fill={t.muted}
-            >
-              {p.l}
-            </text>
-          ))}
-      </svg>
-    </div>
-  );
-}
 
 // ─── Drag hook ────────────────────────────────────────────────────────────────
 function useTouchDrag(items, setItems, getId) {
@@ -516,598 +274,591 @@ function useTouchDrag(items, setItems, getId) {
   return { itemRefs, onPointerDown };
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ card, t }) {
+
+// ─── Analytics helpers ────────────────────────────────────────────────────────
+function getPeriodRange(period, customStart, customEnd) {
+  const now = new Date();
+  const s = (d) => { const r = new Date(d); r.setHours(0, 0, 0, 0); return r; };
+  const e = (d) => { const r = new Date(d); r.setHours(23, 59, 59, 999); return r; };
+  if (period === "Today")      return { from: s(now), to: e(now) };
+  if (period === "Yesterday")  { const y = new Date(now); y.setDate(y.getDate() - 1); return { from: s(y), to: e(y) }; }
+  if (period === "This Week")  { const w = new Date(now); w.setDate(w.getDate() - w.getDay()); return { from: s(w), to: e(now) }; }
+  if (period === "This Month") return { from: s(new Date(now.getFullYear(), now.getMonth(), 1)), to: e(now) };
+  if (period === "This Year")  return { from: s(new Date(now.getFullYear(), 0, 1)), to: e(now) };
+  if (period === "Custom")     return { from: customStart ? s(new Date(customStart)) : s(now), to: customEnd ? e(new Date(customEnd)) : e(now) };
+  return { from: s(now), to: e(now) };
+}
+
+const CHART_COLORS = ["#C4711A", "#2D7A4F", "#6366F1", "#F59E0B", "#EC4899", "#14B8A6"];
+
+function fmtKDh(n) { return `KD ${Number(n || 0).toFixed(3)}`; }
+
+// ── Z-Report print ────────────────────────────────────────────────────────────
+function printZReport({ label, stats, topItems, topCustomers, payBreakdown, restaurant }) {
+  const itemRows = topItems.map((it, i) =>
+    `<tr style="background:${i % 2 ? "#fafafa" : "#fff"}">
+      <td style="padding:8px 12px">${i + 1}</td>
+      <td style="padding:8px 12px">${it.name}</td>
+      <td style="padding:8px 12px;text-align:right;font-weight:700">${it.qty}</td>
+      <td style="padding:8px 12px;text-align:right;font-weight:700">KD ${Number(it.revenue || 0).toFixed(3)}</td>
+    </tr>`).join("");
+  const custRows = topCustomers.map((c, i) =>
+    `<tr style="background:${i % 2 ? "#fafafa" : "#fff"}">
+      <td style="padding:8px 12px">${c.name || "—"}</td>
+      <td style="padding:8px 12px;text-align:right">${c.orders}</td>
+      <td style="padding:8px 12px;text-align:right;font-weight:700">KD ${Number(c.revenue).toFixed(3)}</td>
+    </tr>`).join("");
+  const payRows = payBreakdown.map(p =>
+    `<tr><td style="padding:6px 12px">${p.method}</td><td style="padding:6px 12px;text-align:right">${p.count}</td><td style="padding:6px 12px;text-align:right;font-weight:700">KD ${Number(p.total).toFixed(3)}</td></tr>`).join("");
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Z-Report – ${label}</title>
+  <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;padding:40px;max-width:720px;margin:0 auto}
+  h1{font-size:26px;font-weight:900;color:#C4711A;letter-spacing:-0.5px}
+  h2{font-size:13px;font-weight:700;margin:28px 0 10px;color:#888;text-transform:uppercase;letter-spacing:.1em;border-top:1px solid #eee;padding-top:20px}
+  .meta{font-size:12px;color:#999;margin-top:4px}
+  .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}
+  .kpi{background:#f9f6f2;border-radius:10px;padding:14px 16px}
+  .kpi .val{font-size:20px;font-weight:800;color:#C4711A;margin-bottom:3px}
+  .kpi .lbl{font-size:11px;color:#888}
+  table{width:100%;border-collapse:collapse}
+  thead th{background:#f0ece6;padding:9px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888}
+  thead th:nth-child(n+3){text-align:right}
+  tbody td{border-bottom:1px solid #f0f0f0}
+  tfoot td{padding:10px 12px;font-weight:800;font-size:14px;color:#C4711A;border-top:2px solid #e0e0e0}
+  tfoot td:last-child,tfoot td:nth-child(3){text-align:right}
+  .footer{text-align:center;font-size:11px;color:#ccc;margin-top:40px;padding-top:20px;border-top:1px solid #eee}
+  @media print{body{padding:20px}}</style></head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+    <div><h1>${restaurant?.name || "Restaurant"} — Z-Report</h1>
+    <p class="meta">Period: ${label} &nbsp;·&nbsp; Generated ${new Date().toLocaleString()}</p></div>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="val">${stats.orders}</div><div class="lbl">Accepted orders</div></div>
+    <div class="kpi"><div class="val">KD ${Number(stats.revenue).toFixed(3)}</div><div class="lbl">Total revenue</div></div>
+    <div class="kpi"><div class="val">${stats.customers}</div><div class="lbl">Unique customers</div></div>
+    <div class="kpi"><div class="val">${stats.rejected}</div><div class="lbl">Rejected</div></div>
+    <div class="kpi"><div class="val">${stats.avgOrder}</div><div class="lbl">Avg order value</div></div>
+    <div class="kpi"><div class="val">${stats.pending}</div><div class="lbl">Pending / open</div></div>
+  </div>
+  <h2>Payment Breakdown</h2>
+  <table><thead><tr><th>Method</th><th>Orders</th><th>Total</th></tr></thead><tbody>${payRows || "<tr><td colspan='3' style='padding:12px;color:#aaa;text-align:center'>No data</td></tr>"}</tbody></table>
+  <h2>Top Selling Items</h2>
+  <table><thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Revenue</th></tr></thead><tbody>${itemRows || "<tr><td colspan='4' style='padding:12px;color:#aaa;text-align:center'>No data</td></tr>"}</tbody>
+    <tfoot><tr><td colspan="2">Total</td><td style="text-align:right">${topItems.reduce((s, i) => s + i.qty, 0)}</td><td style="text-align:right">KD ${topItems.reduce((s, i) => s + Number(i.revenue || 0), 0).toFixed(3)}</td></tr></tfoot>
+  </table>
+  <h2>Top Customers</h2>
+  <table><thead><tr><th>Customer</th><th>Orders</th><th>Spent</th></tr></thead><tbody>${custRows || "<tr><td colspan='3' style='padding:12px;color:#aaa;text-align:center'>No data</td></tr>"}</tbody></table>
+  <div class="footer">FeastRush &nbsp;·&nbsp; ${restaurant?.name || ""} &nbsp;·&nbsp; Z-Report</div>
+  <script>window.onload=()=>window.print()</script></body></html>`;
+
+  const w = window.open("", "_blank");
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
+// ── SVG Bar chart ─────────────────────────────────────────────────────────────
+function BarChart({ data, color, height = 80, t }) {
+  if (!data || data.length === 0) return (
+    <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm text-center py-4">No data</p>
+  );
+  const max = Math.max(...data.map((d) => d.v), 1);
+  const W = 520, H = height, barW = Math.max(4, Math.floor(W / data.length) - 3);
   return (
-    <div
-      style={{ background: t.surface, border: `1px solid ${t.border}` }}
-      className="rounded-xl p-5 transition-all duration-200 hover:shadow-md"
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div
-          style={{ background: t.surface2, border: `1px solid ${t.border}` }}
-          className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
-        >
-          {card.icon}
-        </div>
-        <span
-          style={{ color: card.green ? t.green : card.red ? t.red : t.muted }}
-          className="text-xs font-semibold mt-1"
-        >
-          {card.sub.split(" ")[0]}
-        </span>
-      </div>
-      <p
-        style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
-        className="text-3xl font-bold mb-1 leading-none"
-      >
-        {card.value}
-      </p>
-      <p
-        style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-        className="text-xs leading-snug mt-2"
-      >
-        {card.label}
-      </p>
-      <p
-        style={{ color: card.green ? t.green : card.red ? t.red : t.muted }}
-        className="text-xs mt-1 font-medium"
-      >
-        {card.sub}
-      </p>
+    <div style={{ overflowX: "auto", width: "100%" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 260, width: "100%", height: "auto" }} preserveAspectRatio="none">
+        {data.map((d, i) => {
+          const bh = Math.max(2, (d.v / max) * (H - 18));
+          const x = (i / data.length) * W + 1;
+          return (
+            <g key={i}>
+              <rect x={x} y={H - 18 - bh} width={barW} height={bh} rx={2} fill={color} opacity={0.85} />
+              {data.length <= 20 && (
+                <text x={x + barW / 2} y={H - 2} textAnchor="middle" fontSize={7} fill={t.muted}>{d.l}</text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }
 
-// ─── Home Page ────────────────────────────────────────────────────────────────
-function HomePage({ t }) {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [period, setPeriod] = useState("Today");
-  const [custFilter, setCustFilter] = useState("Sales based");
+// ── SVG Line + area chart ─────────────────────────────────────────────────────
+function LineChart({ data, color, height = 110, t }) {
+  if (!data || data.length < 2) return (
+    <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm text-center py-6">Not enough data points</p>
+  );
+  const max = Math.max(...data.map((d) => d.v), 1);
+  const W = 560, H = height, pad = { l: 38, r: 8, t: 10, b: 22 };
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const step = iw / Math.max(data.length - 1, 1);
+  const pts = data.map((d, i) => ({ x: pad.l + i * step, y: pad.t + ih - (d.v / max) * ih, v: d.v, l: d.l }));
+  const poly = pts.map((p) => `${p.x},${p.y}`).join(" ");
+  const area = `M${pts[0].x},${pad.t + ih} ${pts.map((p) => `L${p.x},${p.y}`).join(" ")} L${pts[pts.length - 1].x},${pad.t + ih} Z`;
+  const labelStep = Math.ceil(data.length / 8);
+  const yTicks = [0, 0.5, 1].map((f) => ({ v: max * f, y: pad.t + ih - f * ih }));
+  return (
+    <div style={{ overflowX: "auto", width: "100%" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 300, width: "100%", height: "auto" }} preserveAspectRatio="none">
+        {yTicks.map((yt, i) => (
+          <g key={i}>
+            <line x1={pad.l} y1={yt.y} x2={W - pad.r} y2={yt.y} stroke={t.border} strokeWidth="0.7" />
+            <text x={pad.l - 4} y={yt.y + 3} textAnchor="end" fontSize={7} fill={t.muted}>
+              {yt.v >= 1 ? Math.round(yt.v) : yt.v.toFixed(2)}
+            </text>
+          </g>
+        ))}
+        <path d={area} fill={color} fillOpacity={0.08} />
+        <polyline points={poly} fill="none" stroke={color} strokeWidth={2} />
+        {pts.map((p, i) => p.v > 0 && <circle key={i} cx={p.x} cy={p.y} r={3} fill={color} />)}
+        {pts.filter((_, i) => i % labelStep === 0 || i === pts.length - 1).map((p, i) => (
+          <text key={i} x={p.x} y={H - 2} textAnchor="middle" fontSize={7} fill={t.muted}>{p.l}</text>
+        ))}
+      </svg>
+    </div>
+  );
+}
 
-  const maxItem = TOP_ITEMS[0].count;
-  const totalPay = PAYMENT_DATA.reduce((s, d) => s + d.count, 0);
-  const totalType = ORDER_TYPE_DATA.reduce((s, d) => s + d.count, 0);
-  const totalZone = ZONES.reduce((s, d) => s + d.count, 0);
+// ── Horizontal rank bars ───────────────────────────────────────────────────────
+function RankBars({ items, color, t, emptyMsg = "No data for this period" }) {
+  const max = items[0]?.value || 1;
+  if (!items.length) return <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm text-center py-4">{emptyMsg}</p>;
+  return (
+    <div className="space-y-3">
+      {items.map((it, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif", minWidth: 18 }} className="text-xs font-bold text-right flex-shrink-0">{i + 1}</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1">
+              <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold truncate pr-2">{it.name}</p>
+              <span style={{ color, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold flex-shrink-0">{it.displayValue ?? it.value}</span>
+            </div>
+            <div style={{ background: t.surface2 }} className="h-1.5 rounded-full overflow-hidden">
+              <div style={{ width: `${(it.value / max) * 100}%`, background: color }} className="h-full rounded-full transition-all duration-500" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Home Page ─────────────────────────────────────────────────────────────────
+function HomePage({ t, user }) {
+  const restId = user?.role === "owner" ? user?.main_rest : user?.rest_id;
+
+  const [period, setPeriod] = useState("Today");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [custFilter, setCustFilter] = useState("revenue"); // revenue | orders
+  const [loading, setLoading] = useState(true);
+  const [zBusy, setZBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [restaurant, setRestaurant] = useState(null);
+
+  // analytics state
+  const [stats, setStats] = useState({ orders: 0, revenue: 0, customers: 0, rejected: 0, pending: 0, avgOrder: "KD 0.000" });
+  const [timeSeries, setTimeSeries] = useState([]);   // [{l, v, orders}]
+  const [topItems, setTopItems] = useState([]);        // [{name, qty, revenue}]
+  const [topCustomers, setTopCustomers] = useState([]); // [{name, orders, revenue}]
+  const [payBreakdown, setPayBreakdown] = useState([]); // [{method, count, total}]
+  const [topViewed, setTopViewed] = useState([]);
+  const [topAdded, setTopAdded] = useState([]);
+
+  // ── fetch ──────────────────────────────────────────────────────────────────
+  const load = useCallback(async () => {
+    if (!restId) { setLoading(false); setErr("No restaurant linked to this account."); return; }
+    setLoading(true); setErr(null);
+    try {
+      const { from, to } = getPeriodRange(period, customStart, customEnd);
+      const fromISO = from.toISOString(), toISO = to.toISOString();
+
+      // 1. Restaurant info (once)
+      if (!restaurant) {
+        const { data: r } = await supabase.from("Restaurants").select("id,name,branch_name").eq("id", restId).maybeSingle();
+        if (r) setRestaurant(r);
+      }
+
+      // 2. All orders in period for THIS restaurant
+      const { data: orders, error: oErr } = await supabase
+        .from("Orders")
+        .select("id, status, total_amount, payment_method, cust_id, created_at")
+        .eq("rest_id", restId)
+        .gte("created_at", fromISO)
+        .lte("created_at", toISO);
+      if (oErr) throw oErr;
+
+      // Classify
+      const ACTIVE_STATUSES = ["accepted", "preparing", "on_the_way", "delivered"];
+      const accepted = (orders || []).filter((o) => ACTIVE_STATUSES.includes(o.status));
+      const rejected = (orders || []).filter((o) => o.status === "rejected");
+      const pending  = (orders || []).filter((o) => o.status === "pending");
+      const revenue  = accepted.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+      const uniqueCustomers = new Set(accepted.map((o) => o.cust_id)).size;
+      const avgOrder = accepted.length ? (revenue / accepted.length).toFixed(3) : "0.000";
+
+      setStats({
+        orders:    accepted.length,
+        revenue,
+        customers: uniqueCustomers,
+        rejected:  rejected.length,
+        pending:   pending.length,
+        avgOrder:  `KD ${avgOrder}`,
+      });
+
+      // 3. Payment breakdown
+      const payMap = {};
+      accepted.forEach((o) => {
+        const m = o.payment_method || "Unknown";
+        if (!payMap[m]) payMap[m] = { method: m, count: 0, total: 0 };
+        payMap[m].count++;
+        payMap[m].total += Number(o.total_amount || 0);
+      });
+      setPayBreakdown(Object.values(payMap).sort((a, b) => b.total - a.total));
+
+      // 4. Time series — group accepted orders by day
+      const dayMap = {};
+      accepted.forEach((o) => {
+        const day = o.created_at.slice(0, 10);
+        if (!dayMap[day]) dayMap[day] = { v: 0, orders: 0 };
+        dayMap[day].v += Number(o.total_amount || 0);
+        dayMap[day].orders++;
+      });
+      setTimeSeries(
+        Object.entries(dayMap)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([d, val]) => ({ l: d.slice(5), v: val.v, orders: val.orders }))
+      );
+
+      // 5. Top selling items
+      if (accepted.length > 0) {
+        const ids = accepted.map((o) => o.id);
+        const { data: ois } = await supabase
+          .from("Order_Items")
+          .select("menu_id, quantity, subtotal, Menu(name)")
+          .in("order_id", ids);
+
+        const iMap = {};
+        (ois || []).forEach((it) => {
+          const id = it.menu_id, name = it.Menu?.name || "Unknown";
+          if (!iMap[id]) iMap[id] = { name, qty: 0, revenue: 0 };
+          iMap[id].qty += it.quantity;
+          iMap[id].revenue += Number(it.subtotal || 0);
+        });
+        setTopItems(Object.values(iMap).sort((a, b) => b.qty - a.qty).slice(0, 10));
+
+        // 6. Top customers for THIS restaurant (via Orders.rest_id)
+        const custIds = [...new Set(accepted.map((o) => o.cust_id))];
+        const custMap = {};
+        accepted.forEach((o) => {
+          if (!custMap[o.cust_id]) custMap[o.cust_id] = { orders: 0, revenue: 0 };
+          custMap[o.cust_id].orders++;
+          custMap[o.cust_id].revenue += Number(o.total_amount || 0);
+        });
+        if (custIds.length > 0) {
+          const { data: custs } = await supabase
+            .from("Customer")
+            .select("id, cust_name, ph_num")
+            .in("id", custIds);
+          const nameMap = {};
+          (custs || []).forEach((c) => { nameMap[c.id] = c.cust_name || c.ph_num || "Guest"; });
+          setTopCustomers(
+            Object.entries(custMap)
+              .map(([cid, v]) => ({ name: nameMap[cid] || "Guest", ...v }))
+              .sort((a, b) => b.revenue - a.revenue)
+              .slice(0, 8)
+          );
+        }
+      } else {
+        setTopItems([]); setTopCustomers([]);
+      }
+
+      // 7. Menu events (views + add_to_cart)
+      try {
+        const { data: evts } = await supabase
+          .from("Menu_Events")
+          .select("menu_id, event_type, Menu(name)")
+          .eq("rest_id", restId)
+          .gte("created_at", fromISO)
+          .lte("created_at", toISO);
+
+        const vMap = {}, aMap = {};
+        (evts || []).forEach((ev) => {
+          const id = ev.menu_id, name = ev.Menu?.name || "Unknown";
+          if (ev.event_type === "view") {
+            if (!vMap[id]) vMap[id] = { name, value: 0 };
+            vMap[id].value++;
+          } else if (ev.event_type === "add_to_cart") {
+            if (!aMap[id]) aMap[id] = { name, value: 0 };
+            aMap[id].value++;
+          }
+        });
+        setTopViewed(Object.values(vMap).sort((a, b) => b.value - a.value).slice(0, 8));
+        setTopAdded(Object.values(aMap).sort((a, b) => b.value - a.value).slice(0, 8));
+      } catch { setTopViewed([]); setTopAdded([]); }
+
+    } catch (e) {
+      console.error("[analytics]", e);
+      setErr(e.message || "Failed to load analytics.");
+    } finally {
+      setLoading(false);
+    }
+  }, [restId, period, customStart, customEnd]); // eslint-disable-line
+
+  useEffect(() => { load(); }, [load]);
+
+  // ── Z-Report ───────────────────────────────────────────────────────────────
+  const handleZReport = () => {
+    setZBusy(true);
+    const { from, to } = getPeriodRange(period, customStart, customEnd);
+    const label = `${from.toLocaleDateString("en-KW")} – ${to.toLocaleDateString("en-KW")}`;
+    printZReport({ label, stats, topItems, topCustomers, payBreakdown, restaurant });
+    setTimeout(() => setZBusy(false), 800);
+  };
+
+  // ── Sorted customer list ────────────────────────────────────────────────────
+  const sortedCustomers = [...topCustomers].sort((a, b) =>
+    custFilter === "orders" ? b.orders - a.orders : b.revenue - a.revenue
+  );
+
+  // ── Render helpers ─────────────────────────────────────────────────────────
+  const Skeleton = () => (
+    <div style={{ background: t.surface2 }} className="h-5 rounded-lg animate-pulse w-20" />
+  );
+
+  const KpiCard = ({ icon, label, value, sub, green, red }) => (
+    <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl p-5 transition-all hover:shadow-md">
+      <div className="flex items-start justify-between mb-4">
+        <div style={{ background: t.surface2, border: `1px solid ${t.border}` }} className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">{icon}</div>
+        {sub && <span style={{ color: green ? t.green : red ? t.red : t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold mt-1">{sub}</span>}
+      </div>
+      {loading ? <Skeleton /> : (
+        <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl font-bold mb-1 leading-none">{value}</p>
+      )}
+      <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs leading-snug mt-2">{label}</p>
+    </div>
+  );
+
+  const Section = ({ title, children, action }) => (
+    <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl overflow-hidden">
+      <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap">
+        <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-lg font-bold">{title}</p>
+        {action}
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+
+  const PERIODS = ["Today", "Yesterday", "This Week", "This Month", "This Year", "Custom"];
 
   return (
-    <div className="p-5 md:p-8 max-w-6xl space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-5 md:p-8 max-w-6xl space-y-6 overflow-y-auto">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1
-            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
-            className="text-3xl md:text-4xl font-bold tracking-tight"
-          >
-            Dashboard
-          </h1>
-          <p
-            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-            className="text-sm mt-0.5"
-          >
-            Welcome back — here's what's happening today
-          </p>
+          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl md:text-4xl font-bold tracking-tight">Dashboard</h1>
+          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm mt-0.5">Restaurant analytics · {period}</p>
         </div>
         <button
-          style={{
-            background: t.accent,
-            color: "#fff",
-            fontFamily: "'Lato', sans-serif",
-          }}
-          className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-sm"
+          onClick={handleZReport}
+          disabled={zBusy || loading}
+          style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: (zBusy || loading) ? 0.6 : 1 }}
+          className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-sm flex-shrink-0"
         >
-          Z-Report 📋
+          {zBusy ? "Generating…" : "Z-Report 📋"}
         </button>
       </div>
 
-      <div
-        style={{ borderBottom: `1px solid ${t.border}` }}
-        className="flex items-center justify-between"
-      >
-        <div className="flex gap-6">
-          {["overview", "sales"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                color: activeTab === tab ? t.accent : t.subtle,
-                borderBottomColor: activeTab === tab ? t.accent : "transparent",
-                fontFamily: "'Lato', sans-serif",
-              }}
-              className="pb-3 text-sm font-semibold tracking-wide capitalize border-b-2 transition-colors"
-            >
-              {tab}
+      {/* Period tabs */}
+      <div style={{ borderBottom: `1px solid ${t.border}` }} className="flex flex-wrap items-center justify-between gap-3 pb-0">
+        <div className="flex gap-0 overflow-x-auto scrollbar-none">
+          {PERIODS.map((p) => (
+            <button key={p} onClick={() => setPeriod(p)}
+              style={{ color: period === p ? t.accent : t.subtle, borderBottomColor: period === p ? t.accent : "transparent", fontFamily: "'Lato', sans-serif" }}
+              className="pb-3 px-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap">
+              {p}
             </button>
           ))}
         </div>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          style={{
-            background: t.surface2,
-            border: `1px solid ${t.border2}`,
-            color: t.text,
-            fontFamily: "'Lato', sans-serif",
-          }}
-          className="text-sm rounded-lg px-3 py-2 outline-none mb-2 cursor-pointer font-medium"
-        >
-          {["Today", "Yesterday", "This Week", "This Month"].map((p) => (
-            <option key={p} value={p} style={{ background: t.surface2 }}>
-              {p}
-            </option>
-          ))}
-        </select>
+        {period === "Custom" && (
+          <div className="flex items-center gap-2 pb-3 flex-wrap">
+            <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
+              style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs rounded-lg px-3 py-2 outline-none" />
+            <span style={{ color: t.muted }} className="text-xs">to</span>
+            <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
+              style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs rounded-lg px-3 py-2 outline-none" />
+            <button onClick={load}
+              style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity">
+              Apply
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Error */}
+      {err && (
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B83232", fontFamily: "'Lato', sans-serif" }} className="rounded-xl px-4 py-3 text-sm">
+          ⚠️ {err}
+        </div>
+      )}
+
+      {/* KPI cards */}
       <div>
-        <p
-          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-          className="text-xs font-bold tracking-widest uppercase mb-4"
-        >
-          Sales Analytics
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {STAT_CARDS.map((card, i) => (
-            <StatCard key={i} card={card} t={t} />
-          ))}
+        <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-4">Sales Overview</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <KpiCard icon="✅" label="Accepted Orders" value={stats.orders} green />
+          <KpiCard icon="💰" label="Total Revenue" value={fmtKDh(stats.revenue)} green />
+          <KpiCard icon="👥" label="Unique Customers" value={stats.customers} green />
+          <KpiCard icon="📊" label="Avg Order Value" value={stats.avgOrder} />
+          <KpiCard icon="✕" label="Rejected Orders" value={stats.rejected} red />
+          <KpiCard icon="⏳" label="Pending Orders" value={stats.pending} />
         </div>
       </div>
 
+      {/* Revenue line chart */}
+      <Section title="Revenue Over Time" action={
+        timeSeries.length > 0
+          ? <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{timeSeries.length} day{timeSeries.length !== 1 ? "s" : ""}</span>
+          : null
+      }>
+        {loading
+          ? <div style={{ height: 110, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: t.muted }}>Loading…</p></div>
+          : <LineChart data={timeSeries} color={t.accent} height={110} t={t} />}
+      </Section>
+
+      {/* Top items + Top customers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div
-          style={{ background: t.surface, border: `1px solid ${t.border}` }}
-          className="rounded-xl overflow-hidden"
-        >
-          <div
-            style={{ borderBottom: `1px solid ${t.border}` }}
-            className="px-5 py-4"
-          >
-            <p
-              style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                color: t.text,
-              }}
-              className="text-lg font-bold"
-            >
-              Top Selling Items
-            </p>
-          </div>
-          <div className="p-5 space-y-3">
-            {TOP_ITEMS.map((item) => (
-              <div key={item.rank} className="flex items-center gap-3">
-                <span
-                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
-                  className="text-xs font-bold w-5 text-right flex-shrink-0"
-                >
-                  {item.rank}
-                </span>
-                <span className="text-base flex-shrink-0">{item.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p
-                      style={{
-                        color: t.text,
-                        fontFamily: "'Lato', sans-serif",
-                      }}
-                      className="text-sm font-semibold truncate pr-2"
-                    >
-                      {item.name}
-                    </p>
-                    <span
-                      style={{
-                        color: t.accent,
-                        fontFamily: "'Lato', sans-serif",
-                      }}
-                      className="text-sm font-bold flex-shrink-0"
-                    >
-                      {item.count}
-                    </span>
+        <Section title="Top Selling Items" action={<span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">by qty sold</span>}>
+          {loading
+            ? <p style={{ color: t.muted }}>Loading…</p>
+            : <RankBars items={topItems.map((it) => ({ name: it.name, value: it.qty, displayValue: `${it.qty} sold` }))} color={t.accent} t={t} />}
+        </Section>
+
+        <Section title="Top Customers"
+          action={
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCustFilter("revenue")}
+                style={{ background: custFilter === "revenue" ? t.accentBg : t.surface2, border: `1px solid ${custFilter === "revenue" ? t.accentBorder : t.border2}`, color: custFilter === "revenue" ? t.accent : t.subtle, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-all">Revenue</button>
+              <button onClick={() => setCustFilter("orders")}
+                style={{ background: custFilter === "orders" ? t.accentBg : t.surface2, border: `1px solid ${custFilter === "orders" ? t.accentBorder : t.border2}`, color: custFilter === "orders" ? t.accent : t.subtle, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-all">Orders</button>
+            </div>
+          }>
+          {loading
+            ? <p style={{ color: t.muted }}>Loading…</p>
+            : <RankBars
+                items={sortedCustomers.map((c) => ({
+                  name: c.name,
+                  value: custFilter === "orders" ? c.orders : c.revenue,
+                  displayValue: custFilter === "orders" ? `${c.orders} orders` : fmtKDh(c.revenue),
+                }))}
+                color={t.green} t={t}
+              />}
+        </Section>
+      </div>
+
+      {/* Payment breakdown */}
+      {payBreakdown.length > 0 && !loading && (
+        <Section title="Payment Methods">
+          <div className="flex items-start gap-6 flex-wrap">
+            <svg width={140} height={140} viewBox="0 0 140 140" className="flex-shrink-0">
+              {(() => {
+                const total = payBreakdown.reduce((s, p) => s + p.count, 0) || 1;
+                let angle = -90;
+                const cx = 70, cy = 70, r = 52, thick = 20;
+                const arcPath = (sd, ed) => {
+                  const s = sd * Math.PI / 180, e = ed * Math.PI / 180;
+                  return `M${cx + r * Math.cos(s)},${cy + r * Math.sin(s)} A${r},${r} 0 ${ed - sd > 180 ? 1 : 0},1 ${cx + r * Math.cos(e)},${cy + r * Math.sin(e)}`;
+                };
+                return payBreakdown.map((p, i) => {
+                  const pct = p.count / total;
+                  const st = angle; angle += pct * 360;
+                  return pct > 0 ? (
+                    <path key={i} d={arcPath(st, angle)} fill="none" stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={thick} strokeLinecap="butt" />
+                  ) : null;
+                });
+              })()}
+              <text x="70" y="67" textAnchor="middle" fontSize={18} fontWeight={800} fill={t.text}>{payBreakdown.reduce((s, p) => s + p.count, 0)}</text>
+              <text x="70" y="81" textAnchor="middle" fontSize={9} fill={t.muted}>orders</text>
+            </svg>
+            <div className="space-y-2.5 flex-1">
+              {payBreakdown.map((p, i) => (
+                <div key={i} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} className="w-2.5 h-2.5 rounded-full flex-shrink-0" />
+                    <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm">{p.method}</p>
                   </div>
-                  <div
-                    style={{ background: t.surface2 }}
-                    className="h-1.5 rounded-full overflow-hidden"
-                  >
-                    <div
-                      style={{
-                        width: `${(item.count / maxItem) * 100}%`,
-                        background: t.accent,
-                      }}
-                      className="h-full rounded-full transition-all duration-500"
-                    />
+                  <div className="flex items-center gap-4">
+                    <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{p.count} orders</span>
+                    <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold">{fmtKDh(p.total)}</span>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div
-          style={{ background: t.surface, border: `1px solid ${t.border}` }}
-          className="rounded-xl overflow-hidden"
-        >
-          <div
-            style={{ borderBottom: `1px solid ${t.border}` }}
-            className="px-5 py-4 flex items-center justify-between"
-          >
-            <p
-              style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                color: t.text,
-              }}
-              className="text-lg font-bold"
-            >
-              Top Customers
-            </p>
-            <select
-              value={custFilter}
-              onChange={(e) => setCustFilter(e.target.value)}
-              style={{
-                background: t.surface2,
-                border: `1px solid ${t.border2}`,
-                color: t.text,
-                fontFamily: "'Lato', sans-serif",
-              }}
-              className="text-xs rounded-lg px-2 py-1.5 outline-none cursor-pointer font-medium"
-            >
-              {["Sales based", "Order based"].map((f) => (
-                <option key={f} value={f} style={{ background: t.surface2 }}>
-                  {f}
-                </option>
               ))}
-            </select>
+            </div>
           </div>
-          <div className="p-4 space-y-2">
-            {TOP_CUSTOMERS.map((c, i) => (
-              <div
-                key={i}
-                style={{
-                  background: t.surface2,
-                  border: `1px solid ${t.border}`,
-                }}
-                className="flex items-center gap-3 rounded-lg px-4 py-3"
-              >
-                <div
-                  style={{
-                    background: t.accentBg,
-                    border: `1px solid ${t.accentBorder}`,
-                    color: t.accent,
-                  }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                >
-                  {c.name.charAt(0)}
-                </div>
-                <p
-                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm font-semibold flex-1"
-                >
-                  {c.name}
-                </p>
-                <p
-                  style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm font-bold flex-shrink-0"
-                >
-                  {c.value}
-                </p>
+        </Section>
+      )}
+
+      {/* Orders per day bar chart */}
+      <Section title="Orders Per Day"
+        action={<div className="flex items-center gap-2">
+          <span style={{ background: t.accent }} className="w-4 h-0.5 inline-block rounded-full" />
+          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs">Revenue (KD)</p>
+        </div>}>
+        <div className="flex items-baseline gap-3 mb-4">
+          {loading
+            ? <div style={{ background: t.surface2 }} className="h-8 w-20 rounded-lg animate-pulse" />
+            : <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl font-bold">{stats.orders}</p>}
+          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm">accepted orders</p>
+        </div>
+        {loading
+          ? <div style={{ background: t.surface2, height: 80 }} className="rounded-lg animate-pulse" />
+          : <BarChart data={timeSeries} color={t.accent} height={80} t={t} />}
+      </Section>
+
+      {/* Revenue by top item mini bars */}
+      {topItems.length > 0 && !loading && (
+        <Section title="Revenue by Item">
+          <BarChart data={topItems.slice(0, 8).map((it) => ({ l: it.name.split(" ")[0], v: it.revenue }))} color={t.green} height={90} t={t} />
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {topItems.slice(0, 4).map((it, i) => (
+              <div key={i} style={{ background: t.surface2, border: `1px solid ${t.border}` }} className="rounded-lg px-3 py-2">
+                <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold truncate">{it.name}</p>
+                <p style={{ color: t.green, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold mt-0.5">{fmtKDh(it.revenue)}</p>
               </div>
             ))}
           </div>
-        </div>
-      </div>
+        </Section>
+      )}
 
-      <div
-        style={{ background: t.surface, border: `1px solid ${t.border}` }}
-        className="rounded-xl overflow-hidden"
-      >
-        <div
-          style={{ borderBottom: `1px solid ${t.border}` }}
-          className="px-5 py-4"
-        >
-          <p
-            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
-            className="text-lg font-bold"
-          >
-            Ordering Zones
-          </p>
-        </div>
-        <div className="p-5 flex flex-col sm:flex-row items-center gap-8">
-          <DonutChart data={ZONES} size={150} thickness={32} />
-          <div className="flex-1 w-full space-y-4">
-            {ZONES.map((z, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span
-                  style={{ background: z.color }}
-                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                />
-                <p
-                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm font-semibold flex-1"
-                >
-                  {z.label}
-                </p>
-                <p
-                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm"
-                >
-                  {z.count} orders
-                </p>
-                <div
-                  style={{ background: t.surface2 }}
-                  className="w-28 h-2 rounded-full overflow-hidden"
-                >
-                  <div
-                    style={{
-                      width: `${(z.count / totalZone) * 100}%`,
-                      background: z.color,
-                    }}
-                    className="h-full rounded-full"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[
-          {
-            title: "Payment Modes",
-            data: PAYMENT_DATA,
-            total: totalPay,
-            sub: "Total Transactions",
-          },
-          {
-            title: "Orders By Type",
-            data: ORDER_TYPE_DATA,
-            total: totalType,
-            sub: "Total Orders",
-          },
-        ].map(({ title, data, total, sub }) => (
-          <div
-            key={title}
-            style={{ background: t.surface, border: `1px solid ${t.border}` }}
-            className="rounded-xl overflow-hidden"
-          >
-            <div
-              style={{ borderBottom: `1px solid ${t.border}` }}
-              className="px-5 py-4"
-            >
-              <p
-                style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  color: t.text,
-                }}
-                className="text-lg font-bold"
-              >
-                {title}
-              </p>
-            </div>
-            <div className="p-5 flex items-center gap-6">
-              <div className="flex-shrink-0">
-                <DonutChart data={data} size={130} thickness={28} />
-              </div>
-              <div className="flex-1 space-y-2.5">
-                <div className="mb-3">
-                  <p
-                    style={{
-                      fontFamily: "'Cormorant Garamond', serif",
-                      color: t.text,
-                    }}
-                    className="text-3xl font-bold"
-                  >
-                    {total}
-                  </p>
-                  <p
-                    style={{
-                      color: t.subtle,
-                      fontFamily: "'Lato', sans-serif",
-                    }}
-                    className="text-xs font-medium mt-0.5"
-                  >
-                    {sub}
-                  </p>
-                </div>
-                {data.map((d, i) => (
-                  <div key={i} className="flex items-center gap-2.5">
-                    <span
-                      style={{ background: d.color }}
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    />
-                    <p
-                      style={{
-                        color: t.text,
-                        fontFamily: "'Lato', sans-serif",
-                      }}
-                      className="text-sm"
-                    >
-                      {d.label} —{" "}
-                      <span style={{ color: t.accent }} className="font-bold">
-                        {d.count}
-                      </span>
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div
-        style={{ background: t.surface, border: `1px solid ${t.border}` }}
-        className="rounded-xl overflow-hidden"
-      >
-        <div
-          style={{ borderBottom: `1px solid ${t.border}` }}
-          className="px-5 py-4 flex items-center justify-between flex-wrap gap-2"
-        >
-          <p
-            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
-            className="text-lg font-bold"
-          >
-            Peak Days
-          </p>
-          <div className="flex items-center gap-2">
-            <span
-              style={{ background: t.accent }}
-              className="w-4 h-0.5 inline-block rounded-full"
-            />
-            <p
-              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-              className="text-xs font-medium"
-            >
-              Orders per day
-            </p>
-          </div>
-        </div>
-        <div className="p-5">
-          <div className="mb-4 flex items-baseline gap-3">
-            <p
-              style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                color: t.text,
-              }}
-              className="text-3xl font-bold"
-            >
-              {PEAK_DAYS.reduce((s, d) => s + d.orders, 0)}
-            </p>
-            <p
-              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-              className="text-sm"
-            >
-              total orders, last 30 days
-            </p>
-          </div>
-          <PeakChart data={PEAK_DAYS} t={t} />
-        </div>
-      </div>
-
+      {/* Menu engagement */}
       <div>
-        <p
-          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-          className="text-xs font-bold tracking-widest uppercase mb-4"
-        >
-          Customer Behaviour Analytics
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          {BEHAVIOR.map((b, i) => (
-            <div
-              key={i}
-              style={{ background: t.surface, border: `1px solid ${t.border}` }}
-              className="rounded-xl p-5"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div
-                  style={{
-                    background: t.surface2,
-                    border: `1px solid ${t.border2}`,
-                  }}
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
-                >
-                  {b.icon}
-                </div>
-                <p
-                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
-                  className="text-sm leading-tight"
-                >
-                  {b.label}
-                </p>
-              </div>
-              <p
-                style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  color: t.text,
-                }}
-                className="text-3xl font-bold mb-1"
-              >
-                {b.value}
-              </p>
-              <p
-                style={{
-                  color: b.green ? t.green : b.red ? t.red : t.muted,
-                  fontFamily: "'Lato', sans-serif",
-                }}
-                className="text-sm font-medium"
-              >
-                {b.sub}
-              </p>
-            </div>
-          ))}
-        </div>
-
+        <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-4">Menu Engagement</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { title: "Top Added to Cart", data: TOP_ADDED },
-            { title: "Top Viewed Items", data: TOP_VIEWED },
-          ].map(({ title, data }) => (
-            <div
-              key={title}
-              style={{ background: t.surface, border: `1px solid ${t.border}` }}
-              className="rounded-xl overflow-hidden"
-            >
-              <div
-                style={{ borderBottom: `1px solid ${t.border}` }}
-                className="px-5 py-4"
-              >
-                <p
-                  style={{
-                    fontFamily: "'Cormorant Garamond', serif",
-                    color: t.text,
-                  }}
-                  className="text-lg font-bold"
-                >
-                  {title}
-                </p>
-              </div>
-              <div className="p-4 space-y-2">
-                {data.map((item) => (
-                  <div
-                    key={item.rank}
-                    style={{
-                      background: t.surface2,
-                      border: `1px solid ${t.border}`,
-                    }}
-                    className="flex items-center gap-3 rounded-lg px-4 py-2.5"
-                  >
-                    <span
-                      style={{
-                        color: t.muted,
-                        fontFamily: "'Lato', sans-serif",
-                      }}
-                      className="text-xs font-bold w-5 text-right flex-shrink-0"
-                    >
-                      {item.rank}
-                    </span>
-                    <span className="text-base flex-shrink-0">
-                      {item.emoji}
-                    </span>
-                    <p
-                      style={{
-                        color: t.text,
-                        fontFamily: "'Lato', sans-serif",
-                      }}
-                      className="text-sm font-semibold flex-1 truncate"
-                    >
-                      {item.name}
-                    </p>
-                    <span
-                      style={{
-                        color: t.accent,
-                        fontFamily: "'Lato', sans-serif",
-                      }}
-                      className="text-sm font-bold flex-shrink-0"
-                    >
-                      {item.count}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            { title: "Top Added to Cart", data: topAdded, color: "#F59E0B", note: "add events" },
+            { title: "Top Viewed Items",  data: topViewed, color: "#6366F1", note: "views" },
+          ].map(({ title, data, color, note }) => (
+            <Section key={title} title={title} action={<span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{note}</span>}>
+              {loading
+                ? <p style={{ color: t.muted }}>Loading…</p>
+                : data.length === 0
+                  ? <div className="text-center py-2">
+                      <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-1">No events yet</p>
+                      <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs opacity-60">Events are tracked as customers browse</p>
+                    </div>
+                  : <RankBars items={data} color={color} t={t} />}
+            </Section>
           ))}
         </div>
       </div>
     </div>
   );
 }
+
 
 // ─── Orders Page ──────────────────────────────────────────────────────────────
 // ─── Orders helpers ───────────────────────────────────────────────────────────
@@ -5651,7 +5402,7 @@ export default function Dashboard({ user, onLogout }) {
   const renderPage = () => {
     switch (activeNav) {
       case "home":
-        return <HomePage t={t} />;
+        return <HomePage t={t} user={user} />;
       case "orders":
         return <OrdersPage t={t} user={user} />;
       case "menu":
