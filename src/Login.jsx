@@ -84,7 +84,7 @@ export default function Login({ onLogin }) {
 
       {/* Login Card */}
       <div
-        className={`relative z-10 w-full max-w-[420px] bg-white/80 backdrop-blur-xl border border-white rounded-[2rem] shadow-2xl shadow-orange-900/5 px-8 py-10 sm:px-10 sm:py-12 transition-all duration-300 ${
+        className={`relative z-10 w-full max-w-[420px] bg-white/80 backdrop-blur-xl border border-white rounded-[2rem] shadow-[0_0_50px_rgba(249,115,22,0.15)] px-8 py-10 sm:px-10 sm:py-12 transition-all duration-300 ${
           shake ? "animate-shake" : ""
         }`}
       >
