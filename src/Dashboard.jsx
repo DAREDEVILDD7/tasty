@@ -164,7 +164,6 @@ function Field({ label, value, onChange, type = "text", placeholder, t }) {
   );
 }
 
-
 // ─── Drag hook ────────────────────────────────────────────────────────────────
 function useTouchDrag(items, setItems, getId) {
   const itemRefs = useRef({});
@@ -274,42 +273,94 @@ function useTouchDrag(items, setItems, getId) {
   return { itemRefs, onPointerDown };
 }
 
-
 // ─── Analytics helpers ────────────────────────────────────────────────────────
 function getPeriodRange(period, customStart, customEnd) {
   const now = new Date();
-  const s = (d) => { const r = new Date(d); r.setHours(0, 0, 0, 0); return r; };
-  const e = (d) => { const r = new Date(d); r.setHours(23, 59, 59, 999); return r; };
-  if (period === "Today")      return { from: s(now), to: e(now) };
-  if (period === "Yesterday")  { const y = new Date(now); y.setDate(y.getDate() - 1); return { from: s(y), to: e(y) }; }
-  if (period === "This Week")  { const w = new Date(now); w.setDate(w.getDate() - w.getDay()); return { from: s(w), to: e(now) }; }
-  if (period === "This Month") return { from: s(new Date(now.getFullYear(), now.getMonth(), 1)), to: e(now) };
-  if (period === "This Year")  return { from: s(new Date(now.getFullYear(), 0, 1)), to: e(now) };
-  if (period === "Custom")     return { from: customStart ? s(new Date(customStart)) : s(now), to: customEnd ? e(new Date(customEnd)) : e(now) };
+  const s = (d) => {
+    const r = new Date(d);
+    r.setHours(0, 0, 0, 0);
+    return r;
+  };
+  const e = (d) => {
+    const r = new Date(d);
+    r.setHours(23, 59, 59, 999);
+    return r;
+  };
+  if (period === "Today") return { from: s(now), to: e(now) };
+  if (period === "Yesterday") {
+    const y = new Date(now);
+    y.setDate(y.getDate() - 1);
+    return { from: s(y), to: e(y) };
+  }
+  if (period === "This Week") {
+    const w = new Date(now);
+    w.setDate(w.getDate() - w.getDay());
+    return { from: s(w), to: e(now) };
+  }
+  if (period === "This Month")
+    return {
+      from: s(new Date(now.getFullYear(), now.getMonth(), 1)),
+      to: e(now),
+    };
+  if (period === "This Year")
+    return { from: s(new Date(now.getFullYear(), 0, 1)), to: e(now) };
+  if (period === "Custom")
+    return {
+      from: customStart ? s(new Date(customStart)) : s(now),
+      to: customEnd ? e(new Date(customEnd)) : e(now),
+    };
   return { from: s(now), to: e(now) };
 }
 
-const CHART_COLORS = ["#C4711A", "#2D7A4F", "#6366F1", "#F59E0B", "#EC4899", "#14B8A6"];
+const CHART_COLORS = [
+  "#C4711A",
+  "#2D7A4F",
+  "#6366F1",
+  "#F59E0B",
+  "#EC4899",
+  "#14B8A6",
+];
 
-function fmtKDh(n) { return `KD ${Number(n || 0).toFixed(3)}`; }
+function fmtKDh(n) {
+  return `KD ${Number(n || 0).toFixed(3)}`;
+}
 
 // ── Z-Report print ────────────────────────────────────────────────────────────
-function printZReport({ label, stats, topItems, topCustomers, payBreakdown, restaurant }) {
-  const itemRows = topItems.map((it, i) =>
-    `<tr style="background:${i % 2 ? "#fafafa" : "#fff"}">
+function printZReport({
+  label,
+  stats,
+  topItems,
+  topCustomers,
+  payBreakdown,
+  restaurant,
+}) {
+  const itemRows = topItems
+    .map(
+      (it, i) =>
+        `<tr style="background:${i % 2 ? "#fafafa" : "#fff"}">
       <td style="padding:8px 12px">${i + 1}</td>
       <td style="padding:8px 12px">${it.name}</td>
       <td style="padding:8px 12px;text-align:right;font-weight:700">${it.qty}</td>
       <td style="padding:8px 12px;text-align:right;font-weight:700">KD ${Number(it.revenue || 0).toFixed(3)}</td>
-    </tr>`).join("");
-  const custRows = topCustomers.map((c, i) =>
-    `<tr style="background:${i % 2 ? "#fafafa" : "#fff"}">
+    </tr>`,
+    )
+    .join("");
+  const custRows = topCustomers
+    .map(
+      (c, i) =>
+        `<tr style="background:${i % 2 ? "#fafafa" : "#fff"}">
       <td style="padding:8px 12px">${c.name || "—"}</td>
       <td style="padding:8px 12px;text-align:right">${c.orders}</td>
       <td style="padding:8px 12px;text-align:right;font-weight:700">KD ${Number(c.revenue).toFixed(3)}</td>
-    </tr>`).join("");
-  const payRows = payBreakdown.map(p =>
-    `<tr><td style="padding:6px 12px">${p.method}</td><td style="padding:6px 12px;text-align:right">${p.count}</td><td style="padding:6px 12px;text-align:right;font-weight:700">KD ${Number(p.total).toFixed(3)}</td></tr>`).join("");
+    </tr>`,
+    )
+    .join("");
+  const payRows = payBreakdown
+    .map(
+      (p) =>
+        `<tr><td style="padding:6px 12px">${p.method}</td><td style="padding:6px 12px;text-align:right">${p.count}</td><td style="padding:6px 12px;text-align:right;font-weight:700">KD ${Number(p.total).toFixed(3)}</td></tr>`,
+    )
+    .join("");
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Z-Report – ${label}</title>
   <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;padding:40px;max-width:720px;margin:0 auto}
@@ -352,27 +403,119 @@ function printZReport({ label, stats, topItems, topCustomers, payBreakdown, rest
   <script>window.onload=()=>window.print()</script></body></html>`;
 
   const w = window.open("", "_blank");
-  if (w) { w.document.write(html); w.document.close(); }
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+  }
 }
 
-// ── SVG Bar chart ─────────────────────────────────────────────────────────────
-function BarChart({ data, color, height = 80, t }) {
-  if (!data || data.length === 0) return (
-    <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm text-center py-4">No data</p>
-  );
+// ── SVG Bar chart with hover tooltips ────────────────────────────────────────
+function BarChart({
+  data,
+  color,
+  height = 80,
+  t,
+  valuePrefix = "",
+  valueSuffix = "",
+}) {
+  const [hovered, setHovered] = useState(null); // index
+  if (!data || data.length === 0)
+    return (
+      <p
+        style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+        className="text-sm text-center py-4"
+      >
+        No data
+      </p>
+    );
   const max = Math.max(...data.map((d) => d.v), 1);
-  const W = 520, H = height, barW = Math.max(4, Math.floor(W / data.length) - 3);
+  const W = 520,
+    H = height,
+    barW = Math.max(6, Math.floor(W / data.length) - 3);
+  const LABEL_H = 20;
+  const chartH = H - LABEL_H;
   return (
     <div style={{ overflowX: "auto", width: "100%" }}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 260, width: "100%", height: "auto" }} preserveAspectRatio="none">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ minWidth: 260, width: "100%", height: "auto" }}
+        preserveAspectRatio="none"
+        onMouseLeave={() => setHovered(null)}
+      >
         {data.map((d, i) => {
-          const bh = Math.max(2, (d.v / max) * (H - 18));
+          const bh = Math.max(2, (d.v / max) * (chartH - 4));
           const x = (i / data.length) * W + 1;
+          const isHov = hovered === i;
           return (
-            <g key={i}>
-              <rect x={x} y={H - 18 - bh} width={barW} height={bh} rx={2} fill={color} opacity={0.85} />
-              {data.length <= 20 && (
-                <text x={x + barW / 2} y={H - 2} textAnchor="middle" fontSize={7} fill={t.muted}>{d.l}</text>
+            <g
+              key={i}
+              onMouseEnter={() => setHovered(i)}
+              style={{ cursor: "pointer" }}
+            >
+              {/* hover bg */}
+              <rect
+                x={x - 1}
+                y={0}
+                width={barW + 2}
+                height={chartH}
+                fill={isHov ? color + "18" : "transparent"}
+                rx={2}
+              />
+              {/* bar */}
+              <rect
+                x={x}
+                y={chartH - bh}
+                width={barW}
+                height={bh}
+                rx={2}
+                fill={color}
+                opacity={isHov ? 1 : 0.78}
+              />
+              {/* day label */}
+              {data.length <= 22 && (
+                <text
+                  x={x + barW / 2}
+                  y={H - 2}
+                  textAnchor="middle"
+                  fontSize={7}
+                  fill={isHov ? color : t.muted}
+                  fontWeight={isHov ? "700" : "400"}
+                >
+                  {d.l}
+                </text>
+              )}
+              {/* tooltip on hover */}
+              {isHov && (
+                <g>
+                  {(() => {
+                    const tx = Math.min(Math.max(x + barW / 2, 34), W - 34);
+                    const ty = Math.max(chartH - bh - 8, 12);
+                    const label = `${valuePrefix}${typeof d.v === "number" && d.v % 1 !== 0 ? d.v.toFixed(3) : d.v}${valueSuffix}`;
+                    const tw = label.length * 5.8 + 10;
+                    return (
+                      <>
+                        <rect
+                          x={tx - tw / 2}
+                          y={ty - 14}
+                          width={tw}
+                          height={18}
+                          rx={4}
+                          fill={color}
+                        />
+                        <text
+                          x={tx}
+                          y={ty - 2}
+                          textAnchor="middle"
+                          fontSize={8}
+                          fill="#fff"
+                          fontWeight="700"
+                        >
+                          {label}
+                        </text>
+                      </>
+                    );
+                  })()}
+                </g>
               )}
             </g>
           );
@@ -382,37 +525,153 @@ function BarChart({ data, color, height = 80, t }) {
   );
 }
 
-// ── SVG Line + area chart ─────────────────────────────────────────────────────
-function LineChart({ data, color, height = 110, t }) {
-  if (!data || data.length < 2) return (
-    <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm text-center py-6">Not enough data points</p>
-  );
+// ── SVG Line + area chart with hover ─────────────────────────────────────────
+function LineChart({ data, color, height = 110, t, valuePrefix = "KD " }) {
+  const [hovered, setHovered] = useState(null);
+  if (!data || data.length < 2)
+    return (
+      <p
+        style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+        className="text-sm text-center py-6"
+      >
+        Not enough data points
+      </p>
+    );
   const max = Math.max(...data.map((d) => d.v), 1);
-  const W = 560, H = height, pad = { l: 38, r: 8, t: 10, b: 22 };
-  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const W = 560,
+    H = height,
+    pad = { l: 38, r: 10, t: 18, b: 22 };
+  const iw = W - pad.l - pad.r,
+    ih = H - pad.t - pad.b;
   const step = iw / Math.max(data.length - 1, 1);
-  const pts = data.map((d, i) => ({ x: pad.l + i * step, y: pad.t + ih - (d.v / max) * ih, v: d.v, l: d.l }));
+  const pts = data.map((d, i) => ({
+    x: pad.l + i * step,
+    y: pad.t + ih - (d.v / max) * ih,
+    v: d.v,
+    l: d.l,
+  }));
   const poly = pts.map((p) => `${p.x},${p.y}`).join(" ");
   const area = `M${pts[0].x},${pad.t + ih} ${pts.map((p) => `L${p.x},${p.y}`).join(" ")} L${pts[pts.length - 1].x},${pad.t + ih} Z`;
   const labelStep = Math.ceil(data.length / 8);
-  const yTicks = [0, 0.5, 1].map((f) => ({ v: max * f, y: pad.t + ih - f * ih }));
+  const yTicks = [0, 0.5, 1].map((f) => ({
+    v: max * f,
+    y: pad.t + ih - f * ih,
+  }));
   return (
     <div style={{ overflowX: "auto", width: "100%" }}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 300, width: "100%", height: "auto" }} preserveAspectRatio="none">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ minWidth: 300, width: "100%", height: "auto" }}
+        preserveAspectRatio="none"
+        onMouseLeave={() => setHovered(null)}
+      >
         {yTicks.map((yt, i) => (
           <g key={i}>
-            <line x1={pad.l} y1={yt.y} x2={W - pad.r} y2={yt.y} stroke={t.border} strokeWidth="0.7" />
-            <text x={pad.l - 4} y={yt.y + 3} textAnchor="end" fontSize={7} fill={t.muted}>
+            <line
+              x1={pad.l}
+              y1={yt.y}
+              x2={W - pad.r}
+              y2={yt.y}
+              stroke={t.border}
+              strokeWidth="0.7"
+              strokeDasharray="3 3"
+            />
+            <text
+              x={pad.l - 4}
+              y={yt.y + 3}
+              textAnchor="end"
+              fontSize={7}
+              fill={t.muted}
+            >
               {yt.v >= 1 ? Math.round(yt.v) : yt.v.toFixed(2)}
             </text>
           </g>
         ))}
         <path d={area} fill={color} fillOpacity={0.08} />
         <polyline points={poly} fill="none" stroke={color} strokeWidth={2} />
-        {pts.map((p, i) => p.v > 0 && <circle key={i} cx={p.x} cy={p.y} r={3} fill={color} />)}
-        {pts.filter((_, i) => i % labelStep === 0 || i === pts.length - 1).map((p, i) => (
-          <text key={i} x={p.x} y={H - 2} textAnchor="middle" fontSize={7} fill={t.muted}>{p.l}</text>
+        {pts.map((p, i) => (
+          <g
+            key={i}
+            onMouseEnter={() => setHovered(i)}
+            style={{ cursor: "crosshair" }}
+          >
+            <rect
+              x={p.x - step / 2}
+              y={pad.t}
+              width={step}
+              height={ih}
+              fill="transparent"
+            />
+            {p.v > 0 && (
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={hovered === i ? 5 : 3}
+                fill={color}
+                stroke="#fff"
+                strokeWidth={1.5}
+              />
+            )}
+          </g>
         ))}
+        {pts
+          .filter((_, i) => i % labelStep === 0 || i === pts.length - 1)
+          .map((p, i) => (
+            <text
+              key={i}
+              x={p.x}
+              y={H - 2}
+              textAnchor="middle"
+              fontSize={7}
+              fill={t.muted}
+            >
+              {p.l}
+            </text>
+          ))}
+        {hovered !== null &&
+          pts[hovered] &&
+          (() => {
+            const p = pts[hovered];
+            const label = `${valuePrefix}${p.v.toFixed(3)}`;
+            const tw = label.length * 5.8 + 10;
+            const tx = Math.min(
+              Math.max(p.x, pad.l + tw / 2),
+              W - pad.r - tw / 2,
+            );
+            const ty = Math.max(p.y - 10, 14);
+            return (
+              <g>
+                <line
+                  x1={p.x}
+                  y1={pad.t}
+                  x2={p.x}
+                  y2={pad.t + ih}
+                  stroke={color}
+                  strokeWidth={1}
+                  strokeDasharray="3 2"
+                  opacity={0.5}
+                />
+                <rect
+                  x={tx - tw / 2}
+                  y={ty - 14}
+                  width={tw}
+                  height={18}
+                  rx={4}
+                  fill={color}
+                />
+                <text
+                  x={tx}
+                  y={ty - 2}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill="#fff"
+                  fontWeight="700"
+                >
+                  {label}
+                </text>
+              </g>
+            );
+          })()}
       </svg>
     </div>
   );
@@ -421,19 +680,55 @@ function LineChart({ data, color, height = 110, t }) {
 // ── Horizontal rank bars ───────────────────────────────────────────────────────
 function RankBars({ items, color, t, emptyMsg = "No data for this period" }) {
   const max = items[0]?.value || 1;
-  if (!items.length) return <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm text-center py-4">{emptyMsg}</p>;
+  if (!items.length)
+    return (
+      <p
+        style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+        className="text-sm text-center py-4"
+      >
+        {emptyMsg}
+      </p>
+    );
   return (
     <div className="space-y-3">
       {items.map((it, i) => (
         <div key={i} className="flex items-center gap-3">
-          <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif", minWidth: 18 }} className="text-xs font-bold text-right flex-shrink-0">{i + 1}</span>
+          <span
+            style={{
+              color: t.muted,
+              fontFamily: "'Lato', sans-serif",
+              minWidth: 18,
+            }}
+            className="text-xs font-bold text-right flex-shrink-0"
+          >
+            {i + 1}
+          </span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
-              <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold truncate pr-2">{it.name}</p>
-              <span style={{ color, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold flex-shrink-0">{it.displayValue ?? it.value}</span>
+              <p
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm font-semibold truncate pr-2"
+              >
+                {it.name}
+              </p>
+              <span
+                style={{ color, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm font-bold flex-shrink-0"
+              >
+                {it.displayValue ?? it.value}
+              </span>
             </div>
-            <div style={{ background: t.surface2 }} className="h-1.5 rounded-full overflow-hidden">
-              <div style={{ width: `${(it.value / max) * 100}%`, background: color }} className="h-full rounded-full transition-all duration-500" />
+            <div
+              style={{ background: t.surface2 }}
+              className="h-1.5 rounded-full overflow-hidden"
+            >
+              <div
+                style={{
+                  width: `${(it.value / max) * 100}%`,
+                  background: color,
+                }}
+                className="h-full rounded-full transition-all duration-500"
+              />
             </div>
           </div>
         </div>
@@ -456,9 +751,16 @@ function HomePage({ t, user }) {
   const [restaurant, setRestaurant] = useState(null);
 
   // analytics state
-  const [stats, setStats] = useState({ orders: 0, revenue: 0, customers: 0, rejected: 0, pending: 0, avgOrder: "KD 0.000" });
-  const [timeSeries, setTimeSeries] = useState([]);   // [{l, v, orders}]
-  const [topItems, setTopItems] = useState([]);        // [{name, qty, revenue}]
+  const [stats, setStats] = useState({
+    orders: 0,
+    revenue: 0,
+    customers: 0,
+    rejected: 0,
+    pending: 0,
+    avgOrder: "KD 0.000",
+  });
+  const [timeSeries, setTimeSeries] = useState([]); // [{l, v, orders}]
+  const [topItems, setTopItems] = useState([]); // [{name, qty, revenue}]
   const [topCustomers, setTopCustomers] = useState([]); // [{name, orders, revenue}]
   const [payBreakdown, setPayBreakdown] = useState([]); // [{method, count, total}]
   const [topViewed, setTopViewed] = useState([]);
@@ -466,15 +768,25 @@ function HomePage({ t, user }) {
 
   // ── fetch ──────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
-    if (!restId) { setLoading(false); setErr("No restaurant linked to this account."); return; }
-    setLoading(true); setErr(null);
+    if (!restId) {
+      setLoading(false);
+      setErr("No restaurant linked to this account.");
+      return;
+    }
+    setLoading(true);
+    setErr(null);
     try {
       const { from, to } = getPeriodRange(period, customStart, customEnd);
-      const fromISO = from.toISOString(), toISO = to.toISOString();
+      const fromISO = from.toISOString(),
+        toISO = to.toISOString();
 
       // 1. Restaurant info (once)
       if (!restaurant) {
-        const { data: r } = await supabase.from("Restaurants").select("id,name,branch_name").eq("id", restId).maybeSingle();
+        const { data: r } = await supabase
+          .from("Restaurants")
+          .select("id,name,branch_name")
+          .eq("id", restId)
+          .maybeSingle();
         if (r) setRestaurant(r);
       }
 
@@ -488,21 +800,33 @@ function HomePage({ t, user }) {
       if (oErr) throw oErr;
 
       // Classify
-      const ACTIVE_STATUSES = ["accepted", "preparing", "on_the_way", "delivered"];
-      const accepted = (orders || []).filter((o) => ACTIVE_STATUSES.includes(o.status));
+      const ACTIVE_STATUSES = [
+        "accepted",
+        "preparing",
+        "on_the_way",
+        "delivered",
+      ];
+      const accepted = (orders || []).filter((o) =>
+        ACTIVE_STATUSES.includes(o.status),
+      );
       const rejected = (orders || []).filter((o) => o.status === "rejected");
-      const pending  = (orders || []).filter((o) => o.status === "pending");
-      const revenue  = accepted.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+      const pending = (orders || []).filter((o) => o.status === "pending");
+      const revenue = accepted.reduce(
+        (s, o) => s + Number(o.total_amount || 0),
+        0,
+      );
       const uniqueCustomers = new Set(accepted.map((o) => o.cust_id)).size;
-      const avgOrder = accepted.length ? (revenue / accepted.length).toFixed(3) : "0.000";
+      const avgOrder = accepted.length
+        ? (revenue / accepted.length).toFixed(3)
+        : "0.000";
 
       setStats({
-        orders:    accepted.length,
+        orders: accepted.length,
         revenue,
         customers: uniqueCustomers,
-        rejected:  rejected.length,
-        pending:   pending.length,
-        avgOrder:  `KD ${avgOrder}`,
+        rejected: rejected.length,
+        pending: pending.length,
+        avgOrder: `KD ${avgOrder}`,
       });
 
       // 3. Payment breakdown
@@ -526,7 +850,7 @@ function HomePage({ t, user }) {
       setTimeSeries(
         Object.entries(dayMap)
           .sort(([a], [b]) => a.localeCompare(b))
-          .map(([d, val]) => ({ l: d.slice(5), v: val.v, orders: val.orders }))
+          .map(([d, val]) => ({ l: d.slice(5), v: val.v, orders: val.orders })),
       );
 
       // 5. Top selling items
@@ -539,18 +863,24 @@ function HomePage({ t, user }) {
 
         const iMap = {};
         (ois || []).forEach((it) => {
-          const id = it.menu_id, name = it.Menu?.name || "Unknown";
+          const id = it.menu_id,
+            name = it.Menu?.name || "Unknown";
           if (!iMap[id]) iMap[id] = { name, qty: 0, revenue: 0 };
           iMap[id].qty += it.quantity;
           iMap[id].revenue += Number(it.subtotal || 0);
         });
-        setTopItems(Object.values(iMap).sort((a, b) => b.qty - a.qty).slice(0, 10));
+        setTopItems(
+          Object.values(iMap)
+            .sort((a, b) => b.qty - a.qty)
+            .slice(0, 10),
+        );
 
         // 6. Top customers for THIS restaurant (via Orders.rest_id)
         const custIds = [...new Set(accepted.map((o) => o.cust_id))];
         const custMap = {};
         accepted.forEach((o) => {
-          if (!custMap[o.cust_id]) custMap[o.cust_id] = { orders: 0, revenue: 0 };
+          if (!custMap[o.cust_id])
+            custMap[o.cust_id] = { orders: 0, revenue: 0 };
           custMap[o.cust_id].orders++;
           custMap[o.cust_id].revenue += Number(o.total_amount || 0);
         });
@@ -560,16 +890,19 @@ function HomePage({ t, user }) {
             .select("id, cust_name, ph_num")
             .in("id", custIds);
           const nameMap = {};
-          (custs || []).forEach((c) => { nameMap[c.id] = c.cust_name || c.ph_num || "Guest"; });
+          (custs || []).forEach((c) => {
+            nameMap[c.id] = c.cust_name || c.ph_num || "Guest";
+          });
           setTopCustomers(
             Object.entries(custMap)
               .map(([cid, v]) => ({ name: nameMap[cid] || "Guest", ...v }))
               .sort((a, b) => b.revenue - a.revenue)
-              .slice(0, 8)
+              .slice(0, 8),
           );
         }
       } else {
-        setTopItems([]); setTopCustomers([]);
+        setTopItems([]);
+        setTopCustomers([]);
       }
 
       // 7. Menu events (views + add_to_cart)
@@ -581,9 +914,11 @@ function HomePage({ t, user }) {
           .gte("created_at", fromISO)
           .lte("created_at", toISO);
 
-        const vMap = {}, aMap = {};
+        const vMap = {},
+          aMap = {};
         (evts || []).forEach((ev) => {
-          const id = ev.menu_id, name = ev.Menu?.name || "Unknown";
+          const id = ev.menu_id,
+            name = ev.Menu?.name || "Unknown";
           if (ev.event_type === "view") {
             if (!vMap[id]) vMap[id] = { name, value: 0 };
             vMap[id].value++;
@@ -592,10 +927,20 @@ function HomePage({ t, user }) {
             aMap[id].value++;
           }
         });
-        setTopViewed(Object.values(vMap).sort((a, b) => b.value - a.value).slice(0, 8));
-        setTopAdded(Object.values(aMap).sort((a, b) => b.value - a.value).slice(0, 8));
-      } catch { setTopViewed([]); setTopAdded([]); }
-
+        setTopViewed(
+          Object.values(vMap)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 8),
+        );
+        setTopAdded(
+          Object.values(aMap)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 8),
+        );
+      } catch {
+        setTopViewed([]);
+        setTopAdded([]);
+      }
     } catch (e) {
       console.error("[analytics]", e);
       setErr(e.message || "Failed to load analytics.");
@@ -604,64 +949,225 @@ function HomePage({ t, user }) {
     }
   }, [restId, period, customStart, customEnd]); // eslint-disable-line
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // ── Z-Report ───────────────────────────────────────────────────────────────
   const handleZReport = () => {
     setZBusy(true);
     const { from, to } = getPeriodRange(period, customStart, customEnd);
     const label = `${from.toLocaleDateString("en-KW")} – ${to.toLocaleDateString("en-KW")}`;
-    printZReport({ label, stats, topItems, topCustomers, payBreakdown, restaurant });
+    printZReport({
+      label,
+      stats,
+      topItems,
+      topCustomers,
+      payBreakdown,
+      restaurant,
+    });
     setTimeout(() => setZBusy(false), 800);
   };
 
   // ── Sorted customer list ────────────────────────────────────────────────────
   const sortedCustomers = [...topCustomers].sort((a, b) =>
-    custFilter === "orders" ? b.orders - a.orders : b.revenue - a.revenue
+    custFilter === "orders" ? b.orders - a.orders : b.revenue - a.revenue,
   );
 
   // ── Render helpers ─────────────────────────────────────────────────────────
   const Skeleton = () => (
-    <div style={{ background: t.surface2 }} className="h-5 rounded-lg animate-pulse w-20" />
+    <div
+      style={{ background: t.surface2 }}
+      className="h-5 rounded-lg animate-pulse w-20"
+    />
   );
 
-  const KpiCard = ({ icon, label, value, sub, green, red }) => (
-    <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl p-5 transition-all hover:shadow-md">
-      <div className="flex items-start justify-between mb-4">
-        <div style={{ background: t.surface2, border: `1px solid ${t.border}` }} className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">{icon}</div>
-        {sub && <span style={{ color: green ? t.green : red ? t.red : t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold mt-1">{sub}</span>}
+  // Ungrie savings = 20% of revenue
+  const ungrieSavings = stats.revenue * 0.2;
+
+  const KpiCard = ({ icon, label, value, sub, green, red, special, pulse }) => {
+    // special = Ungrie card, pulse = pending warning
+    const bg = special
+      ? "linear-gradient(135deg, #C4711A 0%, #a85a10 100%)"
+      : pulse && stats.pending > 0
+        ? "#FEF2F2"
+        : t.surface;
+    const borderCol = special
+      ? "transparent"
+      : pulse && stats.pending > 0
+        ? "#FECACA"
+        : t.border;
+    return (
+      <div
+        style={{
+          background: bg,
+          border: `1px solid ${borderCol}`,
+          position: "relative",
+          overflow: "hidden",
+        }}
+        className={`rounded-xl p-5 transition-all hover:shadow-md ${special ? "shadow-lg" : ""}`}
+      >
+        {/* Ungrie decorative ring */}
+        {special && (
+          <div
+            style={{
+              position: "absolute",
+              top: -24,
+              right: -24,
+              width: 96,
+              height: 96,
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.08)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+        <div className="flex items-start justify-between mb-4">
+          <div
+            style={{
+              background: special
+                ? "rgba(255,255,255,0.18)"
+                : pulse && stats.pending > 0
+                  ? "#FEF2F2"
+                  : t.surface2,
+              border: `1px solid ${special ? "rgba(255,255,255,0.25)" : borderCol}`,
+            }}
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
+          >
+            {icon}
+          </div>
+          {pulse && stats.pending > 0 && !special && (
+            <span
+              style={{
+                background: "#FEF2F2",
+                color: "#B83232",
+                border: "1px solid #FECACA",
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="text-xs font-bold px-2 py-0.5 rounded-full animate-pulse"
+            >
+              Action needed
+            </span>
+          )}
+          {sub && !pulse && (
+            <span
+              style={{
+                color: green
+                  ? t.green
+                  : red
+                    ? t.red
+                    : special
+                      ? "rgba(255,255,255,0.75)"
+                      : t.muted,
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="text-xs font-semibold mt-1"
+            >
+              {sub}
+            </span>
+          )}
+        </div>
+        {loading ? (
+          <Skeleton />
+        ) : (
+          <p
+            style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              color: special ? "#fff" : t.text,
+            }}
+            className="text-3xl font-bold mb-1 leading-none"
+          >
+            {value}
+          </p>
+        )}
+        <p
+          style={{
+            color: special
+              ? "rgba(255,255,255,0.8)"
+              : pulse && stats.pending > 0
+                ? "#B83232"
+                : t.subtle,
+            fontFamily: "'Lato', sans-serif",
+          }}
+          className="text-xs leading-snug mt-2"
+        >
+          {label}
+        </p>
+        {special && (
+          <p
+            style={{
+              color: "rgba(255,255,255,0.55)",
+              fontFamily: "'Lato', sans-serif",
+              marginTop: 6,
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: ".06em",
+            }}
+          >
+            SAVINGS THIS PERIOD · POWERED BY UNGRIE
+          </p>
+        )}
       </div>
-      {loading ? <Skeleton /> : (
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl font-bold mb-1 leading-none">{value}</p>
-      )}
-      <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs leading-snug mt-2">{label}</p>
-    </div>
-  );
+    );
+  };
 
   const Section = ({ title, children, action }) => (
-    <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="rounded-xl overflow-hidden">
-      <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap">
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-lg font-bold">{title}</p>
+    <div
+      style={{ background: t.surface, border: `1px solid ${t.border}` }}
+      className="rounded-xl overflow-hidden"
+    >
+      <div
+        style={{ borderBottom: `1px solid ${t.border}` }}
+        className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap"
+      >
+        <p
+          style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+          className="text-lg font-bold"
+        >
+          {title}
+        </p>
         {action}
       </div>
       <div className="p-5">{children}</div>
     </div>
   );
 
-  const PERIODS = ["Today", "Yesterday", "This Week", "This Month", "This Year", "Custom"];
+  const PERIODS = [
+    "Today",
+    "Yesterday",
+    "This Week",
+    "This Month",
+    "This Year",
+    "Custom",
+  ];
 
   return (
     <div className="p-5 md:p-8 max-w-6xl space-y-6 overflow-y-auto">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl md:text-4xl font-bold tracking-tight">Dashboard</h1>
-          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm mt-0.5">Restaurant analytics · {period}</p>
+          <h1
+            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+            className="text-3xl md:text-4xl font-bold tracking-tight"
+          >
+            Dashboard
+          </h1>
+          <p
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-sm mt-0.5"
+          >
+            Restaurant analytics · {period}
+          </p>
         </div>
         <button
           onClick={handleZReport}
           disabled={zBusy || loading}
-          style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: (zBusy || loading) ? 0.6 : 1 }}
+          style={{
+            background: t.accent,
+            color: "#fff",
+            fontFamily: "'Lato', sans-serif",
+            opacity: zBusy || loading ? 0.6 : 1,
+          }}
           className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-sm flex-shrink-0"
         >
           {zBusy ? "Generating…" : "Z-Report 📋"}
@@ -669,28 +1175,64 @@ function HomePage({ t, user }) {
       </div>
 
       {/* Period tabs */}
-      <div style={{ borderBottom: `1px solid ${t.border}` }} className="flex flex-wrap items-center justify-between gap-3 pb-0">
+      <div
+        style={{ borderBottom: `1px solid ${t.border}` }}
+        className="flex flex-wrap items-center justify-between gap-3 pb-0"
+      >
         <div className="flex gap-0 overflow-x-auto scrollbar-none">
           {PERIODS.map((p) => (
-            <button key={p} onClick={() => setPeriod(p)}
-              style={{ color: period === p ? t.accent : t.subtle, borderBottomColor: period === p ? t.accent : "transparent", fontFamily: "'Lato', sans-serif" }}
-              className="pb-3 px-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap">
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              style={{
+                color: period === p ? t.accent : t.subtle,
+                borderBottomColor: period === p ? t.accent : "transparent",
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="pb-3 px-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap"
+            >
               {p}
             </button>
           ))}
         </div>
         {period === "Custom" && (
           <div className="flex items-center gap-2 pb-3 flex-wrap">
-            <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
-              style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
-              className="text-xs rounded-lg px-3 py-2 outline-none" />
-            <span style={{ color: t.muted }} className="text-xs">to</span>
-            <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
-              style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
-              className="text-xs rounded-lg px-3 py-2 outline-none" />
-            <button onClick={load}
-              style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }}
-              className="text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity">
+            <input
+              type="date"
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              style={{
+                background: t.surface2,
+                border: `1px solid ${t.border2}`,
+                color: t.text,
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="text-xs rounded-lg px-3 py-2 outline-none"
+            />
+            <span style={{ color: t.muted }} className="text-xs">
+              to
+            </span>
+            <input
+              type="date"
+              value={customEnd}
+              onChange={(e) => setCustomEnd(e.target.value)}
+              style={{
+                background: t.surface2,
+                border: `1px solid ${t.border2}`,
+                color: t.text,
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="text-xs rounded-lg px-3 py-2 outline-none"
+            />
+            <button
+              onClick={load}
+              style={{
+                background: t.accent,
+                color: "#fff",
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="text-xs font-semibold px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
+            >
               Apply
             </button>
           </div>
@@ -699,64 +1241,177 @@ function HomePage({ t, user }) {
 
       {/* Error */}
       {err && (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B83232", fontFamily: "'Lato', sans-serif" }} className="rounded-xl px-4 py-3 text-sm">
+        <div
+          style={{
+            background: "#FEF2F2",
+            border: "1px solid #FECACA",
+            color: "#B83232",
+            fontFamily: "'Lato', sans-serif",
+          }}
+          className="rounded-xl px-4 py-3 text-sm"
+        >
           ⚠️ {err}
         </div>
       )}
 
       {/* KPI cards */}
       <div>
-        <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-4">Sales Overview</p>
+        <p
+          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-bold tracking-widest uppercase mb-4"
+        >
+          Sales Overview
+        </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <KpiCard icon="✅" label="Accepted Orders" value={stats.orders} green />
-          <KpiCard icon="💰" label="Total Revenue" value={fmtKDh(stats.revenue)} green />
-          <KpiCard icon="👥" label="Unique Customers" value={stats.customers} green />
+          <KpiCard
+            icon="✅"
+            label="Accepted Orders"
+            value={stats.orders}
+            green
+          />
+          <KpiCard
+            icon="💰"
+            label="Total Revenue"
+            value={fmtKDh(stats.revenue)}
+            green
+          />
+          <KpiCard
+            icon="👥"
+            label="Unique Customers"
+            value={stats.customers}
+            green
+          />
           <KpiCard icon="📊" label="Avg Order Value" value={stats.avgOrder} />
-          <KpiCard icon="✕" label="Rejected Orders" value={stats.rejected} red />
-          <KpiCard icon="⏳" label="Pending Orders" value={stats.pending} />
+          <KpiCard
+            icon="✕"
+            label="Rejected Orders"
+            value={stats.rejected}
+            red
+          />
+          <KpiCard
+            icon="⏳"
+            label="Pending Orders"
+            value={stats.pending}
+            pulse
+          />
+          {/* Ungrie savings — full-width standout card */}
+          <div className="col-span-2 sm:col-span-3">
+            <KpiCard
+              icon="✨"
+              label="Revenue saved by using Ungrie"
+              value={fmtKDh(ungrieSavings)}
+              special
+            />
+          </div>
         </div>
       </div>
 
       {/* Revenue line chart */}
-      <Section title="Revenue Over Time" action={
-        timeSeries.length > 0
-          ? <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{timeSeries.length} day{timeSeries.length !== 1 ? "s" : ""}</span>
-          : null
-      }>
-        {loading
-          ? <div style={{ height: 110, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: t.muted }}>Loading…</p></div>
-          : <LineChart data={timeSeries} color={t.accent} height={110} t={t} />}
+      <Section
+        title="Revenue Over Time"
+        action={
+          timeSeries.length > 0 ? (
+            <span
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs"
+            >
+              {timeSeries.length} day{timeSeries.length !== 1 ? "s" : ""}
+            </span>
+          ) : null
+        }
+      >
+        {loading ? (
+          <div
+            style={{
+              height: 110,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <p style={{ color: t.muted }}>Loading…</p>
+          </div>
+        ) : (
+          <LineChart data={timeSeries} color={t.accent} height={110} t={t} />
+        )}
       </Section>
 
       {/* Top items + Top customers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Section title="Top Selling Items" action={<span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">by qty sold</span>}>
-          {loading
-            ? <p style={{ color: t.muted }}>Loading…</p>
-            : <RankBars items={topItems.map((it) => ({ name: it.name, value: it.qty, displayValue: `${it.qty} sold` }))} color={t.accent} t={t} />}
+        <Section
+          title="Top Selling Items"
+          action={
+            <span
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs"
+            >
+              by qty sold
+            </span>
+          }
+        >
+          {loading ? (
+            <p style={{ color: t.muted }}>Loading…</p>
+          ) : (
+            <RankBars
+              items={topItems.map((it) => ({
+                name: it.name,
+                value: it.qty,
+                displayValue: `${it.qty} sold`,
+              }))}
+              color={t.accent}
+              t={t}
+            />
+          )}
         </Section>
 
-        <Section title="Top Customers"
+        <Section
+          title="Top Customers"
           action={
             <div className="flex items-center gap-2">
-              <button onClick={() => setCustFilter("revenue")}
-                style={{ background: custFilter === "revenue" ? t.accentBg : t.surface2, border: `1px solid ${custFilter === "revenue" ? t.accentBorder : t.border2}`, color: custFilter === "revenue" ? t.accent : t.subtle, fontFamily: "'Lato', sans-serif" }}
-                className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-all">Revenue</button>
-              <button onClick={() => setCustFilter("orders")}
-                style={{ background: custFilter === "orders" ? t.accentBg : t.surface2, border: `1px solid ${custFilter === "orders" ? t.accentBorder : t.border2}`, color: custFilter === "orders" ? t.accent : t.subtle, fontFamily: "'Lato', sans-serif" }}
-                className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-all">Orders</button>
+              <button
+                onClick={() => setCustFilter("revenue")}
+                style={{
+                  background:
+                    custFilter === "revenue" ? t.accentBg : t.surface2,
+                  border: `1px solid ${custFilter === "revenue" ? t.accentBorder : t.border2}`,
+                  color: custFilter === "revenue" ? t.accent : t.subtle,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-all"
+              >
+                Revenue
+              </button>
+              <button
+                onClick={() => setCustFilter("orders")}
+                style={{
+                  background: custFilter === "orders" ? t.accentBg : t.surface2,
+                  border: `1px solid ${custFilter === "orders" ? t.accentBorder : t.border2}`,
+                  color: custFilter === "orders" ? t.accent : t.subtle,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-all"
+              >
+                Orders
+              </button>
             </div>
-          }>
-          {loading
-            ? <p style={{ color: t.muted }}>Loading…</p>
-            : <RankBars
-                items={sortedCustomers.map((c) => ({
-                  name: c.name,
-                  value: custFilter === "orders" ? c.orders : c.revenue,
-                  displayValue: custFilter === "orders" ? `${c.orders} orders` : fmtKDh(c.revenue),
-                }))}
-                color={t.green} t={t}
-              />}
+          }
+        >
+          {loading ? (
+            <p style={{ color: t.muted }}>Loading…</p>
+          ) : (
+            <RankBars
+              items={sortedCustomers.map((c) => ({
+                name: c.name,
+                value: custFilter === "orders" ? c.orders : c.revenue,
+                displayValue:
+                  custFilter === "orders"
+                    ? `${c.orders} orders`
+                    : fmtKDh(c.revenue),
+              }))}
+              color={t.green}
+              t={t}
+            />
+          )}
         </Section>
       </div>
 
@@ -764,36 +1419,103 @@ function HomePage({ t, user }) {
       {payBreakdown.length > 0 && !loading && (
         <Section title="Payment Methods">
           <div className="flex items-start gap-6 flex-wrap">
-            <svg width={140} height={140} viewBox="0 0 140 140" className="flex-shrink-0">
+            <svg
+              width={140}
+              height={140}
+              viewBox="0 0 140 140"
+              className="flex-shrink-0"
+            >
               {(() => {
-                const total = payBreakdown.reduce((s, p) => s + p.count, 0) || 1;
+                const total =
+                  payBreakdown.reduce((s, p) => s + p.count, 0) || 1;
                 let angle = -90;
-                const cx = 70, cy = 70, r = 52, thick = 20;
+                const cx = 70,
+                  cy = 70,
+                  r = 52,
+                  thick = 20;
                 const arcPath = (sd, ed) => {
-                  const s = sd * Math.PI / 180, e = ed * Math.PI / 180;
+                  const s = (sd * Math.PI) / 180,
+                    e = (ed * Math.PI) / 180;
                   return `M${cx + r * Math.cos(s)},${cy + r * Math.sin(s)} A${r},${r} 0 ${ed - sd > 180 ? 1 : 0},1 ${cx + r * Math.cos(e)},${cy + r * Math.sin(e)}`;
                 };
                 return payBreakdown.map((p, i) => {
                   const pct = p.count / total;
-                  const st = angle; angle += pct * 360;
+                  const st = angle;
+                  angle += pct * 360;
                   return pct > 0 ? (
-                    <path key={i} d={arcPath(st, angle)} fill="none" stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={thick} strokeLinecap="butt" />
+                    <path
+                      key={i}
+                      d={arcPath(st, angle)}
+                      fill="none"
+                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                      strokeWidth={thick}
+                      strokeLinecap="butt"
+                    />
                   ) : null;
                 });
               })()}
-              <text x="70" y="67" textAnchor="middle" fontSize={18} fontWeight={800} fill={t.text}>{payBreakdown.reduce((s, p) => s + p.count, 0)}</text>
-              <text x="70" y="81" textAnchor="middle" fontSize={9} fill={t.muted}>orders</text>
+              <text
+                x="70"
+                y="67"
+                textAnchor="middle"
+                fontSize={18}
+                fontWeight={800}
+                fill={t.text}
+              >
+                {payBreakdown.reduce((s, p) => s + p.count, 0)}
+              </text>
+              <text
+                x="70"
+                y="81"
+                textAnchor="middle"
+                fontSize={9}
+                fill={t.muted}
+              >
+                orders
+              </text>
             </svg>
             <div className="space-y-2.5 flex-1">
               {payBreakdown.map((p, i) => (
-                <div key={i} className="flex items-center justify-between gap-3">
+                <div
+                  key={i}
+                  className="flex items-center justify-between gap-3"
+                >
                   <div className="flex items-center gap-2">
-                    <span style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} className="w-2.5 h-2.5 rounded-full flex-shrink-0" />
-                    <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm">{p.method}</p>
+                    <span
+                      style={{
+                        background: CHART_COLORS[i % CHART_COLORS.length],
+                      }}
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    />
+                    <p
+                      style={{
+                        color: t.text,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm"
+                    >
+                      {p.method}
+                    </p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{p.count} orders</span>
-                    <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold">{fmtKDh(p.total)}</span>
+                    <span
+                      style={{
+                        color: t.muted,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-xs"
+                    >
+                      {p.count} orders
+                    </span>
+                    <span
+                      style={{
+                        color: t.accent,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-bold"
+                    >
+                      {fmtKDh(p.total)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -803,31 +1525,105 @@ function HomePage({ t, user }) {
       )}
 
       {/* Orders per day bar chart */}
-      <Section title="Orders Per Day"
-        action={<div className="flex items-center gap-2">
-          <span style={{ background: t.accent }} className="w-4 h-0.5 inline-block rounded-full" />
-          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs">Revenue (KD)</p>
-        </div>}>
+      <Section
+        title="Orders Per Day"
+        action={
+          <div className="flex items-center gap-2">
+            <span
+              style={{ background: t.accent }}
+              className="w-4 h-0.5 inline-block rounded-full"
+            />
+            <p
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs"
+            >
+              Revenue (KD)
+            </p>
+          </div>
+        }
+      >
         <div className="flex items-baseline gap-3 mb-4">
-          {loading
-            ? <div style={{ background: t.surface2 }} className="h-8 w-20 rounded-lg animate-pulse" />
-            : <p style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl font-bold">{stats.orders}</p>}
-          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm">accepted orders</p>
+          {loading ? (
+            <div
+              style={{ background: t.surface2 }}
+              className="h-8 w-20 rounded-lg animate-pulse"
+            />
+          ) : (
+            <p
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                color: t.text,
+              }}
+              className="text-3xl font-bold"
+            >
+              {stats.orders}
+            </p>
+          )}
+          <p
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-sm"
+          >
+            accepted orders
+          </p>
         </div>
-        {loading
-          ? <div style={{ background: t.surface2, height: 80 }} className="rounded-lg animate-pulse" />
-          : <BarChart data={timeSeries} color={t.accent} height={80} t={t} />}
+        {loading ? (
+          <div
+            style={{ background: t.surface2, height: 80 }}
+            className="rounded-lg animate-pulse"
+          />
+        ) : (
+          <BarChart data={timeSeries} color={t.accent} height={80} t={t} />
+        )}
       </Section>
 
       {/* Revenue by top item mini bars */}
       {topItems.length > 0 && !loading && (
         <Section title="Revenue by Item">
-          <BarChart data={topItems.slice(0, 8).map((it) => ({ l: it.name.split(" ")[0], v: it.revenue }))} color={t.green} height={90} t={t} />
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {topItems.slice(0, 4).map((it, i) => (
-              <div key={i} style={{ background: t.surface2, border: `1px solid ${t.border}` }} className="rounded-lg px-3 py-2">
-                <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold truncate">{it.name}</p>
-                <p style={{ color: t.green, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold mt-0.5">{fmtKDh(it.revenue)}</p>
+          <BarChart
+            data={topItems
+              .slice(0, 8)
+              .map((it) => ({
+                l: it.name.length > 10 ? it.name.slice(0, 9) + "…" : it.name,
+                full: it.name,
+                v: it.revenue,
+              }))}
+            color={t.green}
+            height={90}
+            t={t}
+            valuePrefix="KD "
+          />
+          {/* Full name legend */}
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {topItems.slice(0, 8).map((it, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span
+                  style={{
+                    background: t.green,
+                    fontFamily: "'Lato', sans-serif",
+                    minWidth: 20,
+                    flexShrink: 0,
+                  }}
+                  className="text-xs text-white font-bold rounded px-1.5 py-0.5 text-center"
+                >
+                  {i + 1}
+                </span>
+                <p
+                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs truncate"
+                >
+                  {it.name}
+                </p>
+                <span
+                  style={{
+                    color: t.green,
+                    fontFamily: "'Lato', sans-serif",
+                    flexShrink: 0,
+                    marginLeft: "auto",
+                  }}
+                  className="text-xs font-bold"
+                >
+                  {fmtKDh(it.revenue)}
+                </span>
               </div>
             ))}
           </div>
@@ -836,21 +1632,59 @@ function HomePage({ t, user }) {
 
       {/* Menu engagement */}
       <div>
-        <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-4">Menu Engagement</p>
+        <p
+          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-bold tracking-widest uppercase mb-4"
+        >
+          Menu Engagement
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { title: "Top Added to Cart", data: topAdded, color: "#F59E0B", note: "add events" },
-            { title: "Top Viewed Items",  data: topViewed, color: "#6366F1", note: "views" },
+            {
+              title: "Top Added to Cart",
+              data: topAdded,
+              color: "#F59E0B",
+              note: "add events",
+            },
+            {
+              title: "Top Viewed Items",
+              data: topViewed,
+              color: "#6366F1",
+              note: "views",
+            },
           ].map(({ title, data, color, note }) => (
-            <Section key={title} title={title} action={<span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{note}</span>}>
-              {loading
-                ? <p style={{ color: t.muted }}>Loading…</p>
-                : data.length === 0
-                  ? <div className="text-center py-2">
-                      <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-1">No events yet</p>
-                      <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs opacity-60">Events are tracked as customers browse</p>
-                    </div>
-                  : <RankBars items={data} color={color} t={t} />}
+            <Section
+              key={title}
+              title={title}
+              action={
+                <span
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs"
+                >
+                  {note}
+                </span>
+              }
+            >
+              {loading ? (
+                <p style={{ color: t.muted }}>Loading…</p>
+              ) : data.length === 0 ? (
+                <div className="text-center py-2">
+                  <p
+                    style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                    className="text-sm mb-1"
+                  >
+                    No events yet
+                  </p>
+                  <p
+                    style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                    className="text-xs opacity-60"
+                  >
+                    Events are tracked as customers browse
+                  </p>
+                </div>
+              ) : (
+                <RankBars items={data} color={color} t={t} />
+              )}
             </Section>
           ))}
         </div>
@@ -859,6 +1693,651 @@ function HomePage({ t, user }) {
   );
 }
 
+// ─── Delivery Page ────────────────────────────────────────────────────────────
+function DeliveryPage({ t, user }) {
+  const restId = user?.role === "owner" ? user?.main_rest : user?.rest_id;
+  const [riders, setRiders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "", active: true });
+  const [editingId, setEditingId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [delConfirm, setDelConfirm] = useState(null);
+  const [formErr, setFormErr] = useState("");
+  const [period, setPeriod] = useState("This Month");
+
+  const fetchRiders = useCallback(async () => {
+    if (!restId) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("Delivery_Riders")
+        .select("*")
+        .eq("rest_id", restId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setRiders(data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [restId]);
+
+  const fetchStats = useCallback(async () => {
+    if (!restId) return;
+    setStatsLoading(true);
+    try {
+      const { from, to } = getPeriodRange(period, "", "");
+      // Fetch orders with rider info
+      const { data: orders } = await supabase
+        .from("Orders")
+        .select(
+          "id, total_amount, status, delivery_rider_name, delivery_rider_phone, rider_id, cust_id, created_at",
+        )
+        .eq("rest_id", restId)
+        .gte("created_at", from.toISOString())
+        .lte("created_at", to.toISOString())
+        .not("delivery_rider_name", "is", null);
+
+      // Build stats keyed by rider_id (if exists) or name+phone combo
+      const map = {};
+      (orders || []).forEach((o) => {
+        const key = o.rider_id
+          ? `id_${o.rider_id}`
+          : `anon_${o.delivery_rider_name}_${o.delivery_rider_phone}`;
+        if (!map[key])
+          map[key] = {
+            rider_id: o.rider_id || null,
+            name: o.delivery_rider_name || "Unknown",
+            phone: o.delivery_rider_phone || "",
+            orders: 0,
+            revenue: 0,
+            delivered: 0,
+          };
+        map[key].orders++;
+        map[key].revenue += Number(o.total_amount || 0);
+        if (o.status === "delivered") map[key].delivered++;
+      });
+      setStats(Object.values(map).sort((a, b) => b.orders - a.orders));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [restId, period]);
+
+  useEffect(() => {
+    fetchRiders();
+  }, [fetchRiders]);
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  const openNew = () => {
+    setForm({ name: "", phone: "", active: true });
+    setEditingId(null);
+    setFormErr("");
+    setShowForm(true);
+  };
+  const openEdit = (r) => {
+    setForm({ name: r.name, phone: r.phone, active: r.active });
+    setEditingId(r.id);
+    setFormErr("");
+    setShowForm(true);
+  };
+  const cancelForm = () => {
+    setShowForm(false);
+    setFormErr("");
+  };
+
+  const saveRider = async () => {
+    if (!form.name.trim()) {
+      setFormErr("Name is required.");
+      return;
+    }
+    if (!form.phone.trim()) {
+      setFormErr("Phone is required.");
+      return;
+    }
+    setSaving(true);
+    setFormErr("");
+    try {
+      if (editingId) {
+        const { error } = await supabase
+          .from("Delivery_Riders")
+          .update({
+            name: form.name.trim(),
+            phone: form.phone.trim(),
+            active: form.active,
+          })
+          .eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("Delivery_Riders")
+          .insert({
+            rest_id: restId,
+            name: form.name.trim(),
+            phone: form.phone.trim(),
+            active: form.active,
+          });
+        if (error) throw error;
+      }
+      await fetchRiders();
+      setShowForm(false);
+    } catch (e) {
+      setFormErr(e.message || "Failed to save rider.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (rider) => {
+    await supabase
+      .from("Delivery_Riders")
+      .update({ active: !rider.active })
+      .eq("id", rider.id);
+    setRiders((prev) =>
+      prev.map((r) => (r.id === rider.id ? { ...r, active: !r.active } : r)),
+    );
+  };
+
+  const deleteRider = async (id) => {
+    await supabase.from("Delivery_Riders").delete().eq("id", id);
+    setRiders((prev) => prev.filter((r) => r.id !== id));
+    setDelConfirm(null);
+  };
+
+  const STAT_PERIODS = ["Today", "This Week", "This Month", "This Year"];
+
+  return (
+    <div className="p-5 md:p-8 max-w-5xl space-y-6 overflow-y-auto">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1
+          style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+          className="text-3xl md:text-4xl font-bold tracking-tight"
+        >
+          Delivery Riders
+        </h1>
+        {!showForm && (
+          <button
+            onClick={openNew}
+            style={{
+              background: t.accent,
+              color: "#fff",
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="text-xs font-semibold px-4 py-2.5 rounded-lg tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-sm"
+          >
+            + Add Rider
+          </button>
+        )}
+      </div>
+
+      {/* Add/Edit Form */}
+      {showForm && (
+        <div
+          style={{ background: t.surface, border: `1px solid ${t.border}` }}
+          className="rounded-xl p-5"
+        >
+          <p
+            style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+            className="text-lg font-bold mb-4"
+          >
+            {editingId ? "Edit Rider" : "New Rider Profile"}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label
+                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs font-bold tracking-widest uppercase block mb-2"
+              >
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => {
+                  setForm((p) => ({ ...p, name: e.target.value }));
+                  setFormErr("");
+                }}
+                placeholder="e.g. Mohammed Al-Rashidi"
+                style={{
+                  background: t.surface2,
+                  border: `1px solid ${t.border2}`,
+                  color: t.text,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+              />
+            </div>
+            <div>
+              <label
+                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs font-bold tracking-widest uppercase block mb-2"
+              >
+                Phone Number
+              </label>
+              <input
+                type="text"
+                value={form.phone}
+                onChange={(e) => {
+                  setForm((p) => ({ ...p, phone: e.target.value }));
+                  setFormErr("");
+                }}
+                placeholder="+965 XXXX XXXX"
+                style={{
+                  background: t.surface2,
+                  border: `1px solid ${t.border2}`,
+                  color: t.text,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mb-4">
+            <label
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-bold tracking-widest uppercase"
+            >
+              Status
+            </label>
+            <div className="flex items-center gap-2">
+              {["Active", "Inactive"].map((s) => (
+                <button
+                  key={s}
+                  onClick={() =>
+                    setForm((p) => ({ ...p, active: s === "Active" }))
+                  }
+                  style={{
+                    background:
+                      (form.active ? "Active" : "Inactive") === s
+                        ? t.accentBg
+                        : t.surface2,
+                    border: `1px solid ${(form.active ? "Active" : "Inactive") === s ? t.accentBorder : t.border2}`,
+                    color:
+                      (form.active ? "Active" : "Inactive") === s
+                        ? t.accent
+                        : t.subtle,
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+          {formErr && (
+            <p
+              style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
+              className="text-sm mb-3"
+            >
+              ⚠️ {formErr}
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={cancelForm}
+              style={{
+                border: `1px solid ${t.border2}`,
+                color: t.subtle,
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-80 transition-opacity"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveRider}
+              disabled={saving}
+              style={{
+                background: t.accent,
+                color: "#fff",
+                fontFamily: "'Lato', sans-serif",
+                opacity: saving ? 0.7 : 1,
+              }}
+              className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+            >
+              {saving ? "Saving…" : editingId ? "Save Changes" : "Create Rider"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Riders list */}
+      {loading ? (
+        <p
+          style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm"
+        >
+          Loading riders…
+        </p>
+      ) : riders.length === 0 && !showForm ? (
+        <div
+          style={{ background: t.surface, border: `1px solid ${t.border}` }}
+          className="rounded-xl p-10 text-center"
+        >
+          <div className="text-4xl mb-3 opacity-30">🛵</div>
+          <p
+            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+            className="text-sm"
+          >
+            No riders yet. Add your first delivery rider.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {riders.map((r) => (
+            <div
+              key={r.id}
+              style={{
+                background: t.surface,
+                border: `1px solid ${r.active ? t.border : t.border2}`,
+                opacity: r.active ? 1 : 0.65,
+              }}
+              className="rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap"
+            >
+              {/* Avatar */}
+              <div
+                style={{
+                  background: r.active ? t.accentBg : t.surface2,
+                  border: `1px solid ${r.active ? t.accentBorder : t.border2}`,
+                  color: r.active ? t.accent : t.muted,
+                }}
+                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+              >
+                {r.name[0].toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p
+                    style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                    className="text-sm font-semibold"
+                  >
+                    {r.name}
+                  </p>
+                  {r.is_default && (
+                    <span
+                      style={{
+                        background: t.accentBg,
+                        color: t.accent,
+                        border: `1px solid ${t.accentBorder}`,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-xs font-bold px-2 py-0.5 rounded-full"
+                    >
+                      Default
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      background: r.active ? t.greenBg : t.surface2,
+                      color: r.active ? t.green : t.muted,
+                      border: `1px solid ${r.active ? t.greenBorder : t.border2}`,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  >
+                    {r.active ? "Active" : "Inactive"}
+                  </span>
+                </div>
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs mt-0.5"
+                >
+                  {r.phone}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => toggleActive(r)}
+                  style={{
+                    color: t.subtle,
+                    border: `1px solid ${t.border2}`,
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-70 transition-opacity"
+                >
+                  {r.active ? "Deactivate" : "Activate"}
+                </button>
+                <button
+                  onClick={() => openEdit(r)}
+                  style={{
+                    color: t.accent,
+                    border: `1px solid ${t.accentBorder}`,
+                    background: t.accentBg,
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-80 transition-opacity"
+                >
+                  ✏️ Edit
+                </button>
+                {!r.is_default && (
+                  <button
+                    onClick={() => setDelConfirm(r.id)}
+                    style={{
+                      color: t.red,
+                      border: `1px solid #FECACA`,
+                      background: "#FEF2F2",
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-80 transition-opacity"
+                  >
+                    🗑️
+                  </button>
+                )}
+              </div>
+              {delConfirm === r.id && (
+                <div
+                  style={{
+                    background: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    borderRadius: 10,
+                  }}
+                  className="w-full p-3 flex items-center gap-3"
+                >
+                  <p
+                    style={{
+                      color: "#B83232",
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-sm flex-1"
+                  >
+                    Delete {r.name}? Past orders will retain rider info.
+                  </p>
+                  <button
+                    onClick={() => setDelConfirm(null)}
+                    style={{
+                      color: t.subtle,
+                      border: `1px solid ${t.border2}`,
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => deleteRider(r.id)}
+                    style={{
+                      background: t.red,
+                      color: "#fff",
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Delivery Statistics */}
+      <div>
+        <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
+          <p
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold tracking-widest uppercase"
+          >
+            Delivery Statistics
+          </p>
+          <div className="flex gap-1 overflow-x-auto">
+            {STAT_PERIODS.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                style={{
+                  color: period === p ? t.accent : t.subtle,
+                  background: period === p ? t.accentBg : "transparent",
+                  border: `1px solid ${period === p ? t.accentBorder : t.border2}`,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap transition-all"
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {statsLoading ? (
+          <p
+            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+            className="text-sm"
+          >
+            Loading stats…
+          </p>
+        ) : stats.length === 0 ? (
+          <div
+            style={{ background: t.surface, border: `1px solid ${t.border}` }}
+            className="rounded-xl p-8 text-center"
+          >
+            <p
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+              className="text-sm"
+            >
+              No delivery data for this period
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {stats.map((s, i) => {
+              const isProfiled = !!s.rider_id;
+              const deliveryRate = s.orders
+                ? Math.round((s.delivered / s.orders) * 100)
+                : 0;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    background: t.surface,
+                    border: `1px solid ${t.border}`,
+                  }}
+                  className="rounded-xl p-4"
+                >
+                  <div className="flex items-start gap-3 mb-3 flex-wrap">
+                    <div
+                      style={{
+                        background: isProfiled ? t.accentBg : t.surface2,
+                        border: `1px solid ${isProfiled ? t.accentBorder : t.border2}`,
+                        color: isProfiled ? t.accent : t.muted,
+                      }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                    >
+                      {(s.name[0] || "?").toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p
+                          style={{
+                            color: t.text,
+                            fontFamily: "'Lato', sans-serif",
+                          }}
+                          className="text-sm font-semibold"
+                        >
+                          {s.name}
+                        </p>
+                        {!isProfiled && (
+                          <span
+                            style={{
+                              background: t.surface2,
+                              color: t.muted,
+                              border: `1px solid ${t.border2}`,
+                              fontFamily: "'Lato', sans-serif",
+                            }}
+                            className="text-xs px-2 py-0.5 rounded-full"
+                          >
+                            One-time
+                          </span>
+                        )}
+                      </div>
+                      {s.phone && (
+                        <p
+                          style={{
+                            color: t.muted,
+                            fontFamily: "'Lato', sans-serif",
+                          }}
+                          className="text-xs"
+                        >
+                          {s.phone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: "Deliveries", value: s.orders },
+                      {
+                        label: "Delivered",
+                        value: `${s.delivered} (${deliveryRate}%)`,
+                      },
+                      { label: "Revenue covered", value: fmtKDh(s.revenue) },
+                    ].map(({ label, value }, j) => (
+                      <div
+                        key={j}
+                        style={{
+                          background: t.surface2,
+                          border: `1px solid ${t.border}`,
+                        }}
+                        className="rounded-lg px-3 py-2.5 text-center"
+                      >
+                        <p
+                          style={{
+                            color: t.text,
+                            fontFamily: "'Lato', sans-serif",
+                          }}
+                          className="text-sm font-bold"
+                        >
+                          {value}
+                        </p>
+                        <p
+                          style={{
+                            color: t.muted,
+                            fontFamily: "'Lato', sans-serif",
+                          }}
+                          className="text-xs mt-0.5"
+                        >
+                          {label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ─── Orders Page ──────────────────────────────────────────────────────────────
 // ─── Orders helpers ───────────────────────────────────────────────────────────
@@ -866,20 +2345,40 @@ const fmtKD = (n) => `KD ${Number(n || 0).toFixed(3)}`;
 const fmtDate = (ts) => {
   if (!ts) return "—";
   const d = new Date(ts);
-  return d.toLocaleString("en-KW", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("en-KW", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 const STATUS_META = {
-  pending:    { label: "New",          color: "#C4711A", bg: "rgba(196,113,26,0.1)" },
-  accepted:   { label: "Accepted",     color: "#2563EB", bg: "rgba(37,99,235,0.08)" },
-  preparing:  { label: "Preparing",    color: "#7C3AED", bg: "rgba(124,58,237,0.08)" },
-  on_the_way: { label: "Out for Delivery", color: "#2D7A4F", bg: "rgba(45,122,79,0.08)" },
-  delivered:  { label: "Delivered",    color: "#2D7A4F", bg: "rgba(45,122,79,0.08)" },
-  rejected:   { label: "Rejected",     color: "#B83232", bg: "rgba(184,50,50,0.08)" },
+  pending: { label: "New", color: "#C4711A", bg: "rgba(196,113,26,0.1)" },
+  accepted: { label: "Accepted", color: "#2563EB", bg: "rgba(37,99,235,0.08)" },
+  preparing: {
+    label: "Preparing",
+    color: "#7C3AED",
+    bg: "rgba(124,58,237,0.08)",
+  },
+  on_the_way: {
+    label: "Out for Delivery",
+    color: "#2D7A4F",
+    bg: "rgba(45,122,79,0.08)",
+  },
+  delivered: {
+    label: "Delivered",
+    color: "#2D7A4F",
+    bg: "rgba(45,122,79,0.08)",
+  },
+  rejected: { label: "Rejected", color: "#B83232", bg: "rgba(184,50,50,0.08)" },
 };
 
 // ─── Invoice Generator (opens print dialog with styled HTML) ─────────────────
 function printInvoice(order, items, restaurant) {
-  const rows = (items || []).map((it) => `
+  const rows = (items || [])
+    .map(
+      (it) => `
     <tr>
       <td style="padding:8px 12px;color:#555;font-size:13px">${it.quantity}×</td>
       <td style="padding:8px 12px;font-size:13px">
@@ -889,7 +2388,9 @@ function printInvoice(order, items, restaurant) {
       </td>
       <td style="padding:8px 12px;text-align:right;font-weight:600;font-size:13px">KD ${Number(it.unit_price).toFixed(3)}</td>
       <td style="padding:8px 12px;text-align:right;font-weight:700;font-size:13px">KD ${Number(it.subtotal).toFixed(3)}</td>
-    </tr>`).join("");
+    </tr>`,
+    )
+    .join("");
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Invoice #${order.id}</title>
@@ -961,7 +2462,10 @@ function printInvoice(order, items, restaurant) {
   </body></html>`;
 
   const w = window.open("", "_blank");
-  if (w) { w.document.write(html); w.document.close(); }
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+  }
 }
 
 // ─── OrdersPage (full real-data implementation) ───────────────────────────────
@@ -988,13 +2492,19 @@ function OrdersPage({ t, user }) {
 
   // ── Fetch orders ───────────────────────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
-    if (!restId) { setLoading(false); setLoadErr("No restaurant linked."); return; }
+    if (!restId) {
+      setLoading(false);
+      setLoadErr("No restaurant linked.");
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from("Orders")
-        .select(`id, status, total_amount, payment_method, payment_status, notes, created_at,
+        .select(
+          `id, status, total_amount, payment_method, payment_status, notes, created_at,
                  delivery_rider_name, delivery_rider_phone,
-                 cust_id, Customer(id, cust_name, ph_num)`)
+                 cust_id, Customer(id, cust_name, ph_num)`,
+        )
         .eq("rest_id", restId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -1014,7 +2524,9 @@ function OrdersPage({ t, user }) {
       // Get the default (first) address for this customer
       const { data } = await supabase
         .from("Customer_Address")
-        .select("id, label, street, block, bldg_name, apartment_no, floor, landmark, latitude, longitude, map_snapshot_url")
+        .select(
+          "id, label, street, block, bldg_name, apartment_no, floor, landmark, latitude, longitude, map_snapshot_url",
+        )
         .eq("cust_id", custId)
         .order("id", { ascending: true })
         .limit(1)
@@ -1043,22 +2555,28 @@ function OrdersPage({ t, user }) {
     try {
       const { data: items, error } = await supabase
         .from("Order_Items")
-        .select(`id, menu_id, quantity, unit_price, subtotal, item_note, Menu(name)`)
+        .select(
+          `id, menu_id, quantity, unit_price, subtotal, item_note, Menu(name)`,
+        )
         .eq("order_id", orderId);
       if (error) throw error;
 
       // Fetch variant option names for each item
-      const enriched = await Promise.all((items || []).map(async (it) => {
-        const { data: vars } = await supabase
-          .from("Order_Item_Variants")
-          .select(`variant_opt_id, price_adj, "Variant Options"(name)`)
-          .eq("order_item_id", it.id);
-        return {
-          ...it,
-          menu_name: it.Menu?.name || "—",
-          variants: (vars || []).map((v) => v["Variant Options"]?.name).filter(Boolean),
-        };
-      }));
+      const enriched = await Promise.all(
+        (items || []).map(async (it) => {
+          const { data: vars } = await supabase
+            .from("Order_Item_Variants")
+            .select(`variant_opt_id, price_adj, "Variant Options"(name)`)
+            .eq("order_item_id", it.id);
+          return {
+            ...it,
+            menu_name: it.Menu?.name || "—",
+            variants: (vars || [])
+              .map((v) => v["Variant Options"]?.name)
+              .filter(Boolean),
+          };
+        }),
+      );
       setOrderItems(enriched);
     } catch (e) {
       console.error("[fetchOrderItems]", e);
@@ -1076,35 +2594,45 @@ function OrdersPage({ t, user }) {
 
     const channel = supabase
       .channel(`orders-rest-${restId}`)
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "Orders",
-        filter: `rest_id=eq.${restId}`,
-      }, async (payload) => {
-        if (payload.eventType === "INSERT") {
-          // Fetch with simple Customer join (no nested address)
-          const { data } = await supabase
-            .from("Orders")
-            .select(`id, status, total_amount, payment_method, payment_status, notes, created_at, delivery_rider_name, delivery_rider_phone, cust_id, Customer(id, cust_name, ph_num)`)
-            .eq("id", payload.new.id)
-            .single();
-          if (data) setOrders((prev) => [data, ...prev]);
-        } else if (payload.eventType === "UPDATE") {
-          setOrders((prev) => prev.map((o) =>
-            o.id === payload.new.id ? { ...o, ...payload.new } : o
-          ));
-          // If this is the selected order, update it too
-          setSelectedOrder((prev) =>
-            prev?.id === payload.new.id ? { ...prev, ...payload.new } : prev
-          );
-        } else if (payload.eventType === "DELETE") {
-          setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
-        }
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "Orders",
+          filter: `rest_id=eq.${restId}`,
+        },
+        async (payload) => {
+          if (payload.eventType === "INSERT") {
+            // Fetch with simple Customer join (no nested address)
+            const { data } = await supabase
+              .from("Orders")
+              .select(
+                `id, status, total_amount, payment_method, payment_status, notes, created_at, delivery_rider_name, delivery_rider_phone, cust_id, Customer(id, cust_name, ph_num)`,
+              )
+              .eq("id", payload.new.id)
+              .single();
+            if (data) setOrders((prev) => [data, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            setOrders((prev) =>
+              prev.map((o) =>
+                o.id === payload.new.id ? { ...o, ...payload.new } : o,
+              ),
+            );
+            // If this is the selected order, update it too
+            setSelectedOrder((prev) =>
+              prev?.id === payload.new.id ? { ...prev, ...payload.new } : prev,
+            );
+          } else if (payload.eventType === "DELETE") {
+            setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
+          }
+        },
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [restId, fetchOrders, fetchRiders]);
 
   // ── Select order ───────────────────────────────────────────────────────────
@@ -1118,28 +2646,40 @@ function OrdersPage({ t, user }) {
 
   // ── Computed order lists ───────────────────────────────────────────────────
   const byStatus = {
-    pending:    orders.filter((o) => o.status === "pending"),
-    accepted:   orders.filter((o) => o.status === "accepted"),
-    preparing:  orders.filter((o) => o.status === "preparing"),
+    pending: orders.filter((o) => o.status === "pending"),
+    accepted: orders.filter((o) => o.status === "accepted"),
+    preparing: orders.filter((o) => o.status === "preparing"),
     on_the_way: orders.filter((o) => o.status === "on_the_way"),
-    history:    orders.filter((o) => ["delivered", "rejected"].includes(o.status)),
+    history: orders.filter((o) => ["delivered", "rejected"].includes(o.status)),
   };
   const displayed = byStatus[orderTab] || [];
 
   // Count of active orders for header badge
-  const activeCount = (byStatus.pending?.length || 0) + (byStatus.accepted?.length || 0) + (byStatus.preparing?.length || 0);
+  const activeCount =
+    (byStatus.pending?.length || 0) +
+    (byStatus.accepted?.length || 0) +
+    (byStatus.preparing?.length || 0);
 
   // ── Status update helper ───────────────────────────────────────────────────
   const updateStatus = async (orderId, newStatus, extraFields = {}) => {
-    setActionLoading(true); setActionErr("");
+    setActionLoading(true);
+    setActionErr("");
     try {
       const { error } = await supabase
         .from("Orders")
         .update({ status: newStatus, ...extraFields })
         .eq("id", orderId);
       if (error) throw error;
-      setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus, ...extraFields } : o));
-      setSelectedOrder((prev) => prev?.id === orderId ? { ...prev, status: newStatus, ...extraFields } : prev);
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId ? { ...o, status: newStatus, ...extraFields } : o,
+        ),
+      );
+      setSelectedOrder((prev) =>
+        prev?.id === orderId
+          ? { ...prev, status: newStatus, ...extraFields }
+          : prev,
+      );
     } catch (e) {
       setActionErr(e.message || "Action failed.");
     } finally {
@@ -1179,20 +2719,49 @@ function OrdersPage({ t, user }) {
         className="rounded-xl p-3.5 transition-all duration-150 hover:shadow-sm active:scale-[0.98]"
       >
         <div className="flex items-center justify-between mb-1.5">
-          <span style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">
+          <span
+            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs"
+          >
             #{order.id}
           </span>
-          <span style={{ background: meta.bg, color: meta.color, fontFamily: "'Lato', sans-serif" }}
-            className="text-xs font-bold px-2 py-0.5 rounded-full">
+          <span
+            style={{
+              background: meta.bg,
+              color: meta.color,
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="text-xs font-bold px-2 py-0.5 rounded-full"
+          >
             {meta.label}
           </span>
         </div>
-        <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold truncate">{custName}</p>
+        <p
+          style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm font-semibold truncate"
+        >
+          {custName}
+        </p>
         <div className="flex justify-between mt-1">
-          <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{fmtDate(order.created_at)}</p>
-          <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold">{fmtKD(order.total_amount)}</p>
+          <p
+            style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs"
+          >
+            {fmtDate(order.created_at)}
+          </p>
+          <p
+            style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold"
+          >
+            {fmtKD(order.total_amount)}
+          </p>
         </div>
-        <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs mt-0.5">{order.payment_method}</p>
+        <p
+          style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs mt-0.5"
+        >
+          {order.payment_method}
+        </p>
       </button>
     );
   };
@@ -1210,111 +2779,334 @@ function OrdersPage({ t, user }) {
     const isClosed = ["delivered", "rejected"].includes(selectedOrder.status);
 
     return (
-      <div style={{ background: t.surface, border: `1px solid ${t.border}` }}
-        className="flex-1 flex flex-col rounded-xl overflow-hidden min-w-0">
+      <div
+        style={{ background: t.surface, border: `1px solid ${t.border}` }}
+        className="flex-1 flex flex-col rounded-xl overflow-hidden min-w-0"
+      >
         {/* Header */}
-        <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 pt-4 pb-3 flex items-center gap-3 flex-shrink-0">
-          <button onClick={() => setMobileView("list")}
-            style={{ color: t.accent, background: t.accentBg, border: `1px solid ${t.accentBorder}` }}
-            className="lg:hidden flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold">←</button>
+        <div
+          style={{ borderBottom: `1px solid ${t.border}` }}
+          className="px-5 pt-4 pb-3 flex items-center gap-3 flex-shrink-0"
+        >
+          <button
+            onClick={() => setMobileView("list")}
+            style={{
+              color: t.accent,
+              background: t.accentBg,
+              border: `1px solid ${t.accentBorder}`,
+            }}
+            className="lg:hidden flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+          >
+            ←
+          </button>
           <div className="flex-1 min-w-0">
-            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-xl font-bold">
+            <h2
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                color: t.text,
+              }}
+              className="text-xl font-bold"
+            >
               Order #{selectedOrder.id}
             </h2>
-            <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{fmtDate(selectedOrder.created_at)}</p>
+            <p
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs"
+            >
+              {fmtDate(selectedOrder.created_at)}
+            </p>
           </div>
-          <span style={{ background: meta.bg, color: meta.color, fontFamily: "'Lato', sans-serif" }}
-            className="text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0">{meta.label}</span>
+          <span
+            style={{
+              background: meta.bg,
+              color: meta.color,
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0"
+          >
+            {meta.label}
+          </span>
           {/* Print invoice */}
           <button
-            onClick={() => printInvoice(
-              { ...selectedOrder, cust_name: custName, cust_phone: custPhone },
-              orderItems,
-              null
-            )}
-            style={{ color: t.subtle, background: t.surface2, border: `1px solid ${t.border2}` }}
+            onClick={() =>
+              printInvoice(
+                {
+                  ...selectedOrder,
+                  cust_name: custName,
+                  cust_phone: custPhone,
+                },
+                orderItems,
+                null,
+              )
+            }
+            style={{
+              color: t.subtle,
+              background: t.surface2,
+              border: `1px solid ${t.border2}`,
+            }}
             className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm hover:opacity-70 transition-opacity"
-            title="Download invoice">🧾</button>
+            title="Download invoice"
+          >
+            🧾
+          </button>
         </div>
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto">
           {/* Customer info */}
-          <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-4 flex items-center gap-3">
-            <div style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="px-5 py-4 flex items-center gap-3"
+          >
+            <div
+              style={{
+                background: t.accentBg,
+                border: `1px solid ${t.accentBorder}`,
+                color: t.accent,
+              }}
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+            >
               {custName[0].toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{custName}</p>
-              <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{custPhone}</p>
+              <p
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm font-semibold"
+              >
+                {custName}
+              </p>
+              <p
+                style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs"
+              >
+                {custPhone}
+              </p>
             </div>
             {custPhone !== "—" && (
-              <a href={`https://wa.me/${custPhone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
-                style={{ color: "#25D366", background: "#f0fdf4", border: "1px solid #bbf7d0" }}
-                className="ml-auto flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm hover:opacity-70 transition-opacity">💬</a>
+              <a
+                href={`https://wa.me/${custPhone.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color: "#25D366",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                }}
+                className="ml-auto flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm hover:opacity-70 transition-opacity"
+              >
+                💬
+              </a>
             )}
           </div>
 
           {/* Bill summary */}
-          <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-3 space-y-1">
+          <div
+            style={{ borderBottom: `1px solid ${t.border}` }}
+            className="px-5 py-3 space-y-1"
+          >
             <div className="flex justify-between text-sm">
-              <span style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}>Payment</span>
-              <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="font-semibold">{selectedOrder.payment_method}</span>
+              <span
+                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              >
+                Payment
+              </span>
+              <span
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="font-semibold"
+              >
+                {selectedOrder.payment_method}
+              </span>
             </div>
-            <div className="flex justify-between text-sm pt-1" style={{ borderTop: `1px solid ${t.border}` }}>
-              <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="font-bold">Total</span>
-              <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="font-bold">{fmtKD(selectedOrder.total_amount)}</span>
+            <div
+              className="flex justify-between text-sm pt-1"
+              style={{ borderTop: `1px solid ${t.border}` }}
+            >
+              <span
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="font-bold"
+              >
+                Total
+              </span>
+              <span
+                style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+                className="font-bold"
+              >
+                {fmtKD(selectedOrder.total_amount)}
+              </span>
             </div>
           </div>
 
           {/* Items table */}
           <div style={{ borderBottom: `1px solid ${t.border}` }}>
             <div className="grid grid-cols-12 px-5 py-2">
-              {[["Qty","col-span-2"],["Items","col-span-7"],["KD","col-span-3 text-right"]].map(([l,c]) => (
-                <span key={l} style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className={`${c} text-xs font-bold tracking-widest uppercase`}>{l}</span>
+              {[
+                ["Qty", "col-span-2"],
+                ["Items", "col-span-7"],
+                ["KD", "col-span-3 text-right"],
+              ].map(([l, c]) => (
+                <span
+                  key={l}
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className={`${c} text-xs font-bold tracking-widest uppercase`}
+                >
+                  {l}
+                </span>
               ))}
             </div>
             {itemsLoading ? (
-              <div className="px-5 py-4"><p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">Loading items…</p></div>
-            ) : orderItems.length === 0 ? (
-              <div className="px-5 py-4"><p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm italic">No items found</p></div>
-            ) : orderItems.map((it, i) => (
-              <div key={i} style={{ borderTop: `1px solid ${t.border}` }} className="grid grid-cols-12 px-5 py-3">
-                <div className="col-span-2">
-                  <span style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-sm font-bold">{it.quantity}×</span>
-                </div>
-                <div className="col-span-7">
-                  <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{it.menu_name}</p>
-                  {it.variants?.map((v, vi) => (
-                    <p key={vi} style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs mt-0.5">· {v}</p>
-                  ))}
-                  {it.item_note && (
-                    <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs mt-0.5 italic">📝 {it.item_note}</p>
-                  )}
-                </div>
-                <div className="col-span-3 text-right">
-                  <span style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{Number(it.unit_price).toFixed(3)}</span>
-                </div>
+              <div className="px-5 py-4">
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm"
+                >
+                  Loading items…
+                </p>
               </div>
-            ))}
+            ) : orderItems.length === 0 ? (
+              <div className="px-5 py-4">
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm italic"
+                >
+                  No items found
+                </p>
+              </div>
+            ) : (
+              orderItems.map((it, i) => (
+                <div
+                  key={i}
+                  style={{ borderTop: `1px solid ${t.border}` }}
+                  className="grid grid-cols-12 px-5 py-3"
+                >
+                  <div className="col-span-2">
+                    <span
+                      style={{
+                        color: t.accent,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-bold"
+                    >
+                      {it.quantity}×
+                    </span>
+                  </div>
+                  <div className="col-span-7">
+                    <p
+                      style={{
+                        color: t.text,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-semibold"
+                    >
+                      {it.menu_name}
+                    </p>
+                    {it.variants?.map((v, vi) => (
+                      <p
+                        key={vi}
+                        style={{
+                          color: t.accent,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="text-xs mt-0.5"
+                      >
+                        · {v}
+                      </p>
+                    ))}
+                    {it.item_note && (
+                      <p
+                        style={{
+                          color: t.muted,
+                          fontFamily: "'Lato', sans-serif",
+                        }}
+                        className="text-xs mt-0.5 italic"
+                      >
+                        📝 {it.item_note}
+                      </p>
+                    )}
+                  </div>
+                  <div className="col-span-3 text-right">
+                    <span
+                      style={{
+                        color: t.text,
+                        fontFamily: "'Lato', sans-serif",
+                      }}
+                      className="text-sm font-semibold"
+                    >
+                      {Number(it.unit_price).toFixed(3)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Notes */}
           {selectedOrder.notes && (
-            <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-3">
-              <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-1">Order Notes</p>
-              <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm italic">{selectedOrder.notes}</p>
+            <div
+              style={{ borderBottom: `1px solid ${t.border}` }}
+              className="px-5 py-3"
+            >
+              <p
+                style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs font-bold tracking-widest uppercase mb-1"
+              >
+                Customer Notes
+              </p>
+              <p
+                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm italic"
+              >
+                {selectedOrder.notes}
+              </p>
+            </div>
+          )}
+          {selectedOrder.delivery_note && (
+            <div
+              style={{ borderBottom: `1px solid ${t.border}` }}
+              className="px-5 py-3"
+            >
+              <p
+                style={{ color: t.green, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs font-bold tracking-widest uppercase mb-1"
+              >
+                Delivery Note
+              </p>
+              <p
+                style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm italic"
+              >
+                {selectedOrder.delivery_note}
+              </p>
             </div>
           )}
 
           {/* Delivery rider info */}
-          {(selectedOrder.delivery_rider_name) && (
-            <div style={{ borderBottom: `1px solid ${t.border}`, background: t.greenBg }} className="px-5 py-3">
-              <p style={{ color: t.green, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-1">Delivery Rider</p>
-              <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold">{selectedOrder.delivery_rider_name}</p>
+          {selectedOrder.delivery_rider_name && (
+            <div
+              style={{
+                borderBottom: `1px solid ${t.border}`,
+                background: t.greenBg,
+              }}
+              className="px-5 py-3"
+            >
+              <p
+                style={{ color: t.green, fontFamily: "'Lato', sans-serif" }}
+                className="text-xs font-bold tracking-widest uppercase mb-1"
+              >
+                Delivery Rider
+              </p>
+              <p
+                style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                className="text-sm font-semibold"
+              >
+                {selectedOrder.delivery_rider_name}
+              </p>
               {selectedOrder.delivery_rider_phone && (
-                <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">{selectedOrder.delivery_rider_phone}</p>
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs"
+                >
+                  {selectedOrder.delivery_rider_phone}
+                </p>
               )}
             </div>
           )}
@@ -1330,20 +3122,47 @@ function OrdersPage({ t, user }) {
               addr.street,
               addr.block,
               addr.landmark,
-            ].filter(Boolean).join(", ");
+            ]
+              .filter(Boolean)
+              .join(", ");
             return (
-              <div style={{ borderBottom: `1px solid ${t.border}` }} className="px-5 py-3">
-                <p style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-2">
+              <div
+                style={{ borderBottom: `1px solid ${t.border}` }}
+                className="px-5 py-3"
+              >
+                <p
+                  style={{ color: t.accent, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs font-bold tracking-widest uppercase mb-2"
+                >
                   📍 Delivery Address
                 </p>
-                <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold mb-0.5">{addr.label || "Home"}</p>
-                <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm leading-relaxed">{addrLine || "No address details"}</p>
+                <p
+                  style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm font-semibold mb-0.5"
+                >
+                  {addr.label || "Home"}
+                </p>
+                <p
+                  style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm leading-relaxed"
+                >
+                  {addrLine || "No address details"}
+                </p>
                 {addr.latitude && addr.longitude && (
                   <a
                     href={`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ color: t.accent, fontFamily: "'Lato', sans-serif", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6, fontSize: 12, fontWeight: 600 }}
+                    style={{
+                      color: t.accent,
+                      fontFamily: "'Lato', sans-serif",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      marginTop: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
                   >
                     🗺️ Open in Google Maps ↗
                   </a>
@@ -1352,7 +3171,15 @@ function OrdersPage({ t, user }) {
                   <iframe
                     src={`https://www.openstreetmap.org/export/embed.html?bbox=${addr.longitude - 0.005},${addr.latitude - 0.004},${addr.longitude + 0.005},${addr.latitude + 0.004}&layer=mapnik&marker=${addr.latitude},${addr.longitude}`}
                     title="delivery location"
-                    style={{ width: "100%", height: 130, border: `1px solid ${t.border}`, borderRadius: 8, marginTop: 8, display: "block", pointerEvents: "none" }}
+                    style={{
+                      width: "100%",
+                      height: 130,
+                      border: `1px solid ${t.border}`,
+                      borderRadius: 8,
+                      marginTop: 8,
+                      display: "block",
+                      pointerEvents: "none",
+                    }}
                     scrolling="no"
                   />
                 )}
@@ -1362,54 +3189,117 @@ function OrdersPage({ t, user }) {
 
           {/* Error */}
           {actionErr && (
-            <div className="mx-5 my-3 px-4 py-3 rounded-lg" style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}>
-              <p style={{ color: "#B83232", fontFamily: "'Lato', sans-serif" }} className="text-sm">⚠️ {actionErr}</p>
+            <div
+              className="mx-5 my-3 px-4 py-3 rounded-lg"
+              style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}
+            >
+              <p
+                style={{ color: "#B83232", fontFamily: "'Lato', sans-serif" }}
+                className="text-sm"
+              >
+                ⚠️ {actionErr}
+              </p>
             </div>
           )}
         </div>
 
         {/* Action footer */}
         {!isClosed && (
-          <div style={{ borderTop: `1px solid ${t.border}` }} className="px-5 py-4 flex gap-2.5 flex-shrink-0 flex-wrap">
+          <div
+            style={{ borderTop: `1px solid ${t.border}` }}
+            className="px-5 py-4 flex gap-2.5 flex-shrink-0 flex-wrap"
+          >
             {isPending && (
               <>
-                <button onClick={() => { setActionErr(""); setShowRejectModal(true); }}
-                  style={{ border: `1px solid ${t.red}`, color: t.red, fontFamily: "'Lato', sans-serif" }}
-                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all">
+                <button
+                  onClick={() => {
+                    setActionErr("");
+                    setShowRejectModal(true);
+                  }}
+                  style={{
+                    border: `1px solid ${t.red}`,
+                    color: t.red,
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
+                >
                   ✕ Reject
                 </button>
-                <button onClick={handleAccept} disabled={actionLoading}
-                  style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: actionLoading ? 0.7 : 1 }}
-                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
+                <button
+                  onClick={handleAccept}
+                  disabled={actionLoading}
+                  style={{
+                    background: t.accent,
+                    color: "#fff",
+                    fontFamily: "'Lato', sans-serif",
+                    opacity: actionLoading ? 0.7 : 1,
+                  }}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+                >
                   {actionLoading ? "…" : "✓ Accept"}
                 </button>
               </>
             )}
             {isAccepted && (
               <>
-                <button onClick={() => { setActionErr(""); setShowRejectModal(true); }}
-                  style={{ border: `1px solid ${t.red}`, color: t.red, fontFamily: "'Lato', sans-serif" }}
-                  className="flex-1 min-w-[80px] py-2.5 rounded-lg text-xs font-semibold hover:opacity-80 active:scale-95 transition-all">
+                <button
+                  onClick={() => {
+                    setActionErr("");
+                    setShowRejectModal(true);
+                  }}
+                  style={{
+                    border: `1px solid ${t.red}`,
+                    color: t.red,
+                    fontFamily: "'Lato', sans-serif",
+                  }}
+                  className="flex-1 min-w-[80px] py-2.5 rounded-lg text-xs font-semibold hover:opacity-80 active:scale-95 transition-all"
+                >
                   ✕ Reject
                 </button>
-                <button onClick={handlePreparing} disabled={actionLoading}
-                  style={{ background: "#7C3AED", color: "#fff", fontFamily: "'Lato', sans-serif", opacity: actionLoading ? 0.7 : 1 }}
-                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
+                <button
+                  onClick={handlePreparing}
+                  disabled={actionLoading}
+                  style={{
+                    background: "#7C3AED",
+                    color: "#fff",
+                    fontFamily: "'Lato', sans-serif",
+                    opacity: actionLoading ? 0.7 : 1,
+                  }}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+                >
                   {actionLoading ? "…" : "👨‍🍳 Preparing"}
                 </button>
               </>
             )}
             {isPreparing && (
-              <button onClick={() => { setActionErr(""); setShowDeliveryModal(true); fetchRiders(); }}
-                style={{ background: t.green, color: "#fff", fontFamily: "'Lato', sans-serif" }}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
+              <button
+                onClick={() => {
+                  setActionErr("");
+                  setShowDeliveryModal(true);
+                  fetchRiders();
+                }}
+                style={{
+                  background: t.green,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+              >
                 🛵 Send for Delivery
               </button>
             )}
             {isOnWay && (
-              <button onClick={handleDelivered} disabled={actionLoading}
-                style={{ background: t.green, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: actionLoading ? 0.7 : 1 }}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
+              <button
+                onClick={handleDelivered}
+                disabled={actionLoading}
+                style={{
+                  background: t.green,
+                  color: "#fff",
+                  fontFamily: "'Lato', sans-serif",
+                  opacity: actionLoading ? 0.7 : 1,
+                }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+              >
                 {actionLoading ? "…" : "✅ Mark Delivered"}
               </button>
             )}
@@ -1421,22 +3311,38 @@ function OrdersPage({ t, user }) {
 
   // ─── Tab strip with counts ──────────────────────────────────────────────────
   const TABS = [
-    { id: "pending",    label: "New",       color: t.accent },
-    { id: "accepted",   label: "Accepted",  color: "#2563EB" },
-    { id: "preparing",  label: "Preparing", color: "#7C3AED" },
-    { id: "on_the_way", label: "On Way",    color: t.green  },
-    { id: "history",    label: "History",   color: t.muted  },
+    { id: "pending", label: "New", color: t.accent },
+    { id: "accepted", label: "Accepted", color: "#2563EB" },
+    { id: "preparing", label: "Preparing", color: "#7C3AED" },
+    { id: "on_the_way", label: "On Way", color: t.green },
+    { id: "history", label: "History", color: t.muted },
   ];
 
   const TabStrip = () => (
-    <div style={{ borderBottom: `1px solid ${t.border}` }} className="flex overflow-x-auto scrollbar-none">
+    <div
+      style={{ borderBottom: `1px solid ${t.border}` }}
+      className="flex overflow-x-auto scrollbar-none"
+    >
       {TABS.map(({ id, label, color }) => (
-        <button key={id} onClick={() => setOrderTab(id)}
-          style={{ color: orderTab === id ? color : t.subtle, borderBottomColor: orderTab === id ? color : "transparent", fontFamily: "'Lato', sans-serif", flexShrink: 0 }}
-          className="flex items-center gap-1.5 px-4 py-3 text-xs font-bold tracking-wider uppercase border-b-2 transition-colors whitespace-nowrap">
+        <button
+          key={id}
+          onClick={() => setOrderTab(id)}
+          style={{
+            color: orderTab === id ? color : t.subtle,
+            borderBottomColor: orderTab === id ? color : "transparent",
+            fontFamily: "'Lato', sans-serif",
+            flexShrink: 0,
+          }}
+          className="flex items-center gap-1.5 px-4 py-3 text-xs font-bold tracking-wider uppercase border-b-2 transition-colors whitespace-nowrap"
+        >
           {label}
-          <span style={{ background: orderTab === id ? color : t.surface2, color: orderTab === id ? "#fff" : t.muted }}
-            className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          <span
+            style={{
+              background: orderTab === id ? color : t.surface2,
+              color: orderTab === id ? "#fff" : t.muted,
+            }}
+            className="text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+          >
             {byStatus[id]?.length || 0}
           </span>
         </button>
@@ -1444,19 +3350,28 @@ function OrdersPage({ t, user }) {
     </div>
   );
 
-
   // ─── Render ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">Loading orders…</p>
+        <p
+          style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm"
+        >
+          Loading orders…
+        </p>
       </div>
     );
   }
   if (loadErr) {
     return (
       <div className="flex-1 flex items-center justify-center px-6 text-center">
-        <p style={{ color: t.red, fontFamily: "'Lato', sans-serif" }} className="text-sm">{loadErr}</p>
+        <p
+          style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm"
+        >
+          {loadErr}
+        </p>
       </div>
     );
   }
@@ -1465,12 +3380,22 @@ function OrdersPage({ t, user }) {
     <div className="flex flex-col h-full">
       {/* Page header */}
       <div className="px-5 md:px-8 pt-6 pb-3 flex-shrink-0 flex items-center justify-between">
-        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }} className="text-3xl md:text-4xl font-bold tracking-tight">
+        <h1
+          style={{ fontFamily: "'Cormorant Garamond', serif", color: t.text }}
+          className="text-3xl md:text-4xl font-bold tracking-tight"
+        >
           Orders
         </h1>
         {activeCount > 0 && (
-          <span style={{ background: t.accentBg, color: t.accent, border: `1px solid ${t.accentBorder}`, fontFamily: "'Lato', sans-serif" }}
-            className="text-xs font-bold px-3 py-1.5 rounded-full">
+          <span
+            style={{
+              background: t.accentBg,
+              color: t.accent,
+              border: `1px solid ${t.accentBorder}`,
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="text-xs font-bold px-3 py-1.5 rounded-full"
+          >
             {activeCount} active
           </span>
         )}
@@ -1479,22 +3404,42 @@ function OrdersPage({ t, user }) {
       {/* ── DESKTOP layout ── */}
       <div className="hidden lg:flex flex-1 overflow-hidden px-5 md:px-6 pb-6 gap-4">
         {/* Left: list */}
-        <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="w-72 flex-shrink-0 flex flex-col rounded-xl overflow-hidden">
+        <div
+          style={{ background: t.surface, border: `1px solid ${t.border}` }}
+          className="w-72 flex-shrink-0 flex flex-col rounded-xl overflow-hidden"
+        >
           <TabStrip />
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {displayed.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 gap-2">
                 <span className="text-3xl opacity-20">🍽️</span>
-                <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-xs">No {orderTab} orders</p>
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-xs"
+                >
+                  No {orderTab} orders
+                </p>
               </div>
-            ) : displayed.map((o) => <OrderCard key={o.id} order={o} />)}
+            ) : (
+              displayed.map((o) => <OrderCard key={o.id} order={o} />)
+            )}
           </div>
         </div>
         {/* Right: detail */}
-        {selectedOrder ? <OrderDetail /> : (
-          <div style={{ background: t.surface, border: `1px solid ${t.border}` }} className="flex-1 flex flex-col items-center justify-center rounded-xl gap-3">
+        {selectedOrder ? (
+          <OrderDetail />
+        ) : (
+          <div
+            style={{ background: t.surface, border: `1px solid ${t.border}` }}
+            className="flex-1 flex flex-col items-center justify-center rounded-xl gap-3"
+          >
             <span className="text-5xl opacity-20">🍽️</span>
-            <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">Select an order to view details</p>
+            <p
+              style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+              className="text-sm"
+            >
+              Select an order to view details
+            </p>
           </div>
         )}
       </div>
@@ -1502,23 +3447,36 @@ function OrdersPage({ t, user }) {
       {/* ── MOBILE layout ── */}
       <div className="lg:hidden flex-1 overflow-hidden relative">
         {/* List panel */}
-        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "list" ? "translate-x-0" : "-translate-x-full"}`}
-          style={{ background: t.bg }}>
-          <div style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+        <div
+          className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "list" ? "translate-x-0" : "-translate-x-full"}`}
+          style={{ background: t.bg }}
+        >
+          <div
+            style={{ background: t.surface, border: `1px solid ${t.border}` }}
+          >
             <TabStrip />
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
             {displayed.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 gap-3">
                 <span className="text-4xl opacity-20">🍽️</span>
-                <p style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }} className="text-sm">No {orderTab} orders</p>
+                <p
+                  style={{ color: t.muted, fontFamily: "'Lato', sans-serif" }}
+                  className="text-sm"
+                >
+                  No {orderTab} orders
+                </p>
               </div>
-            ) : displayed.map((o) => <OrderCard key={o.id} order={o} />)}
+            ) : (
+              displayed.map((o) => <OrderCard key={o.id} order={o} />)
+            )}
           </div>
         </div>
         {/* Detail panel */}
-        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "detail" ? "translate-x-0" : "translate-x-full"}`}
-          style={{ background: t.bg }}>
+        <div
+          className={`absolute inset-0 flex flex-col transition-transform duration-300 ${mobileView === "detail" ? "translate-x-0" : "translate-x-full"}`}
+          style={{ background: t.bg }}
+        >
           {selectedOrder && <OrderDetail />}
         </div>
       </div>
@@ -1528,7 +3486,10 @@ function OrdersPage({ t, user }) {
         <RejectOrderModal
           t={t}
           orderId={selectedOrder.id}
-          onClose={() => { setShowRejectModal(false); setActionErr(""); }}
+          onClose={() => {
+            setShowRejectModal(false);
+            setActionErr("");
+          }}
           onConfirm={async (reason) => {
             await updateStatus(selectedOrder.id, "rejected", { notes: reason });
             setShowRejectModal(false);
@@ -1542,12 +3503,15 @@ function OrdersPage({ t, user }) {
           restId={restId}
           riders={riders}
           onRiderSaved={(r) => setRiders((prev) => [...prev, r])}
-          onClose={() => { setShowDeliveryModal(false); setActionErr(""); }}
+          onClose={() => {
+            setShowDeliveryModal(false);
+            setActionErr("");
+          }}
           onConfirm={async ({ riderName, riderPhone, note }) => {
             await updateStatus(selectedOrder.id, "on_the_way", {
-              notes: note || selectedOrder.notes || "",
               delivery_rider_name: riderName,
               delivery_rider_phone: riderPhone,
+              delivery_note: note || null,
             });
             setShowDeliveryModal(false);
           }}
@@ -1575,8 +3539,12 @@ function RejectOrderModal({ t, orderId, onClose, onConfirm }) {
 
   const handleConfirm = async () => {
     const final = reason === "Other" ? custom.trim() : reason;
-    if (!final) { setErr("Please select or enter a reason."); return; }
-    setLoading(true); setErr("");
+    if (!final) {
+      setErr("Please select or enter a reason.");
+      return;
+    }
+    setLoading(true);
+    setErr("");
     try {
       await onConfirm(final);
     } catch (e) {
@@ -1587,36 +3555,74 @@ function RejectOrderModal({ t, orderId, onClose, onConfirm }) {
 
   return (
     <Modal title="Reject Order" onClose={onClose} t={t}>
-      <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-4">
+      <p
+        style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+        className="text-sm mb-4"
+      >
         Select a reason for rejecting order #{orderId}. This will be recorded.
       </p>
       <div className="space-y-2 mb-4">
         {REJECT_REASONS_LIST.map((r) => (
-          <button key={r} onClick={() => setReason(r)}
-            style={{ background: reason === r ? t.accentBg : t.surface2, border: `1px solid ${reason === r ? t.accentBorder : t.border2}`, color: reason === r ? t.accent : t.text, fontFamily: "'Lato', sans-serif" }}
-            className="w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all">
+          <button
+            key={r}
+            onClick={() => setReason(r)}
+            style={{
+              background: reason === r ? t.accentBg : t.surface2,
+              border: `1px solid ${reason === r ? t.accentBorder : t.border2}`,
+              color: reason === r ? t.accent : t.text,
+              fontFamily: "'Lato', sans-serif",
+            }}
+            className="w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all"
+          >
             {r}
           </button>
         ))}
       </div>
       {reason === "Other" && (
         <div className="mb-4">
-          <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase block mb-2">Specify reason</label>
+          <label
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold tracking-widest uppercase block mb-2"
+          >
+            Specify reason
+          </label>
           <textarea
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
             placeholder="Enter rejection reason…"
             rows={3}
             autoFocus
-            style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif", resize: "none", width: "100%" }}
+            style={{
+              background: t.surface2,
+              border: `1px solid ${t.border2}`,
+              color: t.text,
+              fontFamily: "'Lato', sans-serif",
+              resize: "none",
+              width: "100%",
+            }}
             className="rounded-lg px-4 py-3 text-sm outline-none"
           />
         </div>
       )}
-      {err && <p style={{ color: t.red, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-3">⚠️ {err}</p>}
-      <button onClick={handleConfirm} disabled={loading || !reason}
-        style={{ background: t.red, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: !reason ? 0.5 : 1 }}
-        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
+      {err && (
+        <p
+          style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm mb-3"
+        >
+          ⚠️ {err}
+        </p>
+      )}
+      <button
+        onClick={handleConfirm}
+        disabled={loading || !reason}
+        style={{
+          background: t.red,
+          color: "#fff",
+          fontFamily: "'Lato', sans-serif",
+          opacity: !reason ? 0.5 : 1,
+        }}
+        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+      >
         {loading ? "Rejecting…" : "Confirm Rejection"}
       </button>
     </Modal>
@@ -1624,7 +3630,15 @@ function RejectOrderModal({ t, orderId, onClose, onConfirm }) {
 }
 
 // ─── DeliveryAssignModal (top-level to preserve input focus) ──────────────────
-function DeliveryAssignModal({ t, orderId, restId, riders, onRiderSaved, onClose, onConfirm }) {
+function DeliveryAssignModal({
+  t,
+  orderId,
+  restId,
+  riders,
+  onRiderSaved,
+  onClose,
+  onConfirm,
+}) {
   const [selectedRider, setSelectedRider] = useState(null);
   const [directName, setDirectName] = useState("");
   const [directPhone, setDirectPhone] = useState("");
@@ -1636,17 +3650,29 @@ function DeliveryAssignModal({ t, orderId, restId, riders, onRiderSaved, onClose
   const [err, setErr] = useState("");
 
   const handleSaveRider = async () => {
-    if (!newName.trim() || !newPhone.trim()) { setErr("Rider name and phone are required."); return; }
-    setLoading(true); setErr("");
+    if (!newName.trim() || !newPhone.trim()) {
+      setErr("Rider name and phone are required.");
+      return;
+    }
+    setLoading(true);
+    setErr("");
     try {
       const { data, error } = await supabase
         .from("Delivery_Riders")
-        .insert({ rest_id: restId, name: newName.trim(), phone: newPhone.trim(), active: true })
-        .select().single();
+        .insert({
+          rest_id: restId,
+          name: newName.trim(),
+          phone: newPhone.trim(),
+          active: true,
+        })
+        .select()
+        .single();
       if (error) throw error;
       onRiderSaved(data);
       setSelectedRider(data);
-      setNewName(""); setNewPhone(""); setShowAddRider(false);
+      setNewName("");
+      setNewPhone("");
+      setShowAddRider(false);
     } catch (e) {
       setErr(e.message || "Failed to save rider.");
     } finally {
@@ -1657,8 +3683,12 @@ function DeliveryAssignModal({ t, orderId, restId, riders, onRiderSaved, onClose
   const handleConfirm = async () => {
     const riderName = selectedRider ? selectedRider.name : directName.trim();
     const riderPhone = selectedRider ? selectedRider.phone : directPhone.trim();
-    if (!riderName) { setErr("Please select or enter a delivery rider."); return; }
-    setLoading(true); setErr("");
+    if (!riderName) {
+      setErr("Please select or enter a delivery rider.");
+      return;
+    }
+    setLoading(true);
+    setErr("");
     try {
       await onConfirm({ riderName, riderPhone, note });
     } catch (e) {
@@ -1671,21 +3701,44 @@ function DeliveryAssignModal({ t, orderId, restId, riders, onRiderSaved, onClose
 
   return (
     <Modal title="Send for Delivery" onClose={onClose} t={t}>
-      <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-4">
+      <p
+        style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+        className="text-sm mb-4"
+      >
         Assign a delivery rider for order #{orderId}.
       </p>
 
       {/* Saved riders */}
       {riders.length > 0 && (
         <div className="mb-4">
-          <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-2">Saved Riders</p>
+          <p
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-bold tracking-widest uppercase mb-2"
+          >
+            Saved Riders
+          </p>
           <div className="space-y-2">
             {riders.map((r) => (
-              <button key={r.id} onClick={() => { setSelectedRider(r); setDirectName(""); setDirectPhone(""); }}
-                style={{ background: selectedRider?.id === r.id ? t.accentBg : t.surface2, border: `1px solid ${selectedRider?.id === r.id ? t.accentBorder : t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
-                className="w-full text-left px-4 py-3 rounded-lg text-sm transition-all">
+              <button
+                key={r.id}
+                onClick={() => {
+                  setSelectedRider(r);
+                  setDirectName("");
+                  setDirectPhone("");
+                }}
+                style={{
+                  background:
+                    selectedRider?.id === r.id ? t.accentBg : t.surface2,
+                  border: `1px solid ${selectedRider?.id === r.id ? t.accentBorder : t.border2}`,
+                  color: t.text,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm transition-all"
+              >
                 <span className="font-semibold">{r.name}</span>
-                <span style={{ color: t.muted }} className="text-xs ml-2">{r.phone}</span>
+                <span style={{ color: t.muted }} className="text-xs ml-2">
+                  {r.phone}
+                </span>
               </button>
             ))}
           </div>
@@ -1694,39 +3747,96 @@ function DeliveryAssignModal({ t, orderId, restId, riders, onRiderSaved, onClose
 
       {/* Save new rider */}
       {!showAddRider ? (
-        <button onClick={() => { setShowAddRider(true); setSelectedRider(null); }}
-          style={{ color: t.accent, border: `1px solid ${t.accentBorder}`, background: t.accentBg, fontFamily: "'Lato', sans-serif" }}
-          className="w-full py-2.5 rounded-lg text-sm font-semibold mb-4 hover:opacity-80 transition-opacity">
+        <button
+          onClick={() => {
+            setShowAddRider(true);
+            setSelectedRider(null);
+          }}
+          style={{
+            color: t.accent,
+            border: `1px solid ${t.accentBorder}`,
+            background: t.accentBg,
+            fontFamily: "'Lato', sans-serif",
+          }}
+          className="w-full py-2.5 rounded-lg text-sm font-semibold mb-4 hover:opacity-80 transition-opacity"
+        >
           + Save new rider profile
         </button>
       ) : (
-        <div style={{ background: t.surface2, border: `1px solid ${t.border2}` }} className="rounded-xl p-4 mb-4">
-          <p style={{ color: t.text, fontFamily: "'Lato', sans-serif" }} className="text-sm font-semibold mb-3">New Rider Profile</p>
+        <div
+          style={{ background: t.surface2, border: `1px solid ${t.border2}` }}
+          className="rounded-xl p-4 mb-4"
+        >
+          <p
+            style={{ color: t.text, fontFamily: "'Lato', sans-serif" }}
+            className="text-sm font-semibold mb-3"
+          >
+            New Rider Profile
+          </p>
           <div className="mb-3">
-            <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Rider Name</label>
+            <label
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-semibold tracking-widest uppercase block mb-2"
+            >
+              Rider Name
+            </label>
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="e.g. Mohammed Ali"
-              style={{ background: t.surface, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+              style={{
+                background: t.surface,
+                border: `1px solid ${t.border2}`,
+                color: t.text,
+                fontFamily: "'Lato', sans-serif",
+              }}
               className="w-full rounded-lg px-4 py-3 text-sm outline-none"
             />
           </div>
           <div className="mb-3">
-            <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Phone Number</label>
+            <label
+              style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+              className="text-xs font-semibold tracking-widest uppercase block mb-2"
+            >
+              Phone Number
+            </label>
             <input
               type="text"
               value={newPhone}
               onChange={(e) => setNewPhone(e.target.value)}
               placeholder="+965 XXXX XXXX"
-              style={{ background: t.surface, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+              style={{
+                background: t.surface,
+                border: `1px solid ${t.border2}`,
+                color: t.text,
+                fontFamily: "'Lato', sans-serif",
+              }}
               className="w-full rounded-lg px-4 py-3 text-sm outline-none"
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setShowAddRider(false)} style={{ color: t.subtle, border: `1px solid ${t.border2}`, fontFamily: "'Lato', sans-serif" }} className="flex-1 py-2 rounded-lg text-sm">Cancel</button>
-            <button onClick={handleSaveRider} disabled={loading} style={{ background: t.accent, color: "#fff", fontFamily: "'Lato', sans-serif" }} className="flex-1 py-2 rounded-lg text-sm font-semibold">
+            <button
+              onClick={() => setShowAddRider(false)}
+              style={{
+                color: t.subtle,
+                border: `1px solid ${t.border2}`,
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="flex-1 py-2 rounded-lg text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveRider}
+              disabled={loading}
+              style={{
+                background: t.accent,
+                color: "#fff",
+                fontFamily: "'Lato', sans-serif",
+              }}
+              className="flex-1 py-2 rounded-lg text-sm font-semibold"
+            >
               {loading ? "Saving…" : "Save & Select"}
             </button>
           </div>
@@ -1735,26 +3845,57 @@ function DeliveryAssignModal({ t, orderId, restId, riders, onRiderSaved, onClose
 
       {/* Direct entry */}
       <div style={{ borderTop: `1px solid ${t.border}` }} className="pt-4 mb-4">
-        <p style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-bold tracking-widest uppercase mb-3">Or Enter Directly (one-time)</p>
+        <p
+          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-bold tracking-widest uppercase mb-3"
+        >
+          Or Enter Directly (one-time)
+        </p>
         <div className="mb-3">
-          <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Rider Name</label>
+          <label
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-semibold tracking-widest uppercase block mb-2"
+          >
+            Rider Name
+          </label>
           <input
             type="text"
             value={directName}
-            onChange={(e) => { setDirectName(e.target.value); setSelectedRider(null); }}
+            onChange={(e) => {
+              setDirectName(e.target.value);
+              setSelectedRider(null);
+            }}
             placeholder="Name"
-            style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+            style={{
+              background: t.surface2,
+              border: `1px solid ${t.border2}`,
+              color: t.text,
+              fontFamily: "'Lato', sans-serif",
+            }}
             className="w-full rounded-lg px-4 py-3 text-sm outline-none"
           />
         </div>
         <div className="mb-3">
-          <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Phone</label>
+          <label
+            style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+            className="text-xs font-semibold tracking-widest uppercase block mb-2"
+          >
+            Phone
+          </label>
           <input
             type="text"
             value={directPhone}
-            onChange={(e) => { setDirectPhone(e.target.value); setSelectedRider(null); }}
+            onChange={(e) => {
+              setDirectPhone(e.target.value);
+              setSelectedRider(null);
+            }}
             placeholder="Phone number"
-            style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif" }}
+            style={{
+              background: t.surface2,
+              border: `1px solid ${t.border2}`,
+              color: t.text,
+              fontFamily: "'Lato', sans-serif",
+            }}
             className="w-full rounded-lg px-4 py-3 text-sm outline-none"
           />
         </div>
@@ -1762,21 +3903,48 @@ function DeliveryAssignModal({ t, orderId, restId, riders, onRiderSaved, onClose
 
       {/* Delivery note */}
       <div className="mb-4">
-        <label style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }} className="text-xs font-semibold tracking-widest uppercase block mb-2">Note (optional)</label>
+        <label
+          style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
+          className="text-xs font-semibold tracking-widest uppercase block mb-2"
+        >
+          Note (optional)
+        </label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Any delivery instructions…"
           rows={2}
-          style={{ background: t.surface2, border: `1px solid ${t.border2}`, color: t.text, fontFamily: "'Lato', sans-serif", resize: "none", width: "100%" }}
+          style={{
+            background: t.surface2,
+            border: `1px solid ${t.border2}`,
+            color: t.text,
+            fontFamily: "'Lato', sans-serif",
+            resize: "none",
+            width: "100%",
+          }}
           className="rounded-lg px-4 py-3 text-sm outline-none"
         />
       </div>
 
-      {err && <p style={{ color: t.red, fontFamily: "'Lato', sans-serif" }} className="text-sm mb-3">⚠️ {err}</p>}
-      <button onClick={handleConfirm} disabled={loading || !canSubmit}
-        style={{ background: t.green, color: "#fff", fontFamily: "'Lato', sans-serif", opacity: !canSubmit ? 0.5 : 1 }}
-        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">
+      {err && (
+        <p
+          style={{ color: t.red, fontFamily: "'Lato', sans-serif" }}
+          className="text-sm mb-3"
+        >
+          ⚠️ {err}
+        </p>
+      )}
+      <button
+        onClick={handleConfirm}
+        disabled={loading || !canSubmit}
+        style={{
+          background: t.green,
+          color: "#fff",
+          fontFamily: "'Lato', sans-serif",
+          opacity: !canSubmit ? 0.5 : 1,
+        }}
+        className="w-full py-3 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+      >
         {loading ? "Sending…" : "🛵 Confirm — Send for Delivery"}
       </button>
     </Modal>
@@ -1807,7 +3975,6 @@ function AddonItemRow({ addon, t, onEdit, onDelete }) {
             e.currentTarget.src = "/sides.jpg";
           }}
         />
-
       </div>
       <div className="flex-1 min-w-0">
         <p
@@ -2075,54 +4242,72 @@ function MenuPage({ t, user }) {
     // ── Real-time: Menu + Categories changes ─────────────────────────────────
     const menuChannel = supabase
       .channel(`menu-rt-${restId}`)
-      .on("postgres_changes", {
-        event: "UPDATE",
-        schema: "public",
-        table: "Menu",
-        filter: `rest_id=eq.${restId}`,
-      }, (payload) => {
-        // Update matching item in local state without a full refetch
-        setCategories((prev) =>
-          prev.map((c) => ({
-            ...c,
-            items: c.items.map((it) =>
-              it.id === payload.new.id ? { ...it, ...payload.new } : it
-            ),
-          }))
-        );
-      })
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "Menu",
-        filter: `rest_id=eq.${restId}`,
-      }, () => {
-        // Full refetch on new item (need to rebuild category grouping)
-        fetchMenu();
-      })
-      .on("postgres_changes", {
-        event: "DELETE",
-        schema: "public",
-        table: "Menu",
-      }, (payload) => {
-        setCategories((prev) =>
-          prev.map((c) => ({
-            ...c,
-            items: c.items.filter((it) => it.id !== payload.old.id),
-          }))
-        );
-      })
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "Categories",
-        filter: `rest_id=eq.${restId}`,
-      }, () => {
-        fetchMenu();
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "Menu",
+          filter: `rest_id=eq.${restId}`,
+        },
+        (payload) => {
+          // Update matching item in local state without a full refetch
+          setCategories((prev) =>
+            prev.map((c) => ({
+              ...c,
+              items: c.items.map((it) =>
+                it.id === payload.new.id ? { ...it, ...payload.new } : it,
+              ),
+            })),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "Menu",
+          filter: `rest_id=eq.${restId}`,
+        },
+        () => {
+          // Full refetch on new item (need to rebuild category grouping)
+          fetchMenu();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "Menu",
+        },
+        (payload) => {
+          setCategories((prev) =>
+            prev.map((c) => ({
+              ...c,
+              items: c.items.filter((it) => it.id !== payload.old.id),
+            })),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "Categories",
+          filter: `rest_id=eq.${restId}`,
+        },
+        () => {
+          fetchMenu();
+        },
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(menuChannel); };
+    return () => {
+      supabase.removeChannel(menuChannel);
+    };
   }, [restId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Drag refs ───────────────────────────────────────────────────────────────
@@ -2404,7 +4589,12 @@ function MenuPage({ t, user }) {
       p.map((c) =>
         c.id !== cid
           ? c
-          : { ...c, items: c.items.map((i) => i.id === iid ? { ...i, is_popular: newVal } : i) },
+          : {
+              ...c,
+              items: c.items.map((i) =>
+                i.id === iid ? { ...i, is_popular: newVal } : i,
+              ),
+            },
       ),
     );
     const { error } = await supabase
@@ -2417,7 +4607,12 @@ function MenuPage({ t, user }) {
         p.map((c) =>
           c.id !== cid
             ? c
-            : { ...c, items: c.items.map((i) => i.id === iid ? { ...i, is_popular: !newVal } : i) },
+            : {
+                ...c,
+                items: c.items.map((i) =>
+                  i.id === iid ? { ...i, is_popular: !newVal } : i,
+                ),
+              },
         ),
       );
       console.error("Failed to toggle popular:", error);
@@ -5387,11 +7582,25 @@ export default function Dashboard({ user, onLogout }) {
         .in("status", ["pending", "accepted", "preparing", "on_the_way"]);
       const rows = data || [];
       setLiveNewCount(rows.filter((o) => o.status === "pending").length);
-      setLiveAcceptedCount(rows.filter((o) => ["accepted", "preparing", "on_the_way"].includes(o.status)).length);
+      setLiveAcceptedCount(
+        rows.filter((o) =>
+          ["accepted", "preparing", "on_the_way"].includes(o.status),
+        ).length,
+      );
     };
     fetchCounts();
-    const ch = supabase.channel(`dash-counts-${restId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "Orders", filter: `rest_id=eq.${restId}` }, fetchCounts)
+    const ch = supabase
+      .channel(`dash-counts-${restId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "Orders",
+          filter: `rest_id=eq.${restId}`,
+        },
+        fetchCounts,
+      )
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [restId]);
@@ -5405,6 +7614,8 @@ export default function Dashboard({ user, onLogout }) {
         return <HomePage t={t} user={user} />;
       case "orders":
         return <OrdersPage t={t} user={user} />;
+      case "delivery":
+        return <DeliveryPage t={t} user={user} />;
       case "menu":
         return <MenuPage t={t} user={user} />;
       default:
@@ -5475,8 +7686,11 @@ export default function Dashboard({ user, onLogout }) {
             style={{
               background: t.accentBg,
               border: `1px solid ${t.accentBorder}`,
+              cursor: "pointer",
             }}
-            className="flex items-center gap-2 rounded-lg px-3 py-1.5"
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:opacity-80 active:scale-95 transition-all"
+            onClick={() => setActiveNav("orders")}
+            title="View new orders"
           >
             <span
               style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
@@ -5495,8 +7709,11 @@ export default function Dashboard({ user, onLogout }) {
             style={{
               background: t.greenBg,
               border: `1px solid ${t.greenBorder}`,
+              cursor: "pointer",
             }}
-            className="flex items-center gap-2 rounded-lg px-3 py-1.5"
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:opacity-80 active:scale-95 transition-all"
+            onClick={() => setActiveNav("orders")}
+            title="View accepted orders"
           >
             <span
               style={{ color: t.subtle, fontFamily: "'Lato', sans-serif" }}
