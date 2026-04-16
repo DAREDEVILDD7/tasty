@@ -25,7 +25,6 @@ export default function Login({ onLogin }) {
         .single();
 
       if (!ownerError && ownerData && ownerData.password === password) {
-        // Owner matched
         onLogin({
           role: "owner",
           id: ownerData.id,
@@ -44,7 +43,6 @@ export default function Login({ onLogin }) {
         .single();
 
       if (!staffError && staffData && staffData.password === password) {
-        // Staff matched
         onLogin({
           role: "staff",
           id: staffData.id,
@@ -74,21 +72,26 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-white bg-[radial-gradient(#fed7aa_1px,transparent_1px)] [background-size:20px_20px] flex items-center justify-center px-4 md:px-6 relative overflow-hidden font-sans">
+    // 1. UPDATED BACKGROUND: Added a soft sweeping gradient (orange-50 -> white -> stone-100) behind the dots
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-stone-100 flex items-center justify-center px-4 md:px-6 relative overflow-hidden font-sans">
       
-      {/* Background Ambient Orbs (Matching the Hero Section) */}
+      {/* 2. SUBTLE OVERLAY: Keeps the SaaS dot pattern but blends it beautifully with the new gradient */}
+      <div className="absolute inset-0 bg-[radial-gradient(#fed7aa_1px,transparent_1px)] [background-size:20px_20px] mix-blend-multiply opacity-60 pointer-events-none" />
+      
+      {/* Background Ambient Orbs */}
       <div className="absolute top-0 left-1/4 w-72 h-72 md:w-96 md:h-96 bg-orange-400/20 rounded-full blur-3xl -z-10 animate-pulse" />
       <div className="absolute bottom-0 right-1/4 w-72 h-72 md:w-96 md:h-96 bg-red-500/10 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDelay: '1s' }} />
 
       {/* Login Card */}
       <div
-        className={`relative z-10 w-full max-w-[420px] bg-white border border-stone-200 rounded-[2rem] shadow-xl px-8 py-10 sm:px-10 sm:py-12 transition-all duration-300 ${
+        className={`relative z-10 w-full max-w-[420px] bg-white/80 backdrop-blur-xl border border-white rounded-[2rem] shadow-2xl shadow-orange-900/5 px-8 py-10 sm:px-10 sm:py-12 transition-all duration-300 ${
           shake ? "animate-shake" : ""
         }`}
       >
         {/* Brand Header */}
         <div className="mb-10 text-center flex flex-col items-center">
-          <div className="w-14 h-14 bg-orange-600 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-orange-600/20">
+          {/* 3. UPDATED ICON: Vibrant linear gradient matching the hero text */}
+          <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-orange-500/30">
             <MessageSquare className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-3xl font-extrabold text-stone-900 tracking-tight mb-2">
@@ -112,8 +115,8 @@ export default function Login({ onLogin }) {
               setError(false);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="e.g. burger_king_kwi"
-            className="w-full bg-stone-50 border border-stone-200 text-stone-900 rounded-xl px-4 py-3.5 text-base outline-none focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10 transition-all placeholder:text-stone-400 font-medium"
+            placeholder="Ungrie"
+            className="w-full bg-stone-50/50 border border-stone-200 text-stone-900 rounded-xl px-4 py-3.5 text-base outline-none focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10 transition-all placeholder:text-stone-400 font-medium"
           />
         </div>
 
@@ -132,7 +135,7 @@ export default function Login({ onLogin }) {
               }}
               onKeyDown={handleKeyDown}
               placeholder="••••••••"
-              className="w-full bg-stone-50 border border-stone-200 text-stone-900 rounded-xl pl-4 pr-12 py-3.5 text-base outline-none focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10 transition-all placeholder:text-stone-400 font-medium"
+              className="w-full bg-stone-50/50 border border-stone-200 text-stone-900 rounded-xl pl-4 pr-12 py-3.5 text-base outline-none focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10 transition-all placeholder:text-stone-400 font-medium"
             />
             <button
               onClick={() => setShowPass(!showPass)}
@@ -161,11 +164,11 @@ export default function Login({ onLogin }) {
           </div>
         )}
 
-        {/* Submit button */}
+        {/* 4. UPDATED BUTTON: Sweeping horizontal gradient for maximum conversion focus */}
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="w-full bg-orange-600 hover:bg-orange-700 active:scale-[0.98] text-white font-bold rounded-xl py-4 transition-all hover:shadow-lg hover:shadow-orange-600/30 flex items-center justify-center gap-2 text-base disabled:opacity-70 disabled:pointer-events-none group"
+          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 active:scale-[0.98] text-white font-bold rounded-xl py-4 transition-all hover:shadow-lg hover:shadow-orange-500/30 flex items-center justify-center gap-2 text-base disabled:opacity-70 disabled:pointer-events-none group"
         >
           {loading ? (
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -182,7 +185,6 @@ export default function Login({ onLogin }) {
         </p>
       </div>
 
-      {/* Minimal CSS for the shake animation (removed the external font imports) */}
       <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
